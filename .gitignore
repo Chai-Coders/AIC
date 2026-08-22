@@ -1,4 +1,4 @@
-# Logs
+# Frontend
 logs
 *.log
 npm-debug.log*
@@ -11,6 +11,23 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Backend
+backend/venv/
+backend/.venv/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/staticfiles/
+backend/.env
+backend/media/**
+!backend/media/
+!backend/media/**/
+!backend/media/**/.gitkeep
+venv/
+.venv/
+__pycache__/
 
 # Editor directories and files
 .vscode/*
