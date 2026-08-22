@@ -1,4 +1,5 @@
 import React from 'react';
+import MemberCarousel from './MemberCarousel';
 
 const intlIndustry = [
   { name: 'Dr.Ventsislav Petkov', role: 'Data Analyst Engineer', org: 'Telefonica Germany GmBH Germany' },
@@ -57,81 +58,10 @@ const indiaAcademic = [
 const MentorGrid = () => {
   return (
     <>
-      {/* International Industry */}
-      <div id="about" className="section md-padding">
-        <div className="container">
-          <div className="row">
-            <div className="section-header text-center">
-              <h2 className="title">International Mentors - Industry</h2>
-            </div>
-            {intlIndustry.map((item, idx) => (
-              <div key={idx} className="col-md-6">
-                <div className="about">
-                  <h3>{item.name}</h3>
-                  <p>{item.role}<br />{item.org}<br />Mentor</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* International Academic */}
-      <div id="about" className="section md-padding bg-grey">
-        <div className="container">
-          <div className="row">
-            <div className="section-header text-center">
-              <h2 className="title">International Mentors - Academic</h2>
-            </div>
-            {intlAcademic.map((item, idx) => (
-              <div key={idx} className="col-md-4">
-                <div className="about">
-                  <h3>{item.name}</h3>
-                  <p>{item.role}<br />{item.designation}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* India Industry */}
-      <div id="about" className="section md-padding">
-        <div className="container">
-          <div className="row">
-            <div className="section-header text-center">
-              <h2 className="title">India Mentors - Industry</h2>
-            </div>
-            {indiaIndustry.map((item, idx) => (
-              <div key={idx} className="col-md-4">
-                <div className="about" style={{ minHeight: '140px' }}>
-                  <h3>{item.name}</h3>
-                  <p>{item.role}<br />{item.org}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* India Academic */}
-      <div id="about" className="section md-padding bg-grey">
-        <div className="container">
-          <div className="row">
-            <div className="section-header text-center">
-              <h2 className="title">Indian Mentors - Academic</h2>
-            </div>
-            {indiaAcademic.map((item, idx) => (
-              <div key={idx} className="col-md-3">
-                <div className="about" style={{ minHeight: '140px' }}>
-                  <h3>{item.name}</h3>
-                  <p>{item.role}<br />Mentor</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <MemberCarousel members={intlIndustry} title="International Mentors - Industry" />
+      <MemberCarousel members={intlAcademic} title="International Mentors - Academic" tone="grey" />
+      <MemberCarousel members={indiaIndustry} title="India Mentors - Industry" />
+      <MemberCarousel members={indiaAcademic} title="Indian Mentors - Academic" tone="grey" />
     </>
   );
 };

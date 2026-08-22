@@ -16,7 +16,7 @@ const SiaContent = () => {
           <br /> SIA is a support scheme for budding entrepreneurs at AIC-IIIT Kottayam.
         </p>
 
-        <p style={{ fontStyle: 'italic', fontWeight: 'bold', fontSize: '18px', marginTop: '20px' }}>Features:</p>
+        <h3 style={{ fontWeight: '700', marginTop: '28px', color: '#222' }}>KEY FEATURES</h3>
         <ul style={{ fontSize: '16px', lineHeight: '1.8', listStyleType: 'none', paddingLeft: 0 }}>
           <li>- Structured Launch Program in partnership with Global Leaders</li>
           <li>- Complete support from Idea Validation, Ip, Marketing, Seed funding and Acceleration.</li>
@@ -28,8 +28,26 @@ const SiaContent = () => {
           <li>- Support to ideas from all domains</li>
         </ul>
 
+        <h3 style={{ fontWeight: '700', marginTop: '28px', color: '#222' }}>PROGRAM FLOW &amp; Engagements</h3>
+        <ul style={{ fontSize: '16px', lineHeight: '1.8', listStyleType: 'none', paddingLeft: 0 }}>
+          <li>- Application screening and cohort onboarding</li>
+          <li>- Structured mentoring with domain experts and founders</li>
+          <li>- Product validation, prototype support, and market readiness</li>
+          <li>- Business model refinement with branding and go-to-market guidance</li>
+          <li>- Demo readiness and investor/startup ecosystem connect</li>
+        </ul>
+
+        <h3 style={{ fontWeight: '700', marginTop: '28px', color: '#222' }}>EXPECTED OUTCOME</h3>
+        <ul style={{ fontSize: '16px', lineHeight: '1.8', listStyleType: 'none', paddingLeft: 0 }}>
+          <li>- Startup ideas transformed into validated business opportunities</li>
+          <li>- Teams become investment and incubation ready</li>
+          <li>- Stronger product-market fit with clearer growth roadmap</li>
+          <li>- Entrepreneurial capability development for long-term scaling</li>
+        </ul>
+
         <p style={{ fontStyle: 'italic', fontSize: '14px', marginTop: '15px' }}>*Stamp Duty and other Govt fees, if any are not included</p>
-        
+
+        <h3 style={{ fontWeight: '700', marginTop: '28px', color: '#222' }}>APPLICATION LINK</h3>
         <div className="feature" style={{ marginTop: '25px' }}>
           <p style={{ fontSize: '24px' }}>
             <a 

@@ -49,6 +49,45 @@ const partners = [
 const StartupGrid = () => {
   return (
     <div className="container-fluid" style={{ padding: '40px 15px' }}>
+      <div className="row" style={{ maxWidth: '1100px', margin: '0 auto 40px' }}>
+        <div className="col-md-12">
+          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '0' }}>KEY FEATURES</h3>
+          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
+            <li>Dedicated acceleration support for growth-stage startups</li>
+            <li>Mentor network and expert interventions for scale-up challenges</li>
+            <li>Access to partner ecosystem, industry connects, and market channels</li>
+            <li>Strategic support in product, operations, and business expansion</li>
+          </ul>
+
+          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>PROGRAM FLOW &amp; Engagements</h3>
+          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
+            <li>Startup selection based on growth potential and readiness</li>
+            <li>Goal setting with milestone-driven acceleration roadmap</li>
+            <li>Periodic reviews with domain experts and business mentors</li>
+            <li>Investor readiness, market access, and strategic partnership support</li>
+          </ul>
+
+          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>EXPECTED OUTCOME</h3>
+          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
+            <li>Faster go-to-market and improved business traction</li>
+            <li>Improved fundraising readiness and growth strategy execution</li>
+            <li>Scalable operating model with stronger market presence</li>
+          </ul>
+
+          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>APPLICATION LINK</h3>
+          <p style={{ marginBottom: '0' }}>
+            <a
+              href="https://forms.gle/2c4NgmXp4B16zGet6"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="main-btn"
+            >
+              Apply for Acceleration Program
+            </a>
+          </p>
+        </div>
+      </div>
+
       <div className="section-header text-center">
         <h2 className="title">Some of our promising Start-Ups</h2>
       </div>

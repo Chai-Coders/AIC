@@ -7,7 +7,6 @@ import HomeService from '../components/home/HomeService';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeNumbers from '../components/home/HomeNumbers';
 import HomePricing from '../components/home/HomePricing';
-import HomeTestimonial from '../components/home/HomeTestimonial';
 import HomeContact from '../components/home/HomeContact';
 
 const HomePage = () => {
@@ -21,7 +20,6 @@ const HomePage = () => {
         <HomeFeatures />
         <HomeNumbers />
         <HomePricing />
-        <HomeTestimonial />
         <HomeContact />
       </main>
       <Footer />

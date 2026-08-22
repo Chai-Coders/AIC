@@ -21,10 +21,17 @@ function ScrollToTop() {
     if (hash) {
       const element = document.getElementById(hash.replace('#', ''));
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        const nav = document.getElementById('nav');
+        const navOffset = nav ? nav.offsetHeight + 14 : 90;
+        const elementTop = element.getBoundingClientRect().top + window.scrollY;
+
+        window.scrollTo({
+          top: Math.max(elementTop - navOffset, 0),
+          behavior: 'smooth',
+        });
       }
     } else {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     }
   }, [pathname, hash]);
 

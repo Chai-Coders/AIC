@@ -1,4 +1,5 @@
 import React from 'react';
+import MemberCarousel from './MemberCarousel';
 
 const members = [
   { name: 'Prof. Prasad Krishna', role: 'Director-IIIT Kottayam', designation: 'Chairman' },
@@ -13,35 +14,7 @@ const members = [
 ];
 
 const BoardGrid = () => {
-  return (
-    <div id="about" className="section md-padding">
-      <div className="container">
-        <div className="row">
-          <div className="section-header text-center">
-            <h2 className="title">AIC-IIITKottayam Board of Governors</h2>
-          </div>
-
-          {members.map((member, idx) => (
-            <div key={idx} className="col-md-4">
-              <div className="about">
-                {member.link ? (
-                  <a href={member.link} target="_blank" rel="noopener noreferrer">
-                    <h3>{member.name}</h3>
-                    <p>{member.role}<br />{member.designation}</p>
-                  </a>
-                ) : (
-                  <>
-                    <h3>{member.name}</h3>
-                    <p>{member.role}<br />{member.designation}</p>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <MemberCarousel members={members} title="AIC-IIITKottayam Board of Governors" variant="board" />;
 };
 
 export default BoardGrid;
