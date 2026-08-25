@@ -847,30 +847,9 @@ header {
     margin-bottom: 20px;
 }
 
-.about:after {
-    content: "";
-    background-color: #1C1D21;
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 0%;
-    z-index: -1;
-    -webkit-transition: 0.2s width;
-    transition: 0.2s width;
-}
-
-.about:hover:after {
-    width: 100%;
-}
-
 .about h3 {
     -webkit-transition: 0.2s color;
     transition: 0.2s color;
-}
-
-.about:hover h3 {
-    color: #fff;
 }
 
 
@@ -995,44 +974,40 @@ header {
 
 .service {
     position: relative;
-    padding: 40px 20px 40px 70px;
-    margin: 15px 0px;
+    padding: 40px 24px 40px 70px !important;
+    margin: 0;
     border: 1px solid #EEE;
+    background-color: #FFF;
+    min-height: 190px;
+    box-sizing: border-box;
 }
 
 .service i {
-    position: absolute;
-    left: 20px;
+    position: absolute !important;
+    left: 20px !important;
+    top: 40px !important;
     text-align: center;
     font-size: 32px;
     color: #6195FF;
-    border-radius: 50%;
-}
-
-.service:after {
-    content: "";
-    background-color: #1C1D21;
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 0%;
-    z-index: -1;
-    -webkit-transition: 0.2s width;
-    transition: 0.2s width;
-}
-
-.service:hover:after {
-    width: 100%;
+    z-index: 2;
 }
 
 .service h3 {
-  -webkit-transition: 0.2s color;
-  transition: 0.2s color;
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #10161A;
+    -webkit-transition: 0.2s color;
+    transition: 0.2s color;
 }
 
-.service:hover h3 {
-    color: #fff;
+.service p {
+    margin: 0;
+    color: #7b8794;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 /*------------------------------------*\
@@ -1069,6 +1044,12 @@ header {
 .number h3 {
     font-size: 36px;
     margin-bottom: 10px;
+    color: #FFF;
+    font-weight: 700;
+}
+
+.number-counter-val {
+    display: inline-block;
 }
 
 
@@ -1083,23 +1064,6 @@ header {
     background-color: #FFF;
     z-index: 11;
     margin: 15px 0px;
-}
-
-.pricing::after {
-    content: "";
-    background-color: #1C1D21;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 0%;
-    z-index: -1;
-    -webkit-transition: 0.2s height;
-    transition: 0.2s height;
-}
-
-.pricing:hover:after {
-    height: 100%;
 }
 
 .pricing .price-head {
@@ -1144,10 +1108,6 @@ header {
   right: 0;
 }
 
-.pricing:hover .price h3 {
-    color: #fff;
-}
-
 .pricing .duration {
     display: block;
     font-size: 14px;
@@ -1155,10 +1115,6 @@ header {
     color: #10161A;
     -webkit-transition: 0.2s color;
     transition: 0.2s color;
-}
-
-.pricing:hover .duration {
-    color: #fff;
 }
 
 .pricing .price-btn {
@@ -2250,19 +2206,15 @@ header {
  left:250px;
 }
 
-.welogo {       
-               
-                position:relative;
-                #border: 2px solid blue;
-                border-radius: 5px;
-                left:-270px;
-                width:1500px;
-                #background-image: url('../img/ideators.png');
-                #background-position: center;
-                
-                
-
-            } 
+.welogo {
+    position: relative;
+    /* border: 2px solid blue; */
+    border-radius: 5px;
+    left: -270px;
+    width: 1500px;
+    /* background-image: url('../img/ideators.png'); */
+    /* background-position: center; */
+} 
 
             img.kiddo { 
                 width: 10%; 

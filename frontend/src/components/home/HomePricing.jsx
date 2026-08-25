@@ -1,4 +1,5 @@
 import React from 'react';
+import SpotlightCard from '../common/SpotlightCard';
 
 const plans = [
   {
@@ -15,7 +16,7 @@ const plans = [
   },
   {
     title: 'Consultancy Contracts',
-    price: 'Rs.10K',
+    price: '10K',
     duration: '/ day',
     features: ['Onsite support', 'Consultancy support', 'Network support']
   }
@@ -25,14 +26,14 @@ const HomePricing = () => {
   return (
     <div id="pricing" className="section md-padding">
       <div className="container">
-        <div className="row">
-          <div className="section-header text-center">
+        <div className="row flex-grid">
+          <div className="section-header text-center col-xs-12">
             <h2 className="title">Business Model</h2>
           </div>
 
           {plans.map((plan, idx) => (
-            <div key={idx} className="col-sm-4">
-              <div className="pricing">
+            <div key={idx} className="col-sm-4 flex-col">
+              <SpotlightCard className="pricing" spotlightColor="rgba(241, 236, 52, 0.4)">
                 <div className="price-head">
                   <span className="price-title">{plan.title}</span>
                   <div className="price">
@@ -49,7 +50,7 @@ const HomePricing = () => {
                     <button className="outline-btn">Register at incubate@iiitkottayam.ac.in</button>
                   </a>
                 </div>
-              </div>
+              </SpotlightCard>
             </div>
           ))}
         </div>

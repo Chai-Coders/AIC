@@ -20,6 +20,22 @@ html {
   flex-direction: column;
 }
 
+#features .features-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#features .features-title {
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  #features .features-title {
+    white-space: normal;
+  }
+}
+
 .nav-offset {
   height: 92px;
 }
@@ -204,8 +220,13 @@ html {
 }
 
 @keyframes member-carousel-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(calc(-50%)); }
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50%));
+  }
 }
 
 .member-carousel-section--board .member-carousel-track--loop {
@@ -254,15 +275,32 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .member-carousel-track--loop { animation-play-state: paused; }
+  .member-carousel-track--loop {
+    animation-play-state: paused;
+  }
 }
 
 @media (max-width: 767px) {
-  .member-carousel-section { padding: 76px 0 84px; }
-  .member-carousel-section .section-header { margin-bottom: 38px; }
-  .member-carousel-card { width: 232px; min-height: 350px; }
-  .member-carousel-portrait { height: 210px; }
-  .member-carousel-track { animation-duration: 38s; }
+  .member-carousel-section {
+    padding: 76px 0 84px;
+  }
+
+  .member-carousel-section .section-header {
+    margin-bottom: 38px;
+  }
+
+  .member-carousel-card {
+    width: 232px;
+    min-height: 350px;
+  }
+
+  .member-carousel-portrait {
+    height: 210px;
+  }
+
+  .member-carousel-track {
+    animation-duration: 38s;
+  }
 }
 
 @media (max-width: 1199px) {
@@ -393,6 +431,7 @@ html {
 }
 
 @media (max-width: 1024px) {
+
   .home-hero-wrapper,
   .home-hero-media {
     min-height: 80vh;
@@ -409,6 +448,7 @@ html {
 }
 
 @media (max-width: 767px) {
+
   .home-hero-wrapper,
   .home-hero-media {
     min-height: 72vh;

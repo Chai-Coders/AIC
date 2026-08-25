@@ -23,10 +23,10 @@ const HomeFeatures = () => {
   return (
     <div id="features" className="section md-padding bg-grey">
       <div className="container">
-        <div className="row">
+        <div className="row features-row">
           <div className="col-md-6">
             <div className="section-header">
-              <h2 className="title">Success Formula of AIC-IIITKottayam</h2>
+              <h2 className="title features-title">Success Formula of AIC-IIITKottayam</h2>
             </div>
             <p>The success formula framed at AIC-IIITKottayam will include the following ingredients:</p>
             <div className="feature">
@@ -53,11 +53,11 @@ const HomeFeatures = () => {
 
           <div className="col-md-6">
             <div className="about-slider-wrapper" style={{ position: 'relative', overflow: 'hidden', borderRadius: '8px', minHeight: '350px' }}>
-              <img 
-                className="img-responsive" 
-                src={images[currentImg]} 
+              <img
+                className="img-responsive"
+                src={images[currentImg]}
                 alt="About slide"
-                style={{ width: '100%', height: '380px', objectFit: 'cover', transition: 'all 0.5s ease-in-out' }} 
+                style={{ width: '100%', height: '380px', objectFit: 'cover', transition: 'all 0.5s ease-in-out' }}
               />
               <div style={{ position: 'absolute', bottom: '15px', width: '100%', textAlign: 'center' }}>
                 {images.map((_, idx) => (

@@ -1,4 +1,5 @@
 import React from 'react';
+import SpotlightCard from '../common/SpotlightCard';
 
 const HomeService = () => {
   const services = [
@@ -37,18 +38,18 @@ const HomeService = () => {
   return (
     <div id="service" className="section md-padding">
       <div className="container">
-        <div className="row">
-          <div className="section-header text-center">
+        <div className="row flex-grid">
+          <div className="section-header text-center col-xs-12">
             <h2 className="title">AIC-IIITKottayam - Value Proposition</h2>
           </div>
 
           {services.map((item, index) => (
-            <div key={index} className="col-md-4 col-sm-6">
-              <div className="service">
+            <div key={index} className="col-md-4 col-sm-6 flex-col">
+              <SpotlightCard className="service" spotlightColor="rgba(241, 236, 52, 0.4)">
                 <i className={`fa ${item.icon}`}></i>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
-              </div>
+              </SpotlightCard>
             </div>
           ))}
         </div>
