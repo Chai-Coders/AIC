@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import SpotlightCard from '../common/SpotlightCard';
 
 const AnimatedCounter = ({ target, duration = 2000 }) => {
   const [count, setCount] = useState(0);
@@ -40,7 +41,6 @@ const AnimatedCounter = ({ target, duration = 2000 }) => {
       if (hasStarted.current) return;
       const rect = el.getBoundingClientRect();
       const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-      // Trigger when element enters lower portion of screen
       if (rect.top <= windowHeight * 0.9 && rect.bottom >= 0) {
         startAnimation();
       }
@@ -92,22 +92,20 @@ const stats = [
 
 const HomeNumbers = () => {
   return (
-    <div id="numbers" className="section sm-padding">
-      <div className="bg-img" style={{ backgroundImage: "url('/img/background2.jpg')" }}>
-        <div className="overlay"></div>
-      </div>
-
+    <div id="numbers" className="section sm-padding" style={{ backgroundColor: 'var(--bg-subtle, #f1f5f9)', padding: '60px 0' }}>
       <div className="container">
-        <div className="row">
+        <div className="row flex-grid">
           {stats.map((item, idx) => (
-            <div key={idx} className="col-sm-3 col-xs-6">
-              <div className="number">
-                <i className={`fa ${item.icon}`}></i>
-                <h3 className="white-text">
-                  <AnimatedCounter target={item.count} duration={2200} />
-                </h3>
-                <span className="white-text">{item.title}</span>
-              </div>
+            <div key={idx} className="col-sm-3 col-xs-6 flex-col" style={{ marginBottom: '20px' }}>
+              <SpotlightCard className="number-box" spotlightColor="rgba(224, 201, 34, 0.7)">
+                <div className="number">
+                  <i className={`fa ${item.icon}`}></i>
+                  <h3 className="number-val">
+                    <AnimatedCounter target={item.count} duration={2200} />
+                  </h3>
+                  <span className="number-title">{item.title}</span>
+                </div>
+              </SpotlightCard>
             </div>
           ))}
         </div>

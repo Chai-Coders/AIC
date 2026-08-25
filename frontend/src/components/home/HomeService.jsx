@@ -45,7 +45,7 @@ const HomeService = () => {
 
           {services.map((item, index) => (
             <div key={index} className="col-md-4 col-sm-6 flex-col">
-              <SpotlightCard className="service" spotlightColor="rgba(241, 236, 52, 0.4)">
+              <SpotlightCard className="service" spotlightColor="rgba(224, 201, 34, 0.7)">
                 <i className={`fa ${item.icon}`}></i>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>

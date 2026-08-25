@@ -36,6 +36,22 @@ Table OF Contents
 
 ------------------------------------*/
 
+:root {
+  /* Surface / Backgrounds */
+  --bg-primary: #F8FAFC;       /* Main light background */
+  --bg-surface: #FFFFFF;       /* Card / Container surface */
+  --bg-subtle: #F1F5F9;        /* Alternating section stripes */
+  --bg-dark: #0B192C;          /* Hero / Footer / Dark theme */
+  --bg-dark-surface: #1E3E62;  /* Dark card background */
+
+  /* Text colors against these backgrounds */
+  --text-on-light: #0F172A;
+  --text-on-dark: #F8FAFC;
+
+  /* Key brand accent */
+  --brand-accent: #EA580C;     /* Warm incubation orange */
+}
+
 /*------------------------------------*\
 	General
 \*------------------------------------*/
@@ -48,7 +64,8 @@ body {
     font-size: 16px;
     line-height: 1.6;
     overflow-x: hidden;
-    color: #868F9B;
+    color: var(--text-on-light);
+    background-color: var(--bg-primary);
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -218,7 +235,7 @@ textarea {
 }
 
 input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="number"]:focus, input[type="date"]:focus, input[type="url"]:focus, input[type="tel"]:focus, textarea:focus {
-    border-color: #6195FF;
+    border-color: var(--brand-accent);
     opacity: 1;
 }
 
@@ -229,13 +246,13 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
     padding: 10px 35px;
     margin: 3px;
     border: 2px solid transparent;
-    border-radius: 3px;
-    -webkit-transition: 0.2s opacity;
-    transition: 0.2s opacity;
+    border-radius: 4px;
+    -webkit-transition: 0.2s opacity, 0.2s background-color;
+    transition: 0.2s opacity, 0.2s background-color;
 }
 
 .main-btn {
-    background: #6195FF;
+    background: var(--brand-accent);
     color: #FFF;
 }
 
@@ -246,8 +263,8 @@ input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focu
 
 .outline-btn {
     background: transparent;
-    color: #6195FF !important;
-    border-color: #6195FF;
+    color: var(--brand-accent) !important;
+    border-color: var(--brand-accent);
 }
 
 .main-btn:hover, .white-btn:hover, .outline-btn:hover {
@@ -1032,20 +1049,47 @@ header {
 
 .number {
     text-align: center;
-    margin: 15px 0px;
+    margin: 0;
 }
 
-.number i {
-    color: #6195FF;
-    font-size: 36px;
-    margin-bottom: 20px;
+.number-box {
+    background: var(--bg-surface, #ffffff);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 32px 20px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    height: 100%;
 }
 
-.number h3 {
+.number-box:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(234, 88, 12, 0.15);
+    border-color: var(--brand-accent, #ea580c);
+}
+
+.number-box .number i {
+    color: var(--brand-accent, #ea580c);
     font-size: 36px;
-    margin-bottom: 10px;
-    color: #FFF;
-    font-weight: 700;
+    margin-bottom: 14px;
+    display: inline-block;
+}
+
+.number-box .number-val {
+    font-size: 38px;
+    font-weight: 800;
+    color: var(--text-on-light, #0f172a);
+    margin-top: 5px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.number-box .number-title {
+    color: #64748b;
+    font-size: 15px;
+    font-weight: 600;
+    display: block;
 }
 
 .number-counter-val {

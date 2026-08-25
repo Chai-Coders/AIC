@@ -1,3 +1,19 @@
+:root {
+  /* Surface / Backgrounds */
+  --bg-primary: #F8FAFC;       /* Main light background */
+  --bg-surface: #FFFFFF;       /* Card / Container surface */
+  --bg-subtle: #F1F5F9;        /* Alternating section stripes */
+  --bg-dark: #0B192C;          /* Hero / Footer / Dark theme */
+  --bg-dark-surface: #1E3E62;  /* Dark card background */
+
+  /* Text colors against these backgrounds */
+  --text-on-light: #0F172A;
+  --text-on-dark: #F8FAFC;
+
+  /* Key brand accent */
+  --brand-accent: #EA580C;     /* Warm incubation orange */
+}
+
 /* Global Reset and Full Screen Layout */
 html,
 body,
@@ -8,6 +24,8 @@ body,
   padding: 0 !important;
   overflow-x: hidden;
   box-sizing: border-box;
+  background-color: var(--bg-primary);
+  color: var(--text-on-light);
 }
 
 html {

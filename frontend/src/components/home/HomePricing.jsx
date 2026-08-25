@@ -33,7 +33,7 @@ const HomePricing = () => {
 
           {plans.map((plan, idx) => (
             <div key={idx} className="col-sm-4 flex-col">
-              <SpotlightCard className="pricing" spotlightColor="rgba(241, 236, 52, 0.4)">
+              <SpotlightCard className="pricing" spotlightColor="rgba(224, 201, 34, 0.7)">
                 <div className="price-head">
                   <span className="price-title">{plan.title}</span>
                   <div className="price">

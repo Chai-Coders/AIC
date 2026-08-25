@@ -12,7 +12,7 @@ const HomeAbout = () => {
           </div>
 
           <div className="col-md-4 flex-col">
-            <SpotlightCard className="about" spotlightColor="rgba(241, 236, 52, 0.4)">
+            <SpotlightCard className="about" spotlightColor="rgba(224, 201, 34, 0.7)">
               <i className="fa fa-sticky-note-o"></i>
               <h3>Summary</h3>
               <p>AIC-IIITKottayam is the incubation centre of Indian Institute of Information Technology Kottayam under AIM scheme of India.</p>
@@ -21,7 +21,7 @@ const HomeAbout = () => {
           </div>
 
           <div className="col-md-4 flex-col">
-            <SpotlightCard className="about" spotlightColor="rgba(241, 236, 52, 0.4)">
+            <SpotlightCard className="about" spotlightColor="rgba(224, 201, 34, 0.7)">
               <i className="fa fa-group"></i>
               <h3>Team Members</h3>
               <p>AIC-IIITKottayam centre is governed by leading industrialists and academicians of the globe ...</p>
@@ -30,7 +30,7 @@ const HomeAbout = () => {
           </div>
 
           <div className="col-md-4 flex-col">
-            <SpotlightCard className="about" spotlightColor="rgba(241, 236, 52, 0.4)">
+            <SpotlightCard className="about" spotlightColor="rgba(224, 201, 34, 0.7)">
               <i className="fa fa-diamond"></i>
               <h3>Sustainability</h3>
               <p>AIC-IIITKottayam aims at sustainability while creating an ecosystem of entrepreneurs in IoT cloud domain...</p>
