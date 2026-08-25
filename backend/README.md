@@ -1,331 +1,502 @@
-# Headless Django REST Framework CMS Backend
+# Headless Django REST Framework CMS Backend with JWT Auth
 
-A lightweight, scalable Headless Content Management System (CMS) backend built with **Django 5.x/6.x** and **Django REST Framework (DRF)**. 
+A lightweight, scalable, and secure Headless Content Management System (CMS) backend built with **Django 5.x/6.x**, **Django REST Framework (DRF)**, and **SimpleJWT**.
 
-Administrators manage media and textual content through the built-in **Django Admin** dashboard, while frontend client applications (e.g., React, Next.js, Vue) consume structured data via read-only REST API endpoints.
+This backend powers both public consumption (`app.com`) and authenticated inline CMS content management (`admin.app.com`).
 
 ---
 
 ## Table of Contents
-- [Tech Stack](#tech-stack)
-- [Project Architecture](#project-architecture)
+- [Architecture Overview](#architecture-overview)
+- [How to Create Admin Credentials (Industry Standards)](#how-to-create-admin-credentials-industry-standards)
 - [Quick Start Guide](#quick-start-guide)
-- [How to Manually Test the Backend](#how-to-manually-test-the-backend)
-  - [1. Testing via Django Admin Dashboard](#1-testing-via-django-admin-dashboard)
-  - [2. Testing via DRF Browsable API](#2-testing-via-drf-browsable-api)
-  - [3. Testing via cURL / Postman](#3-testing-via-curl--postman)
-- [API Endpoints Reference](#api-endpoints-reference)
-- [Frontend Integration Guide (React / Next.js)](#frontend-integration-guide-react--nextjs)
+- [Authentication API Endpoints](#authentication-api-endpoints)
+- [Content API Endpoints](#content-api-endpoints)
+- [Frontend Developer Integration Guide](#frontend-developer-integration-guide)
+  - [1. Axios Client with Silent Token Refresh](#1-axios-client-with-silent-token-refresh)
+  - [2. Subdomain & Route Detection (`admin.app.com` vs `app.com`)](#2-subdomain--route-detection-adminappcom-vs-appcom)
+  - [3. React Authentication Context (`AuthContext.jsx`)](#3-react-authentication-context-authcontextjsx)
+  - [4. Conditional Inline Edit Wrapper (`EditableSection.jsx`)](#4-conditional-inline-edit-wrapper-editablesectionjsx)
+  - [5. Multipart Form Data Upload Example (Images + Text)](#5-multipart-form-data-upload-example-images--text)
 - [Running with Docker](#running-with-docker)
 - [Running Automated Tests](#running-automated-tests)
 
 ---
 
-## Tech Stack
-- **Backend Framework:** Python 3.12+, Django 5.x / 6.x
-- **API Engine:** Django REST Framework (DRF)
-- **Image Processing:** Pillow
-- **CORS Handling:** `django-cors-headers`
-- **Database:** SQLite (Local development) / PostgreSQL (Production target)
-- **Default Frontend Target:** `http://localhost:3000`
+## Architecture Overview
+
+```text
+                 +-----------------------------------------------+
+                 |              Django REST API                  |
+                 +-----------------------------------------------+
+                          ▲                             ▲
+            Public GET    │                Auth / CRUD  │ (Bearer JWT)
+            (No Auth)     │                             │
+                          │                             │
+               +--------------------+         +--------------------+
+               |      app.com       |         |   admin.app.com    |
+               |  (Public Visitors) |         | (Admin Dashboard / |
+               |                    |         |   Inline Editor)   |
+               +--------------------+         +--------------------+
+```
+
+- **Public Site (`app.com`)**: Unauthenticated `GET` requests fetch content without tokens.
+- **Admin Portal (`admin.app.com`)**: Authenticated admins obtain a JWT pair (`access` + `refresh`). Write operations (`POST`, `PUT`, `PATCH`, `DELETE`) pass the header `Authorization: Bearer <access_token>`.
 
 ---
 
-## Project Architecture
-```text
-CMS/
-├── manage.py
-├── db.sqlite3
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-├── media/                  # Uploaded media storage
-│   ├── gallery/
-│   ├── news/
-│   ├── startups/
-│   └── team/
-├── cms_backend/            # Main project configuration
-│   ├── settings.py         # App settings, CORS, DRF, Database, & Media
-│   ├── urls.py             # Master routing with media serving
-│   └── wsgi.py
-└── content/                # Dedicated CMS domain app
-    ├── migrations/         # Database migrations
-    ├── admin.py            # Custom Admin with image previews
-    ├── models.py           # Domain models: Gallery, Startup, News, Team
-    ├── serializers.py      # DRF ModelSerializers
-    ├── urls.py             # App-level DRF DefaultRouter
-    ├── views.py            # ModelViewSets (IsAuthenticatedOrReadOnly)
-    └── tests.py            # Automated test suite
+## How to Create Admin Credentials (Industry Standards)
+
+In production systems, administrative credentials are created through 3 established patterns:
+
+### Method 1: Automated & Idempotent via Environment Variables (Recommended for CI/CD & Docker)
+To prevent build scripts and container boots from failing when an admin already exists, use the included idempotent management command `createsuperuser_if_not_exists`:
+
+```powershell
+# Windows PowerShell
+$env:DJANGO_SUPERUSER_USERNAME="admin"
+$env:DJANGO_SUPERUSER_PASSWORD="YourSecurePassword123!"
+$env:DJANGO_SUPERUSER_EMAIL="admin@aic.org"
+python manage.py createsuperuser_if_not_exists
 ```
+
+```bash
+# Linux / macOS / Docker Entrypoint
+DJANGO_SUPERUSER_USERNAME=admin \
+DJANGO_SUPERUSER_PASSWORD=YourSecurePassword123! \
+DJANGO_SUPERUSER_EMAIL=admin@aic.org \
+python manage.py createsuperuser_if_not_exists
+```
+
+Or provide arguments directly:
+```bash
+python manage.py createsuperuser_if_not_exists --username admin --password YourSecurePassword123! --email admin@aic.org
+```
+
+### Method 2: Standard Django Non-Interactive Command
+```bash
+DJANGO_SUPERUSER_USERNAME=admin \
+DJANGO_SUPERUSER_PASSWORD=YourSecurePassword123! \
+DJANGO_SUPERUSER_EMAIL=admin@aic.org \
+python manage.py createsuperuser --noinput
+```
+
+### Method 3: Interactive CLI (Local Development)
+```bash
+python manage.py createsuperuser
+```
+
+> **Security Rule**: Login via `/api/auth/login/` strictly requires `is_staff=True` or `is_superuser=True`. Standard visitor accounts cannot obtain CMS administration tokens.
 
 ---
 
 ## Quick Start Guide
 
-### 1. Prerequisites
-Ensure you have Python 3.12+ installed.
-
-### 2. Activate Virtual Environment & Install Dependencies
+### 1. Activate Environment & Install Dependencies
 ```powershell
-# Windows (PowerShell)
 .\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r backend\requirements.txt
 ```
 
-### 3. Run Database Migrations
+### 2. Run Database Migrations
 ```powershell
-python manage.py makemigrations content
-python manage.py migrate
+python backend\manage.py migrate
 ```
 
-### 4. Create an Admin Superuser
-Create an administrator account to log into the Django Admin panel:
+### 3. Seed Initial Admin Account
 ```powershell
-python manage.py createsuperuser
+python backend\manage.py createsuperuser_if_not_exists --username admin --password adminpassword123 --email admin@aic.org
 ```
-*(Enter your desired username, email, and password when prompted)*
 
-### 5. Start the Development Server
+### 4. Start Local Server
 ```powershell
-python manage.py runserver
+python backend\manage.py runserver 0.0.0.0:8000
 ```
-The backend will be running at: **`http://localhost:8000`**
+Backend API will be accessible at: `http://127.0.0.1:8000/`
 
 ---
 
-## How to Manually Test the Backend
+## Authentication API Endpoints
 
-### 1. Testing via Django Admin Dashboard
-1. Open your browser and navigate to: **`http://localhost:8000/admin/`**
-2. Log in using the superuser credentials created in Step 4.
-3. You will see the **Content Management System** section with 4 modules:
-   - **Gallery Items** (`/admin/content/galleryitem/`)
-   - **Startups** (`/admin/content/startup/`)
-   - **News Updates** (`/admin/content/newsupdate/`)
-   - **Team Members** (`/admin/content/teammember/`)
-4. Click **"Add"** on any model, upload an image, fill in text fields, and click **"Save"**.
-5. Notice the **inline thumbnail preview** in the table view and detail view.
+Base URL: `http://localhost:8000/api/auth/`
 
----
-
-### 2. Testing via DRF Browsable API
-Django REST Framework includes an interactive UI for exploring API endpoints directly in your browser:
-- **API Root:** [http://localhost:8000/api/](http://localhost:8000/api/)
-- **Gallery Endpoint:** [http://localhost:8000/api/gallery/](http://localhost:8000/api/gallery/)
-- **Startups Endpoint:** [http://localhost:8000/api/startups/](http://localhost:8000/api/startups/)
-- **News Endpoint:** [http://localhost:8000/api/news/](http://localhost:8000/api/news/)
-- **Team Endpoint:** [http://localhost:8000/api/team/](http://localhost:8000/api/team/)
-- **Filtered Team Endpoint:** [http://localhost:8000/api/team/?category=mentor](http://localhost:8000/api/team/?category=mentor)
-
----
-
-### 3. Testing via cURL / Postman
-
-#### Fetch Gallery Items (GET)
-```bash
-curl -X GET http://127.0.0.1:8000/api/gallery/
-```
-
-#### Filter Team Members by Category (GET)
-```bash
-curl -X GET "http://127.0.0.1:8000/api/team/?category=mentor"
-```
-
-#### Create Item with Image (Authenticated POST)
-```bash
-curl -X POST http://127.0.0.1:8000/api/gallery/ \
-  -u admin_username:password123 \
-  -F "subtext=Annual Tech Fest" \
-  -F "image=@/path/to/local/image.jpg"
-```
-
----
-
-## API Endpoints Reference
-
-All endpoints support pagination (20 items/page by default) and return standard DRF paginated responses.
-
-| Method | Endpoint | Description | Query Parameters |
+| Method | Endpoint | Description | Auth Required |
 |---|---|---|---|
-| `GET` | `/api/gallery/` | List gallery images (ordered by newest first) | `?page=1` |
-| `GET` | `/api/gallery/<id>/` | Retrieve specific gallery item | - |
-| `GET` | `/api/startups/` | List startups | `?page=1` |
-| `GET` | `/api/startups/<id>/` | Retrieve specific startup | - |
-| `GET` | `/api/news/` | List news updates (ordered by newest first) | `?page=1` |
-| `GET` | `/api/news/<id>/` | Retrieve specific news article | - |
-| `GET` | `/api/team/` | List team members | `?page=1`, `?category=<choice>` |
-| `GET` | `/api/team/<id>/` | Retrieve specific team member | - |
+| `POST` | `/api/auth/login/` | Authenticate admin, returns JWT pair + user info | No |
+| `POST` | `/api/auth/refresh/` | Obtain fresh access token using refresh token | No |
+| `POST` | `/api/auth/verify/` | Verify token validity | No |
+| `GET` | `/api/auth/me/` | Get authenticated user profile & permissions | Bearer Token |
+| `POST` | `/api/auth/logout/` | Blacklist refresh token | Bearer Token |
 
-### Team Member Category Values:
-- `mentor` &rarr; International Mentor
-- `team` &rarr; AIC Team
-- `governor` &rarr; Board of Governors
-
-### Sample JSON Response (`GET /api/team/`)
+### 1. Login (`POST /api/auth/login/`)
+**Request Body (`application/json`):**
 ```json
 {
-  "count": 1,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 1,
-      "name": "Dr. Evelyn Vance",
-      "role": "Chief AI Mentor",
-      "category": "mentor",
-      "category_display": "International Mentor",
-      "photo": "http://localhost:8000/media/team/mentor_sample.png",
-      "bio": "Expert in deep neural architectures and incubation programs."
-    }
-  ]
+  "username": "admin",
+  "password": "adminpassword123"
+}
+```
+
+**Success Response (`200 OK`):**
+```json
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@aic.org",
+    "first_name": "",
+    "last_name": "",
+    "is_staff": true,
+    "is_superuser": true
+  }
+}
+```
+
+**Error Response (`400 Bad Request` / `401 Unauthorized`):**
+```json
+{
+  "detail": "Access restricted. Only staff and administrators are permitted to log in."
 }
 ```
 
 ---
 
-## Frontend Integration Guide (React / Next.js)
-
-### 1. CORS Configuration
-By default, the backend allows origins listed in `CORS_ALLOWED_ORIGINS`.
-If your frontend runs on a different port (e.g. `http://localhost:5173` for Vite), update `cms_backend/settings.py` or your `.env` file:
-```python
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-]
+### 2. Refresh Token (`POST /api/auth/refresh/`)
+**Request Body (`application/json`):**
+```json
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+**Success Response (`200 OK`):**
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
 ```
 
 ---
 
-### 2. React Example Component
+### 3. Current User Profile (`GET /api/auth/me/`)
+**Headers:**
+```http
+Authorization: Bearer <access_token>
+```
+**Success Response (`200 OK`):**
+```json
+{
+  "id": 1,
+  "username": "admin",
+  "email": "admin@aic.org",
+  "first_name": "",
+  "last_name": "",
+  "is_staff": true,
+  "is_superuser": true
+}
+```
 
-Here is a complete React example component demonstrating fetching and displaying data:
+---
+
+### 4. Logout (`POST /api/auth/logout/`)
+**Headers:**
+```http
+Authorization: Bearer <access_token>
+```
+**Request Body (`application/json`):**
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+**Success Response (`200 OK`):**
+```json
+{
+  "detail": "Successfully logged out and token invalidated."
+}
+```
+
+---
+
+## Content API Endpoints
+
+All content endpoints follow standard REST semantics. Read operations (`GET`) are public; mutating operations (`POST`, `PUT`, `PATCH`, `DELETE`) require `Authorization: Bearer <access_token>`.
+
+| Endpoint | Methods | Description | Parameters |
+|---|---|---|---|
+| `/api/gallery/` | `GET`, `POST` | List gallery items / Create item | `?page=1` |
+| `/api/gallery/<id>/` | `GET`, `PUT`, `PATCH`, `DELETE` | Retrieve / Update / Delete gallery item | - |
+| `/api/startups/` | `GET`, `POST` | List startups / Create startup | `?page=1` |
+| `/api/startups/<id>/` | `GET`, `PUT`, `PATCH`, `DELETE` | Retrieve / Update / Delete startup | - |
+| `/api/news/` | `GET`, `POST` | List news updates / Create news | `?page=1` |
+| `/api/news/<id>/` | `GET`, `PUT`, `PATCH`, `DELETE` | Retrieve / Update / Delete news | - |
+| `/api/team/` | `GET`, `POST` | List team members / Create member | `?page=1`, `?category=<choice>` |
+| `/api/team/<id>/` | `GET`, `PUT`, `PATCH`, `DELETE` | Retrieve / Update / Delete member | - |
+
+**Team Categories:** `mentor` (International Mentor), `team` (AIC Team), `governor` (Board of Governors).
+
+---
+
+## Frontend Developer Integration Guide
+
+### 1. Axios Client with Silent Token Refresh
+Create `src/api/client.js`:
+
+```javascript
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
+
+const api = axios.create({
+  baseURL: API_BASE,
+});
+
+// Request interceptor: attach Access Token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor: automatically refresh on 401 Unauthorized
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('refresh_token');
+
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${API_BASE}/auth/refresh/`, {
+            refresh: refreshToken,
+          });
+
+          localStorage.setItem('access_token', data.access);
+          if (data.refresh) {
+            localStorage.setItem('refresh_token', data.refresh);
+          }
+
+          originalRequest.headers.Authorization = `Bearer ${data.access}`;
+          return api(originalRequest);
+        } catch (refreshErr) {
+          // Refresh failed - log out
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          window.location.reload();
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+---
+
+### 2. Subdomain & Route Detection (`admin.app.com` vs `app.com`)
+Create `src/utils/domain.js`:
+
+```javascript
+export const isSubdomainAdmin = () => {
+  const hostname = window.location.hostname;
+  return hostname.startsWith('admin.') || hostname === 'admin.localhost';
+};
+```
+
+---
+
+### 3. React Authentication Context (`AuthContext.jsx`)
+Create `src/context/AuthContext.jsx`:
 
 ```jsx
-import React, { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../api/client';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const AuthContext = createContext(null);
 
-export function TeamSection() {
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchTeamMembers(selectedCategory);
-  }, [selectedCategory]);
-
-  const fetchTeamMembers = async (category) => {
-    setLoading(true);
-    try {
-      const url = category === 'all' 
-        ? `${API_BASE_URL}/team/` 
-        : `${API_BASE_URL}/team/?category=${category}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch data');
-      const data = await response.json();
-      
-      // DRF paginated responses put records in data.results
-      setTeamMembers(data.results || data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
+    const initAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const res = await api.get('/auth/me/');
+          setUser(res.data);
+          localStorage.setItem('user', JSON.stringify(res.data));
+        } catch {
+          setUser(null);
+        }
+      }
       setLoading(false);
-    }
+    };
+    initAuth();
+  }, []);
+
+  const login = async (username, password) => {
+    const res = await api.post('/auth/login/', { username, password });
+    localStorage.setItem('access_token', res.data.access);
+    localStorage.setItem('refresh_token', res.data.refresh);
+    localStorage.setItem('user', JSON.stringify(res.data.user));
+    setUser(res.data.user);
+    return res.data.user;
   };
 
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout/', { refresh: refreshToken });
+      } catch (err) {
+        console.warn('Logout blacklist error:', err);
+      }
+    }
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  const isAuthenticated = Boolean(user && user.is_staff);
+
   return (
-    <section style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h2>Our Leadership & Mentors</h2>
+    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
 
-      {/* Category Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        {['all', 'mentor', 'team', 'governor'].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              border: selectedCategory === cat ? '2px solid #2563eb' : '1px solid #ccc',
-              backgroundColor: selectedCategory === cat ? '#eff6ff' : '#fff',
-              cursor: 'pointer',
-              textTransform: 'capitalize'
-            }}
-          >
-            {cat}
+export const useAuth = () => useContext(AuthContext);
+```
+
+---
+
+### 4. Conditional Inline Edit Wrapper (`EditableSection.jsx`)
+Wrap any section on your frontend. If the user is unauthenticated on `app.com`, it renders pristine UI. If authenticated on `admin.app.com`, it shows action overlays:
+
+```jsx
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+
+export function EditableSection({ label, onEdit, onDelete, children }) {
+  const { isAuthenticated } = useAuth();
+  const [hovered, setHovered] = useState(false);
+
+  if (!isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div
+      style={{ position: 'relative', outline: hovered ? '2px dashed #3b82f6' : 'none', borderRadius: '8px' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {hovered && (
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          zIndex: 50,
+          background: 'rgba(17, 24, 39, 0.9)',
+          color: '#fff',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          display: 'flex',
+          gap: '8px',
+          fontSize: '12px',
+          alignItems: 'center',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+        }}>
+          <span style={{ color: '#93c5fd', fontWeight: 'bold' }}>{label}</span>
+          <button onClick={onEdit} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+            ✏️ Edit
           </button>
-        ))}
-      </div>
-
-      {loading && <p>Loading team members...</p>}
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-
-      {/* Team Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.5rem' }}>
-        {teamMembers.map((member) => (
-          <div key={member.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-            {member.photo ? (
-              <img
-                src={member.photo}
-                alt={member.name}
-                style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto 1rem' }}
-              />
-            ) : (
-              <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: '#e2e8f0', margin: '0 auto 1rem' }} />
-            )}
-            <h3 style={{ margin: '0.5rem 0 0.25rem' }}>{member.name}</h3>
-            <p style={{ color: '#4b5563', margin: '0 0 0.5rem', fontWeight: '500' }}>{member.role}</p>
-            <span style={{ fontSize: '0.75rem', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>
-              {member.category_display}
-            </span>
-            {member.bio && <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.75rem' }}>{member.bio}</p>}
-          </div>
-        ))}
-      </div>
-    </section>
+          {onDelete && (
+            <button onClick={onDelete} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer' }}>
+              🗑️ Delete
+            </button>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
   );
 }
 ```
 
 ---
 
-### 3. Handling Media / Image URLs in Frontend
-- DRF returns full absolute URLs (e.g. `http://localhost:8000/media/gallery/photo.jpg`) when `request` context is present.
-- In production, when running behind a reverse proxy (e.g., Nginx) or CDN, media URLs can be configured to point to your cloud storage bucket (AWS S3, Cloudinary) or domain path directly.
+### 5. Multipart Form Data Upload Example (Images + Text)
+When adding or updating content with image files:
+
+```javascript
+import api from './api/client';
+
+export const createGalleryItem = async (imageFile, subtext) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  formData.append('subtext', subtext);
+
+  const response = await api.post('/gallery/', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const updateStartup = async (id, updatedFields) => {
+  const formData = new FormData();
+  for (const [key, value] of Object.entries(updatedFields)) {
+    if (value !== undefined && value !== null) {
+      formData.append(key, value);
+    }
+  }
+
+  const response = await api.patch(`/startups/${id}/`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+```
 
 ---
 
 ## Running with Docker
 
-You can run the entire backend with PostgreSQL database using Docker:
-
 ```bash
-# 1. Build and run containers
+# 1. Build and boot containers
 docker-compose up --build
 
-# 2. Run migrations inside the web container
+# 2. Run migrations
 docker-compose exec web python manage.py migrate
 
 # 3. Create superuser
-docker-compose exec web python manage.py createsuperuser
+docker-compose exec web python manage.py createsuperuser_if_not_exists --username admin --password adminpassword123
 ```
-The service will be available at `http://localhost:8000`.
 
 ---
 
 ## Running Automated Tests
 
-Run the full automated test suite anytime:
 ```powershell
-python manage.py test content
+python backend\manage.py test content -v 2
 ```
-
-To run with verbose output:
-```powershell
-python manage.py test content -v 2
-```
+All tests verify public GET endpoints, category filtering, JWT login, token refresh, current user profile, token blacklisting, and authenticated mutating requests.
