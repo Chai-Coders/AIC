@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import CardItem from './CardItem';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import {
   RefreshCw,
   Trash2,
@@ -9,7 +10,6 @@ import {
   AlertCircle,
   FolderOpen,
   Filter,
-  CheckCircle2,
 } from 'lucide-react';
 
 export default function ContentGrid({
@@ -24,8 +24,12 @@ export default function ContentGrid({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [teamCategory, setTeamCategory] = useState('');
+
+  // Delete Confirmation Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch data from Django API
   const fetchData = useCallback(async () => {
@@ -58,25 +62,79 @@ export default function ContentGrid({
     fetchData();
   }, [fetchData]);
 
-  // Handle single item deletion
-  const handleDeleteItem = async (id) => {
-    try {
-      if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-      else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-      else if (routeId === 'news') await api.endpoints.news.delete(id);
-      else if (routeId === 'team') await api.endpoints.team.delete(id);
+  // Request single item delete (opens modal)
+  const handleRequestSingleDelete = (itemDetails) => {
+    setPendingDelete({
+      type: 'single',
+      item: itemDetails,
+    });
+    setDeleteModalOpen(true);
+  };
 
-      setItems((prev) => prev.filter((item) => item.id !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      showToast?.(`Item #${id} deleted successfully.`, 'success');
+  // Request bulk delete (opens modal)
+  const handleRequestBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setPendingDelete({
+      type: 'bulk',
+      count: selectedIds.size,
+    });
+    setDeleteModalOpen(true);
+  };
+
+  // Execute deletion upon modal confirmation
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+
+    try {
+      if (pendingDelete.type === 'single') {
+        const id = pendingDelete.item.id;
+        if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
+        else if (routeId === 'startups') await api.endpoints.startups.delete(id);
+        else if (routeId === 'news') await api.endpoints.news.delete(id);
+        else if (routeId === 'team') await api.endpoints.team.delete(id);
+
+        setItems((prev) => prev.filter((i) => i.id !== id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        showToast?.(`Item "${pendingDelete.item.title || `#${id}`}" was deleted.`, 'success');
+      } else if (pendingDelete.type === 'bulk') {
+        const idsToDelete = Array.from(selectedIds);
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const id of idsToDelete) {
+          try {
+            if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
+            else if (routeId === 'startups') await api.endpoints.startups.delete(id);
+            else if (routeId === 'news') await api.endpoints.news.delete(id);
+            else if (routeId === 'team') await api.endpoints.team.delete(id);
+            successCount++;
+          } catch (e) {
+            failCount++;
+          }
+        }
+
+        setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
+        setSelectedIds(new Set());
+
+        if (failCount === 0) {
+          showToast?.(`Successfully deleted ${successCount} items.`, 'success');
+        } else {
+          showToast?.(`Deleted ${successCount} items (${failCount} failed).`, 'warning');
+        }
+      }
+
+      setDeleteModalOpen(false);
+      setPendingDelete(null);
     } catch (err) {
-      console.error('Delete error:', err);
-      showToast?.(err.message || `Failed to delete item #${id}.`, 'error');
-      throw err;
+      console.error('Delete execution error:', err);
+      showToast?.(err.message || 'Failed to delete items from server.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -102,54 +160,17 @@ export default function ContentGrid({
     }
   };
 
-  // Bulk delete selected items
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    const confirmMsg = `Are you sure you want to delete ${selectedIds.size} selected item(s)?`;
-    if (!window.confirm(confirmMsg)) return;
-
-    setBulkDeleting(true);
-    const idsToDelete = Array.from(selectedIds);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const id of idsToDelete) {
-      try {
-        if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-        else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-        else if (routeId === 'news') await api.endpoints.news.delete(id);
-        else if (routeId === 'team') await api.endpoints.team.delete(id);
-        successCount++;
-      } catch (e) {
-        failCount++;
-      }
-    }
-
-    setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
-    setSelectedIds(new Set());
-    setBulkDeleting(false);
-
-    if (failCount === 0) {
-      showToast?.(`Successfully deleted ${successCount} items.`, 'success');
-    } else {
-      showToast?.(
-        `Deleted ${successCount} items (${failCount} failed).`,
-        'warning'
-      );
-    }
-  };
-
   return (
     <div className="w-full space-y-6">
-      {/* Top Section / Toolbar */}
+      {/* Top Section / Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-bold tracking-tight text-foreground">
               {routeName}
             </h2>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-accent text-accent-foreground border border-border">
-              {items.length} {items.length === 1 ? 'item' : 'items'}
+            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent text-accent-foreground border border-border">
+              {items.length} {items.length === 1 ? 'record' : 'records'}
             </span>
           </div>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
@@ -160,28 +181,29 @@ export default function ContentGrid({
         <div className="flex flex-wrap items-center gap-2">
           {/* Team Category Filter if in team section */}
           {routeId === 'team' && (
-            <div className="flex items-center gap-1.5 bg-card border border-border px-2.5 py-1 rounded-lg text-xs">
+            <div className="flex items-center gap-1.5 bg-card border border-border px-3 py-1.5 rounded-xl text-xs shadow-2xs">
               <Filter className="w-3.5 h-3.5 text-muted-foreground" />
               <select
                 value={teamCategory}
                 onChange={(e) => setTeamCategory(e.target.value)}
                 aria-label="Filter Team Members by Category"
-                className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer"
+                className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer font-medium"
               >
                 <option value="" className="bg-card text-foreground">All Categories</option>
-                <option value="mentor" className="bg-card text-foreground">Mentors</option>
+                <option value="mentor" className="bg-card text-foreground">International Mentors</option>
                 <option value="team" className="bg-card text-foreground">AIC Team</option>
-                <option value="governor" className="bg-card text-foreground">Governors</option>
+                <option value="governor" className="bg-card text-foreground">Board of Governors</option>
               </select>
             </div>
           )}
 
           {/* Refresh Button */}
           <button
+            type="button"
             onClick={fetchData}
             disabled={loading}
-            title="Refresh items from backend"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Refresh records from backend"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
             <span>Refresh</span>
@@ -191,11 +213,12 @@ export default function ContentGrid({
 
       {/* Multi-Select Floating / Sticky Action Bar */}
       {multiSelect && items.length > 0 && (
-        <div className="rounded-xl border border-primary/40 bg-primary/10 p-3 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xs">
+        <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3.5 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={handleSelectAll}
-              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
             >
               {selectedIds.size === items.length ? (
                 <CheckSquare className="w-4 h-4 text-primary" />
@@ -214,16 +237,13 @@ export default function ContentGrid({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleBulkDelete}
-              disabled={selectedIds.size === 0 || bulkDeleting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-medium transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              type="button"
+              onClick={handleRequestBulkDelete}
+              disabled={selectedIds.size === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold transition-all shadow-md shadow-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>
-                {bulkDeleting
-                  ? 'Deleting...'
-                  : `Delete Selected (${selectedIds.size})`}
-              </span>
+              <span>Delete Selected ({selectedIds.size})</span>
             </button>
           </div>
         </div>
@@ -254,13 +274,14 @@ export default function ContentGrid({
           <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-destructive">
-              Failed to load items
+              Failed to load records
             </h3>
             <p className="text-xs text-muted-foreground">{error}</p>
           </div>
           <button
+            type="button"
             onClick={fetchData}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
           >
             Retry Fetching
           </button>
@@ -272,21 +293,22 @@ export default function ContentGrid({
         <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-3 max-w-md mx-auto my-8">
           <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
           <h3 className="text-sm font-semibold text-foreground">
-            No items in {routeName}
+            No records in {routeName}
           </h3>
           <p className="text-xs text-muted-foreground">
-            No records found for {endpointUrl}. You can add items via the Django backend or API.
+            No items found for {endpointUrl}. You can create records via the Django Admin Portal.
           </p>
           <button
+            type="button"
             onClick={fetchData}
-            className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs"
           >
             Check Again
           </button>
         </div>
       )}
 
-      {/* Responsive Cards Grid (Wireframe matching 3x3 layout) */}
+      {/* Responsive Cards Grid */}
       {!loading && !error && items.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((item) => (
@@ -297,11 +319,32 @@ export default function ContentGrid({
               multiSelect={multiSelect}
               isSelected={selectedIds.has(item.id)}
               onToggleSelect={handleToggleSelect}
-              onDelete={handleDeleteItem}
+              onRequestDelete={handleRequestSingleDelete}
             />
           ))}
         </div>
       )}
+
+      {/* Custom Confirmation Popup Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false);
+            setPendingDelete(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        title={pendingDelete?.type === 'bulk' ? 'Delete Selected Records' : 'Delete Record'}
+        message={
+          pendingDelete?.type === 'bulk'
+            ? `Are you sure you want to permanently delete these ${pendingDelete.count} selected items from ${routeName}?`
+            : `Are you sure you want to permanently delete "${pendingDelete?.item?.title || `Item #${pendingDelete?.item?.id}`}" from ${routeName}?`
+        }
+        itemCount={pendingDelete?.type === 'bulk' ? pendingDelete.count : 1}
+        itemDetails={pendingDelete?.type === 'single' ? pendingDelete.item : null}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

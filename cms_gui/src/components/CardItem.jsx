@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Trash2,
   CheckCircle2,
   Circle,
   ExternalLink,
   Calendar,
-  Tag,
-  User,
   Image as ImageIcon,
-  Loader2,
 } from 'lucide-react';
 
 export default function CardItem({
@@ -17,11 +14,8 @@ export default function CardItem({
   multiSelect,
   isSelected,
   onToggleSelect,
-  onDelete,
+  onRequestDelete,
 }) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
   // Helper to extract image URL safely
   const getImageUrl = (item) => {
     const raw = item.image || item.logo_or_image || item.thumbnail || item.photo;
@@ -83,21 +77,15 @@ export default function CardItem({
   const imageUrl = getImageUrl(item);
   const details = getItemDetails(item, routeId);
 
-  const handleDeleteClick = async (e) => {
+  const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      await onDelete(item.id);
-    } catch (err) {
-      console.error('Delete failed:', err);
-      setIsDeleting(false);
-      setConfirmDelete(false);
-    }
+    // Directly request delete to trigger custom confirmation popup
+    onRequestDelete({
+      id: item.id,
+      title: details.title,
+      tag: details.tag,
+      image: imageUrl,
+    });
   };
 
   const handleCardClick = () => {
@@ -109,7 +97,6 @@ export default function CardItem({
   return (
     <div
       onClick={handleCardClick}
-      onMouseLeave={() => setConfirmDelete(false)}
       className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between select-none ${
         multiSelect ? 'cursor-pointer' : 'hover:-translate-y-0.5'
       } ${
@@ -118,7 +105,7 @@ export default function CardItem({
           : 'border-border bg-card hover:border-primary/50 hover:shadow-lg'
       }`}
     >
-      {/* Top Banner / Image Section */}
+      {/* Top Media / Thumbnail Section */}
       <div className="relative w-full aspect-16/10 bg-muted/40 overflow-hidden flex items-center justify-center border-b border-border">
         {imageUrl ? (
           <img
@@ -126,7 +113,6 @@ export default function CardItem({
             alt={details.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              // fallback if broken image
               e.currentTarget.style.display = 'none';
             }}
           />
@@ -137,14 +123,14 @@ export default function CardItem({
           </div>
         )}
 
-        {/* Category / Schema Tag */}
+        {/* Category Badge */}
         <div className="absolute top-2.5 left-2.5 z-10">
           <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-background/90 backdrop-blur-md border border-border text-foreground shadow-xs">
             {details.tag}
           </span>
         </div>
 
-        {/* Multi-Select Checkbox Indicator (Always visible when multiSelect enabled) */}
+        {/* Multi-Select Checkbox Indicator */}
         {multiSelect && (
           <div className="absolute top-2.5 right-2.5 z-20">
             <div
@@ -163,32 +149,23 @@ export default function CardItem({
           </div>
         )}
 
-        {/* Hover Delete Button (Wireframe: 'cms items, on hover delete button appears') */}
+        {/* Hover Delete Button (Directly opens popup modal on click) */}
         {!multiSelect && (
           <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button
               type="button"
               onClick={handleDeleteClick}
-              disabled={isDeleting}
-              title={confirmDelete ? 'Click again to confirm deletion' : 'Delete item'}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md cursor-pointer ${
-                confirmDelete
-                  ? 'bg-destructive text-destructive-foreground animate-pulse'
-                  : 'bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground'
-              }`}
+              title="Delete item"
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
-              {isDeleting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="w-3.5 h-3.5" />
-              )}
-              <span>{confirmDelete ? 'Confirm?' : 'Delete'}</span>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Card Content Details */}
+      {/* Content Details */}
       <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
         <div className="space-y-1.5">
           <div className="flex items-start justify-between gap-2">
@@ -211,7 +188,7 @@ export default function CardItem({
           )}
         </div>
 
-        {/* Footer Meta / Links */}
+        {/* Footer Meta / External Link */}
         <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground font-mono">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3 text-muted-foreground/70" />

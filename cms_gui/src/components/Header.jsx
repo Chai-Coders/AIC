@@ -2,38 +2,31 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
-  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Sun,
   Moon,
   LogOut,
-  CheckSquare,
-  Square,
-  Sparkles,
-  Layers,
-  ShieldCheck,
 } from 'lucide-react';
 
 export default function Header({
   sidebarOpen,
   setSidebarOpen,
-  multiSelect,
-  setMultiSelect,
   activeRouteName,
 }) {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-30 w-full h-16 border-b border-border bg-card/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between transition-colors">
-      {/* Left Section: Collapse Button + Logo 1 + Logo 2 as in wireframe */}
-      <div className="flex items-center gap-3 sm:gap-4">
-        {/* Collapse Button */}
+    <header className="sticky top-0 z-30 w-full h-16 border-b border-border bg-card/90 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between transition-colors select-none">
+      {/* Left Section: Minimal Collapse Button + Logo 1 + Logo 2 */}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Sleek Minimal Collapse Button (No bulky outer box) */}
         <button
+          type="button"
           onClick={() => setSidebarOpen((prev) => !prev)}
-          title={sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
-          className="p-2 rounded-lg border border-border bg-background/80 hover:bg-accent text-foreground hover:text-primary transition-all cursor-pointer flex items-center justify-center shadow-xs"
+          title={sidebarOpen ? 'Collapse Navigation' : 'Expand Navigation'}
+          className="p-2 rounded-lg hover:bg-accent text-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center shrink-0"
         >
           {sidebarOpen ? (
             <PanelLeftClose className="w-5 h-5" />
@@ -42,92 +35,66 @@ export default function Header({
           )}
         </button>
 
-        {/* Logo 1 Box (Wireframe logo1) */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background/80 hover:border-primary/40 transition-colors shadow-2xs">
-          <div className="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs font-semibold tracking-wide uppercase text-foreground">
-            AIC CMS
-          </span>
+        {/* 1st Logo Box: Pure logo1.png (No text) */}
+        <div className="flex items-center justify-center h-10 px-2.5 py-1 rounded-xl border border-border bg-background/95 hover:border-primary/40 transition-all shadow-2xs shrink-0">
+          <img
+            src="/logo1.png"
+            alt="Logo 1"
+            className="h-7 w-auto object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         </div>
 
-        {/* Logo 2 Box (Wireframe logo2) */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background/80 hover:border-primary/40 transition-colors shadow-2xs">
-          <div className="w-5 h-5 rounded bg-secondary flex items-center justify-center text-secondary-foreground font-semibold text-xs">
-            <Layers className="w-3.5 h-3.5" />
-          </div>
-          <span className="text-xs font-medium text-muted-foreground">
-            STUDIO
-          </span>
+        {/* 2nd Logo Box: logo2.jpg */}
+        <div className="flex items-center justify-center h-10 px-2.5 py-1 rounded-xl border border-border bg-background/95 hover:border-primary/40 transition-all shadow-2xs shrink-0">
+          <img
+            src="/logo2.jpg"
+            alt="Logo 2"
+            className="h-7 w-auto rounded object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         </div>
 
-        {/* Active Route indicator on medium screens */}
+        {/* Current Section / Route Breadcrumb */}
         {activeRouteName && (
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground pl-2 border-l border-border">
-            <span>Section:</span>
-            <span className="font-semibold text-foreground bg-accent/60 px-2 py-0.5 rounded">
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground pl-3 border-l border-border">
+            <span>Route:</span>
+            <span className="font-semibold text-foreground bg-accent/70 px-2 py-0.5 rounded-md">
               {activeRouteName}
             </span>
           </div>
         )}
       </div>
 
-      {/* Right Section: Multi-Select Toggle + Theme Switcher + Logout */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Multi-Select Toggle Button (Wireframe multi-select) */}
+      {/* Right Section: Sleek Minimal Theme Toggle + Minimal Logout Symbol */}
+      <div className="flex items-center gap-2 shrink-0">
+        {/* Sleek Minimal Theme Switcher (No bulky outer box) */}
         <button
-          onClick={() => setMultiSelect((prev) => !prev)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer shadow-xs ${
-            multiSelect
-              ? 'border-primary bg-primary text-primary-foreground shadow-primary/20'
-              : 'border-border bg-background/80 text-foreground hover:bg-accent'
-          }`}
-          title="Toggle Multi-Selection Mode"
-        >
-          {multiSelect ? (
-            <CheckSquare className="w-4 h-4" />
-          ) : (
-            <Square className="w-4 h-4 text-muted-foreground" />
-          )}
-          <span>multi-select</span>
-          <span
-            className={`w-2 h-2 rounded-full ${
-              multiSelect ? 'bg-primary-foreground animate-ping' : 'bg-muted'
-            }`}
-          />
-        </button>
-
-        {/* Theme Switcher Button */}
-        <button
+          type="button"
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className="p-2 rounded-lg border border-border bg-background/80 hover:bg-accent text-foreground transition-all cursor-pointer shadow-xs"
+          className="p-2 rounded-lg hover:bg-accent text-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center shrink-0"
         >
           {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-primary" />
+            <Sun className="w-5 h-5 text-primary" />
           ) : (
-            <Moon className="w-4 h-4 text-primary" />
+            <Moon className="w-5 h-5 text-primary" />
           )}
         </button>
 
-        {/* User Badge & Logout */}
-        <div className="flex items-center gap-2 pl-2 border-l border-border">
-          {user && (
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-              <span className="font-medium text-foreground">{user.username}</span>
-            </div>
-          )}
-          <button
-            onClick={logout}
-            title="Sign Out"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background/80 hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive text-muted-foreground text-xs font-medium transition-all cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
-        </div>
+        {/* Sleek Minimal Logout Symbol Button (No text, symbol only) */}
+        <button
+          type="button"
+          onClick={logout}
+          title="Sign Out"
+          className="p-2 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer flex items-center justify-center shrink-0"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
     </header>
   );

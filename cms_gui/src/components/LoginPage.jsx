@@ -66,13 +66,20 @@ export default function LoginPage() {
         <div className="rounded-2xl border border-border bg-card/90 backdrop-blur-xl shadow-2xl p-8 sm:p-10 space-y-7 transition-all">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/15 text-primary border border-primary/20 mb-1">
-              <Sparkles className="w-6 h-6 animate-pulse" />
+            <div className="inline-flex items-center justify-center p-2 rounded-2xl bg-background/80 border border-border mb-1 shadow-xs">
+              <img
+                src="/logo1.png"
+                alt="Logo 1"
+                className="h-10 w-auto object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground uppercase tracking-wider">
               LOGIN
             </h1>
-            <p className="text-sm text-muted-foreground font-normal">
+            <p className="text-xs text-muted-foreground font-normal">
               Sign in to manage your CMS backend content
             </p>
           </div>
