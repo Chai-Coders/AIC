@@ -1,57 +1,77 @@
 import React from 'react';
-import SpotlightCard from '../common/SpotlightCard';
+import './HomePricing.css';
+
+const REGISTER_URL = 'https://goo.gl/forms/bYQ16uftJgLtssgr2';
 
 const plans = [
   {
-    title: 'support contracts',
-    price: '5K',
-    duration: '/ month',
+    title: 'Support Contracts',
+    tone: 'white',
+    icon: 'fa-handshake-o',
+    amount: '5K',
+    per: '/ month',
     features: ['Incubate space', 'Knowledge assistance', '6 to 12 months']
   },
   {
-    title: 'Training contract',
-    price: '1K',
-    duration: '/ week',
+    title: 'Training Contract',
+    tone: 'yellow',
+    icon: 'fa-graduation-cap',
+    amount: '1K',
+    per: '/ week',
     features: ['Incubate space', 'Training support', '1 to 4 weeks']
   },
   {
     title: 'Consultancy Contracts',
-    price: '10K',
-    duration: '/ day',
+    tone: 'blue',
+    icon: 'fa-line-chart',
+    amount: '10K',
+    per: '/ day',
     features: ['Onsite support', 'Consultancy support', 'Network support']
   }
 ];
 
 const HomePricing = () => {
   return (
-    <div id="pricing" className="section md-padding">
+    <div id="pricing" className="section md-padding pricing-section">
       <div className="container">
-        <div className="row flex-grid">
-          <div className="section-header text-center col-xs-12">
-            <h2 className="title">Business Model</h2>
-          </div>
+        <div className="section-header text-center">
+          <h2 className="title">Business Model</h2>
+        </div>
 
-          {plans.map((plan, idx) => (
-            <div key={idx} className="col-sm-4 flex-col">
-              <SpotlightCard className="pricing" spotlightColor="rgba(224, 201, 34, 0.7)">
-                <div className="price-head">
-                  <span className="price-title">{plan.title}</span>
-                  <div className="price">
-                    <h3>{plan.price}<span className="duration">{plan.duration}</span></h3>
-                  </div>
+        <div className="plan-grid">
+          {plans.map((plan) => (
+            <article key={plan.title} className={`plan-card plan-card--${plan.tone}`}>
+              <div className="plan-card-body">
+                <span className="plan-card-icon">
+                  <i className={`fa ${plan.icon}`} aria-hidden="true"></i>
+                </span>
+                <h3 className="plan-card-title">{plan.title}</h3>
+
+                <div className="plan-card-price">
+                  <strong className="plan-card-amount">{plan.amount}</strong>
+                  <span className="plan-card-per">{plan.per}</span>
                 </div>
-                <ul className="price-content">
-                  {plan.features.map((feat, fidx) => (
-                    <li key={fidx}><p>{feat}</p></li>
+
+                <p className="plan-card-features">
+                  {plan.features.map((feat) => (
+                    <span key={feat} className="plan-card-feature-line">
+                      {feat}
+                    </span>
                   ))}
-                </ul>
-                <div className="price-btn">
-                  <a href="https://goo.gl/forms/bYQ16uftJgLtssgr2" target="_blank" rel="noopener noreferrer">
-                    <button className="outline-btn">Register at incubate@iiitkottayam.ac.in</button>
-                  </a>
-                </div>
-              </SpotlightCard>
-            </div>
+                </p>
+              </div>
+
+              <div className="plan-card-tab">
+                <a
+                  href={REGISTER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="plan-card-cta"
+                >
+                  Register Now <span className="plan-card-cta-arrow" aria-hidden="true">&gt;</span>
+                </a>
+              </div>
+            </article>
           ))}
         </div>
       </div>
