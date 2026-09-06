@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../services/api';
 import CardItem from './CardItem';
+import NewsDetailPane from './NewsDetailPane';
+import AddItemModal from './AddItemModal';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import {
   RefreshCw,
@@ -10,6 +12,7 @@ import {
   AlertCircle,
   FolderOpen,
   Filter,
+  Plus,
 } from 'lucide-react';
 
 export default function ContentGrid({
@@ -25,6 +28,12 @@ export default function ContentGrid({
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [teamCategory, setTeamCategory] = useState('');
+
+  // Selected news item for preview pane (diagram split view)
+  const [selectedNewsItem, setSelectedNewsItem] = useState(null);
+
+  // Add Item Modal State
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   // Delete Confirmation Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -60,7 +69,8 @@ export default function ContentGrid({
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    setSelectedNewsItem(null);
+  }, [fetchData, routeId]);
 
   // Request single item delete (opens modal)
   const handleRequestSingleDelete = (itemDetails) => {
@@ -100,6 +110,11 @@ export default function ContentGrid({
           next.delete(id);
           return next;
         });
+
+        if (selectedNewsItem?.id === id) {
+          setSelectedNewsItem(null);
+        }
+
         showToast?.(`Item "${pendingDelete.item.title || `#${id}`}" was deleted.`, 'success');
       } else if (pendingDelete.type === 'bulk') {
         const idsToDelete = Array.from(selectedIds);
@@ -116,6 +131,10 @@ export default function ContentGrid({
           } catch (e) {
             failCount++;
           }
+        }
+
+        if (selectedNewsItem && selectedIds.has(selectedNewsItem.id)) {
+          setSelectedNewsItem(null);
         }
 
         setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
@@ -197,10 +216,26 @@ export default function ContentGrid({
             </div>
           )}
 
-          {/* Multi-Select Toggle Button (Matches Refresh UI layout) */}
+          {/* Add Item Button */}
           <button
             type="button"
-            onClick={() => setMultiSelect((prev) => !prev)}
+            onClick={() => setAddModalOpen(true)}
+            title={`Add new ${routeName} item (POST)`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Item</span>
+          </button>
+
+          {/* Multi-Select Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setMultiSelect((prev) => !prev);
+              if (!multiSelect) {
+                setSelectedNewsItem(null);
+              }
+            }}
             title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
               multiSelect
@@ -309,27 +344,91 @@ export default function ContentGrid({
 
       {/* Empty State */}
       {!loading && !error && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-3 max-w-md mx-auto my-8">
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-4 max-w-md mx-auto my-8">
           <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
-          <h3 className="text-sm font-semibold text-foreground">
-            No records in {routeName}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            No items found for {endpointUrl}. You can create records via the Django Admin Portal.
-          </p>
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold text-foreground">
+              No records in {routeName}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              No items found for {endpointUrl}. You can add your first record directly here.
+            </p>
+          </div>
           <button
             type="button"
-            onClick={fetchData}
-            className="px-3.5 py-2 rounded-xl border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs"
+            onClick={() => setAddModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto"
           >
-            Check Again
+            <Plus className="w-4 h-4" />
+            <span>Add First {routeName.replace(/s$/, '')}</span>
           </button>
         </div>
       )}
 
-      {/* Responsive Cards Grid */}
-      {!loading && !error && items.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {/* ========================================================================= */}
+      {/* 1. NEWS ROUTE: Responsive Split Layout (Master-Detail matching Wireframe)  */}
+      {/* ========================================================================= */}
+      {!loading && !error && items.length > 0 && routeId === 'news' && (
+        <div className="w-full">
+          {selectedNewsItem ? (
+            <div className="w-full flex flex-col lg:flex-row gap-6 items-start">
+              {/* Left Side: Detail Preview Pane (Fixed max height, internal vertical scroll) */}
+              <div className="w-full lg:w-[48%] xl:w-[50%] shrink-0 sticky top-20">
+                <NewsDetailPane
+                  newsItem={selectedNewsItem}
+                  onClose={() => setSelectedNewsItem(null)}
+                  onRequestDelete={handleRequestSingleDelete}
+                />
+              </div>
+
+              {/* Right Side: News Cards List (Independently scrollable down) */}
+              <div className="flex-1 min-w-0 w-full">
+                <div className="grid grid-cols-1 gap-3.5 max-h-[calc(100vh-10.5rem)] overflow-y-auto pr-1">
+                  {items.map((item) => (
+                    <CardItem
+                      key={item.id}
+                      item={item}
+                      routeId={routeId}
+                      multiSelect={multiSelect}
+                      isSelected={selectedIds.has(item.id)}
+                      isPreviewSelected={selectedNewsItem?.id === item.id}
+                      onToggleSelect={handleToggleSelect}
+                      onSelectForPreview={(news) => {
+                        setSelectedNewsItem((prev) =>
+                          prev?.id === news.id ? null : news
+                        );
+                      }}
+                      onRequestDelete={handleRequestSingleDelete}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-content">
+              {items.map((item) => (
+                <CardItem
+                  key={item.id}
+                  item={item}
+                  routeId={routeId}
+                  multiSelect={multiSelect}
+                  isSelected={selectedIds.has(item.id)}
+                  isPreviewSelected={false}
+                  onToggleSelect={handleToggleSelect}
+                  onSelectForPreview={(news) => setSelectedNewsItem(news)}
+                  onRequestDelete={handleRequestSingleDelete}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. GALLERY & TEAM: 5-Column Responsive Card Grid (At least 5 in a row)    */}
+      {/* ========================================================================= */}
+      {!loading && !error && items.length > 0 && (routeId === 'gallery' || routeId === 'team') && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
           {items.map((item) => (
             <CardItem
               key={item.id}
@@ -343,6 +442,35 @@ export default function ContentGrid({
           ))}
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 3. STARTUPS: 3-Column Compact Horizontal Grid                            */}
+      {/* ========================================================================= */}
+      {!loading && !error && items.length > 0 && routeId === 'startups' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-fade-content">
+          {items.map((item) => (
+            <CardItem
+              key={item.id}
+              item={item}
+              routeId={routeId}
+              multiSelect={multiSelect}
+              isSelected={selectedIds.has(item.id)}
+              onToggleSelect={handleToggleSelect}
+              onRequestDelete={handleRequestSingleDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Dynamic Add Item Form Modal */}
+      <AddItemModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        routeId={routeId}
+        routeName={routeName}
+        onSuccess={fetchData}
+        showToast={showToast}
+      />
 
       {/* Custom Confirmation Popup Modal */}
       <DeleteConfirmModal

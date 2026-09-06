@@ -35,39 +35,17 @@ export default function Header({
           )}
         </button>
 
-        {/* 1st Logo Box: Pure logo1.png (No text) */}
-        <div className="flex items-center justify-center h-10 px-2.5 py-1 rounded-xl border border-border bg-background/95 hover:border-primary/40 transition-all shadow-2xs shrink-0">
+        {/* Pure logo1.png (Borderless & clean) */}
+        <div className="flex items-center justify-center h-10 shrink-0">
           <img
             src="/logo1.png"
-            alt="Logo 1"
-            className="h-7 w-auto object-contain"
+            alt="AIC Logo"
+            className="h-8 w-auto object-contain"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
         </div>
-
-        {/* 2nd Logo Box: logo2.jpg */}
-        <div className="flex items-center justify-center h-10 px-2.5 py-1 rounded-xl border border-border bg-background/95 hover:border-primary/40 transition-all shadow-2xs shrink-0">
-          <img
-            src="/logo2.jpg"
-            alt="Logo 2"
-            className="h-7 w-auto rounded object-contain"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        </div>
-
-        {/* Current Section / Route Breadcrumb */}
-        {activeRouteName && (
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground pl-3 border-l border-border">
-            <span>Route:</span>
-            <span className="font-semibold text-foreground bg-accent/70 px-2 py-0.5 rounded-md">
-              {activeRouteName}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Right Section: Sleek Minimal Theme Toggle + Minimal Logout Symbol */}

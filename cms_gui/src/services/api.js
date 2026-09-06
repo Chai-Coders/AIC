@@ -149,6 +149,7 @@ export const api = {
         const res = await request('/gallery/');
         return Array.isArray(res) ? res : res.results || [];
       },
+      create: async (formData) => request('/gallery/', { method: 'POST', body: formData }),
       delete: async (id) => request(`/gallery/${id}/`, { method: 'DELETE' }),
     },
     startups: {
@@ -158,6 +159,7 @@ export const api = {
         const res = await request('/startups/');
         return Array.isArray(res) ? res : res.results || [];
       },
+      create: async (formData) => request('/startups/', { method: 'POST', body: formData }),
       delete: async (id) => request(`/startups/${id}/`, { method: 'DELETE' }),
     },
     news: {
@@ -167,6 +169,7 @@ export const api = {
         const res = await request('/news/');
         return Array.isArray(res) ? res : res.results || [];
       },
+      create: async (formData) => request('/news/', { method: 'POST', body: formData }),
       delete: async (id) => request(`/news/${id}/`, { method: 'DELETE' }),
     },
     team: {
@@ -177,6 +180,7 @@ export const api = {
         const res = await request(url);
         return Array.isArray(res) ? res : res.results || [];
       },
+      create: async (formData) => request('/team/', { method: 'POST', body: formData }),
       delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),
     },
   },

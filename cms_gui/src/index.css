@@ -122,3 +122,34 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+@keyframes smoothSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes smoothFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-smooth-left {
+  animation: smoothSlideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-content {
+  animation: smoothFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

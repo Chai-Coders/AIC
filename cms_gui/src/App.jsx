@@ -70,7 +70,7 @@ function CMSApp() {
 
         {/* Dynamic Content Area */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-[1720px] mx-auto w-full">
             {activeRoute === 'home' ? (
               <HomeView
                 onOpenSidebar={() => setSidebarOpen(true)}
