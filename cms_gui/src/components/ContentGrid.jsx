@@ -1,0 +1,307 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api';
+import CardItem from './CardItem';
+import {
+  RefreshCw,
+  Trash2,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  FolderOpen,
+  Filter,
+  CheckCircle2,
+} from 'lucide-react';
+
+export default function ContentGrid({
+  routeId,
+  routeName,
+  endpointUrl,
+  multiSelect,
+  setMultiSelect,
+  showToast,
+}) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [teamCategory, setTeamCategory] = useState('');
+
+  // Fetch data from Django API
+  const fetchData = useCallback(async () => {
+    if (!routeId || routeId === 'home') return;
+    setLoading(true);
+    setError(null);
+    setSelectedIds(new Set());
+
+    try {
+      let data = [];
+      if (routeId === 'gallery') {
+        data = await api.endpoints.gallery.list();
+      } else if (routeId === 'startups') {
+        data = await api.endpoints.startups.list();
+      } else if (routeId === 'news') {
+        data = await api.endpoints.news.list();
+      } else if (routeId === 'team') {
+        data = await api.endpoints.team.list(teamCategory || undefined);
+      }
+      setItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(`Error fetching ${routeId}:`, err);
+      setError(err.message || `Failed to fetch data from ${endpointUrl}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [routeId, endpointUrl, teamCategory]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handle single item deletion
+  const handleDeleteItem = async (id) => {
+    try {
+      if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
+      else if (routeId === 'startups') await api.endpoints.startups.delete(id);
+      else if (routeId === 'news') await api.endpoints.news.delete(id);
+      else if (routeId === 'team') await api.endpoints.team.delete(id);
+
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      showToast?.(`Item #${id} deleted successfully.`, 'success');
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast?.(err.message || `Failed to delete item #${id}.`, 'error');
+      throw err;
+    }
+  };
+
+  // Toggle selection for a single item
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Select all / Deselect all
+  const handleSelectAll = () => {
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map((i) => i.id)));
+    }
+  };
+
+  // Bulk delete selected items
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const confirmMsg = `Are you sure you want to delete ${selectedIds.size} selected item(s)?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setBulkDeleting(true);
+    const idsToDelete = Array.from(selectedIds);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const id of idsToDelete) {
+      try {
+        if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
+        else if (routeId === 'startups') await api.endpoints.startups.delete(id);
+        else if (routeId === 'news') await api.endpoints.news.delete(id);
+        else if (routeId === 'team') await api.endpoints.team.delete(id);
+        successCount++;
+      } catch (e) {
+        failCount++;
+      }
+    }
+
+    setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
+    setSelectedIds(new Set());
+    setBulkDeleting(false);
+
+    if (failCount === 0) {
+      showToast?.(`Successfully deleted ${successCount} items.`, 'success');
+    } else {
+      showToast?.(
+        `Deleted ${successCount} items (${failCount} failed).`,
+        'warning'
+      );
+    }
+  };
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Top Section / Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold tracking-tight text-foreground">
+              {routeName}
+            </h2>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-accent text-accent-foreground border border-border">
+              {items.length} {items.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono mt-0.5">
+            GET {endpointUrl}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Team Category Filter if in team section */}
+          {routeId === 'team' && (
+            <div className="flex items-center gap-1.5 bg-card border border-border px-2.5 py-1 rounded-lg text-xs">
+              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+              <select
+                value={teamCategory}
+                onChange={(e) => setTeamCategory(e.target.value)}
+                aria-label="Filter Team Members by Category"
+                className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer"
+              >
+                <option value="" className="bg-card text-foreground">All Categories</option>
+                <option value="mentor" className="bg-card text-foreground">Mentors</option>
+                <option value="team" className="bg-card text-foreground">AIC Team</option>
+                <option value="governor" className="bg-card text-foreground">Governors</option>
+              </select>
+            </div>
+          )}
+
+          {/* Refresh Button */}
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            title="Refresh items from backend"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Multi-Select Floating / Sticky Action Bar */}
+      {multiSelect && items.length > 0 && (
+        <div className="rounded-xl border border-primary/40 bg-primary/10 p-3 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSelectAll}
+              className="flex items-center gap-1.5 text-xs font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
+            >
+              {selectedIds.size === items.length ? (
+                <CheckSquare className="w-4 h-4 text-primary" />
+              ) : (
+                <Square className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span>
+                {selectedIds.size === items.length ? 'Deselect All' : 'Select All'}
+              </span>
+            </button>
+
+            <span className="text-xs font-mono font-medium text-foreground bg-primary/20 px-2.5 py-0.5 rounded-full">
+              {selectedIds.size} of {items.length} selected
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0 || bulkDeleting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-medium transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>
+                {bulkDeleting
+                  ? 'Deleting...'
+                  : `Delete Selected (${selectedIds.size})`}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Skeleton */}
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3, 4, 5, 6].map((idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl border border-border bg-card/60 p-4 space-y-4 animate-pulse"
+            >
+              <div className="w-full aspect-16/10 bg-muted/50 rounded-xl" />
+              <div className="space-y-2">
+                <div className="h-4 bg-muted/60 rounded w-3/4" />
+                <div className="h-3 bg-muted/40 rounded w-1/2" />
+              </div>
+              <div className="h-8 bg-muted/30 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error View */}
+      {!loading && error && (
+        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-4 max-w-lg mx-auto my-8">
+          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-destructive">
+              Failed to load items
+            </h3>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+          <button
+            onClick={fetchData}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+          >
+            Retry Fetching
+          </button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && items.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-3 max-w-md mx-auto my-8">
+          <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
+          <h3 className="text-sm font-semibold text-foreground">
+            No items in {routeName}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            No records found for {endpointUrl}. You can add items via the Django backend or API.
+          </p>
+          <button
+            onClick={fetchData}
+            className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-medium text-foreground transition-all cursor-pointer"
+          >
+            Check Again
+          </button>
+        </div>
+      )}
+
+      {/* Responsive Cards Grid (Wireframe matching 3x3 layout) */}
+      {!loading && !error && items.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map((item) => (
+            <CardItem
+              key={item.id}
+              item={item}
+              routeId={routeId}
+              multiSelect={multiSelect}
+              isSelected={selectedIds.has(item.id)}
+              onToggleSelect={handleToggleSelect}
+              onDelete={handleDeleteItem}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
