@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import './SpotlightCard.css';
 
-const SpotlightCard = ({ children, className = '', spotlightColor = 'rgba(224, 201, 34, 0.7)' }) => {
+const SpotlightCard = ({ children, className = '', spotlightColor = 'rgba(2, 132, 199, 0.7)' }) => {
   const divRef = useRef(null);
 
   const handleMouseMove = e => {
@@ -17,7 +17,9 @@ const SpotlightCard = ({ children, className = '', spotlightColor = 'rgba(224, 2
 
   return (
     <div ref={divRef} onMouseMove={handleMouseMove} className={`card-spotlight ${className}`}>
-      {children}
+      <div className="card-spotlight-inner">
+        {children}
+      </div>
     </div>
   );
 };

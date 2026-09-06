@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import './HomeStartups.css';
 
 const startups = [
@@ -36,73 +37,84 @@ const startups = [
   { name: 'Luka Healthcare', img: '/img/logo/luka.jpeg' }
 ];
 
-// Divide startups into 3 distinct columns for vertical scrolling
-const col1 = startups.slice(0, 11);
-const col2 = startups.slice(11, 22);
-const col3 = startups.slice(22, 32);
+// Divide startups into 3 distinct horizontal rows
+const row1 = startups.slice(0, 11);
+const row2 = startups.slice(11, 22);
+const row3 = startups.slice(22, 32);
 
 const HomeStartups = () => {
+  // Store currently active/clicked startup name or null
+  const [activeStartup, setActiveStartup] = useState(null);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+
+  const handleTileClick = (name, rowIndex) => {
+    if (activeStartup === name) {
+      setActiveStartup(null);
+      setActiveRowIndex(null);
+    } else {
+      setActiveStartup(name);
+      setActiveRowIndex(rowIndex);
+    }
+  };
+
+  const renderRow = (rowItems, rowIndex, directionClass) => {
+    const isRowPaused = activeRowIndex === rowIndex;
+    // Duplicate items for seamless infinite marquee loop
+    const displayItems = [...rowItems, ...rowItems];
+
+    return (
+      <div className="horizontal-slider-row">
+        <div className={`horizontal-track ${directionClass} ${isRowPaused ? 'is-paused' : ''}`}>
+          {displayItems.map((item, idx) => {
+            const isActive = activeStartup === item.name;
+            return (
+              <div
+                key={`${rowIndex}-${idx}-${item.name}`}
+                className={`startup-tile ${isActive ? 'active-tile' : ''}`}
+                onClick={() => handleTileClick(item.name, rowIndex)}
+                title={item.name}
+              >
+                <img src={item.img} alt={item.name} loading="lazy" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div id="startups-building" className="section md-padding startups-section">
-      <div className="container">
-        <div className="row">
-          <div className="section-header text-center">
-            <h2 className="title">Startups Building with AIC</h2>
-            <p className="subtitle">Empowering high-growth tech ventures &amp; innovative entrepreneurs</p>
+      <div className="container-fluid p-0">
+        <div className="container">
+          <div className="section-header-row">
+            <div className="header-left">
+              <span className="section-category">— PORTFOLIO</span>
+              <h2 className="title">Startups Building with AIC</h2>
+            </div>
+            <div className="header-right">
+              <p className="subtitle">Empowering high-growth tech ventures &amp; innovative entrepreneurs.</p>
+              <Link to="/startup" className="view-portfolio-link">
+                View All Startups <span className="arrow">&rarr;</span>
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="vertical-scroll-container">
-          <div className="vertical-scroll-mask"></div>
+        <div className="horizontal-scroll-container">
+          {/* Gradient fade masks on left and right edges */}
+          <div className="horizontal-mask left-mask"></div>
+          <div className="horizontal-mask right-mask"></div>
 
-          <div className="row vertical-scroll-columns">
-            {/* Column 1 - Scroll Up */}
-            <div className="col-md-4 col-sm-4 col-xs-12 vertical-scroll-col">
-              <div className="vertical-track track-up">
-                {[...col1, ...col1].map((item, idx) => (
-                  <div key={idx} className="startup-vertical-card">
-                    <div className="startup-logo-wrapper">
-                      <img src={item.img} alt={item.name} />
-                    </div>
-                    <div className="startup-info">
-                      <h4>{item.name}</h4>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="horizontal-rows-wrapper">
+            {/* Row 1 - Left to Right */}
+            {renderRow(row1, 1, 'track-left')}
 
-            {/* Column 2 - Scroll Down */}
-            <div className="col-md-4 col-sm-4 col-xs-12 vertical-scroll-col hidden-xs">
-              <div className="vertical-track track-down">
-                {[...col2, ...col2].map((item, idx) => (
-                  <div key={idx} className="startup-vertical-card">
-                    <div className="startup-logo-wrapper">
-                      <img src={item.img} alt={item.name} />
-                    </div>
-                    <div className="startup-info">
-                      <h4>{item.name}</h4>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Row 2 - Right to Left */}
+            {renderRow(row2, 2, 'track-right')}
 
-            {/* Column 3 - Scroll Up */}
-            <div className="col-md-4 col-sm-4 col-xs-12 vertical-scroll-col hidden-xs">
-              <div className="vertical-track track-up-slow">
-                {[...col3, ...col3].map((item, idx) => (
-                  <div key={idx} className="startup-vertical-card">
-                    <div className="startup-logo-wrapper">
-                      <img src={item.img} alt={item.name} />
-                    </div>
-                    <div className="startup-info">
-                      <h4>{item.name}</h4>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Row 3 - Left to Right */}
+            {renderRow(row3, 3, 'track-left-alt')}
           </div>
         </div>
       </div>
