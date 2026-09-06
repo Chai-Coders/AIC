@@ -197,6 +197,25 @@ export default function ContentGrid({
             </div>
           )}
 
+          {/* Multi-Select Toggle Button (Matches Refresh UI layout) */}
+          <button
+            type="button"
+            onClick={() => setMultiSelect((prev) => !prev)}
+            title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
+              multiSelect
+                ? 'border-primary bg-primary/15 text-primary shadow-xs font-semibold'
+                : 'border-border bg-card hover:bg-accent text-foreground'
+            }`}
+          >
+            {multiSelect ? (
+              <CheckSquare className="w-3.5 h-3.5 text-primary" />
+            ) : (
+              <Square className="w-3.5 h-3.5 text-muted-foreground" />
+            )}
+            <span>Multi-Select</span>
+          </button>
+
           {/* Refresh Button */}
           <button
             type="button"

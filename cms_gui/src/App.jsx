@@ -51,12 +51,10 @@ function CMSApp() {
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground flex flex-col transition-colors duration-200">
-      {/* Header matching wireframe (Logo 1, Logo 2, Multi-select, Theme Switch) */}
+      {/* Header */}
       <Header
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
-        multiSelect={multiSelect}
-        setMultiSelect={setMultiSelect}
         activeRouteName={currentRouteMeta.name}
       />
 
