@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon, Lock, User, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const fromPath = location.state?.from?.pathname || '/';
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(fromPath, { replace: true });
+    }
+  }, [isAuthenticated, navigate, fromPath]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +35,7 @@ export default function LoginPage() {
 
     try {
       await login(username.trim(), password);
+      navigate(fromPath, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
       setError(

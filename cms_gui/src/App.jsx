@@ -1,40 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import DashboardLayout from './layouts/DashboardLayout';
+import HomePage from './pages/HomePage';
+import GalleryPage from './pages/GalleryPage';
+import StartupsPage from './pages/StartupsPage';
+import NewsPage from './pages/NewsPage';
+import TeamPage from './pages/TeamPage';
 import LoginPage from './components/LoginPage';
-import Header from './components/Header';
-import Sidebar, { ROUTES } from './components/Sidebar';
-import ContentGrid from './components/ContentGrid';
-import HomeView from './components/HomeView';
-import Toast from './components/Toast';
 import { Loader2, Sparkles } from 'lucide-react';
 
-function CMSApp() {
-  const { isAuthenticated, loading } = useAuth();
-  const [activeRoute, setActiveRoute] = useState('home');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [multiSelect, setMultiSelect] = useState(false);
-  const [toasts, setToasts] = useState([]);
-
-  const addToast = (message, type = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
-
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
-
-  // Find active route metadata
-  const currentRouteMeta = ROUTES.find((r) => r.id === activeRoute) || ROUTES[0];
+function AuthLoader({ children }) {
+  const { loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary animate-pulse">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4 select-none">
+        <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary animate-pulse shadow-sm">
           <Sparkles className="w-6 h-6" />
         </div>
         <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
@@ -45,62 +28,46 @@ function CMSApp() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginPage />;
-  }
-
-  return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col transition-colors duration-200">
-      {/* Header */}
-      <Header
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        activeRouteName={currentRouteMeta.name}
-      />
-
-      {/* Main Body Area: Collapsible Sidebar + Content Grid */}
-      <div className="flex-1 flex w-full relative">
-        {/* Collapsible Sidebar (Navbar) */}
-        <Sidebar
-          activeRoute={activeRoute}
-          setActiveRoute={setActiveRoute}
-          isOpen={sidebarOpen}
-          setIsOpen={setSidebarOpen}
-        />
-
-        {/* Dynamic Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-[1720px] mx-auto w-full">
-            {activeRoute === 'home' ? (
-              <HomeView
-                onOpenSidebar={() => setSidebarOpen(true)}
-                onSelectRoute={(routeId) => setActiveRoute(routeId)}
-              />
-            ) : (
-              <ContentGrid
-                routeId={currentRouteMeta.id}
-                routeName={currentRouteMeta.name}
-                endpointUrl={currentRouteMeta.endpoint}
-                multiSelect={multiSelect}
-                setMultiSelect={setMultiSelect}
-                showToast={addToast}
-              />
-            )}
-          </div>
-        </main>
-      </div>
-
-      {/* Global Toast Container */}
-      <Toast toasts={toasts} removeToast={removeToast} />
-    </div>
-  );
+  return children;
 }
 
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <CMSApp />
+        <AuthLoader>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Authentication Route */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected Dashboard Layout and Sub-Pages */}
+              <Route path="/" element={<DashboardLayout />}>
+                {/* Home / Overview */}
+                <Route index element={<HomePage />} />
+
+                {/* Gallery Items Routes */}
+                <Route path="gallery" element={<GalleryPage />} />
+                <Route path="api/gallery" element={<Navigate to="/gallery" replace />} />
+
+                {/* Startups Routes */}
+                <Route path="startups" element={<StartupsPage />} />
+                <Route path="api/startups" element={<Navigate to="/startups" replace />} />
+
+                {/* News Updates Routes */}
+                <Route path="news" element={<NewsPage />} />
+                <Route path="api/news" element={<Navigate to="/news" replace />} />
+
+                {/* Team Members Routes */}
+                <Route path="team" element={<TeamPage />} />
+                <Route path="api/team" element={<Navigate to="/team" replace />} />
+              </Route>
+
+              {/* Fallback Catch-All Route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthLoader>
       </AuthProvider>
     </ThemeProvider>
   );

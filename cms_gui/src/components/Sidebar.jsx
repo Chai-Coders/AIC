@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   Home,
   Image,
@@ -12,6 +13,7 @@ import {
 
 export const ROUTES = [
   {
+    path: '/',
     id: 'home',
     name: 'Home',
     description: 'Overview & Main Logo Canvas',
@@ -19,6 +21,7 @@ export const ROUTES = [
     icon: Home,
   },
   {
+    path: '/gallery',
     id: 'gallery',
     name: 'Gallery Items',
     description: 'Image Showcase & Visual Assets',
@@ -26,6 +29,7 @@ export const ROUTES = [
     icon: Image,
   },
   {
+    path: '/startups',
     id: 'startups',
     name: 'Startups',
     description: 'Incubated Ventures & Portfolios',
@@ -33,6 +37,7 @@ export const ROUTES = [
     icon: Rocket,
   },
   {
+    path: '/news',
     id: 'news',
     name: 'News Updates',
     description: 'Articles, Press & Announcements',
@@ -40,6 +45,7 @@ export const ROUTES = [
     icon: Newspaper,
   },
   {
+    path: '/team',
     id: 'team',
     name: 'Team Members',
     description: 'Mentors, AIC Team & Governors',
@@ -48,12 +54,7 @@ export const ROUTES = [
   },
 ];
 
-export default function Sidebar({
-  activeRoute,
-  setActiveRoute,
-  isOpen,
-  setIsOpen,
-}) {
+export default function Sidebar({ isOpen, setIsOpen }) {
   return (
     <>
       {/* Mobile Backdrop */}
@@ -86,58 +87,62 @@ export default function Sidebar({
           <nav className="space-y-1.5">
             {ROUTES.map((route) => {
               const Icon = route.icon;
-              const isActive = activeRoute === route.id;
 
               return (
-                <button
-                  key={route.id}
-                  onClick={() => {
-                    setActiveRoute(route.id);
-                  }}
-                  className={`w-full group text-left px-3.5 py-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                    isActive
-                      ? 'bg-primary/15 border-primary/40 text-foreground shadow-xs font-semibold'
-                      : 'border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        isActive
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-sidebar-accent text-sidebar-foreground group-hover:bg-primary/20 group-hover:text-primary'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-medium truncate">
-                          {route.name}
-                        </span>
-                      </div>
-                      {route.endpoint ? (
-                        <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground group-hover:text-primary/90 transition-colors truncate">
-                          <Terminal className="w-2.5 h-2.5 shrink-0" />
-                          <span className="truncate">{route.endpoint}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground truncate block">
-                          Main dashboard
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <ChevronRight
-                    className={`w-4 h-4 shrink-0 transition-transform ${
+                <NavLink
+                  key={route.path}
+                  to={route.path}
+                  end={route.path === '/'}
+                  className={({ isActive }) =>
+                    `w-full group text-left px-3.5 py-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isActive
-                        ? 'text-primary translate-x-0.5'
-                        : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'
-                    }`}
-                  />
-                </button>
+                        ? 'bg-primary/15 border-primary/40 text-foreground shadow-xs font-semibold'
+                        : 'border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'bg-sidebar-accent text-sidebar-foreground group-hover:bg-primary/20 group-hover:text-primary'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-medium truncate">
+                              {route.name}
+                            </span>
+                          </div>
+                          {route.endpoint ? (
+                            <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground group-hover:text-primary/90 transition-colors truncate">
+                              <Terminal className="w-2.5 h-2.5 shrink-0" />
+                              <span className="truncate">{route.endpoint}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground truncate block">
+                              Main dashboard
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <ChevronRight
+                        className={`w-4 h-4 shrink-0 transition-transform ${
+                          isActive
+                            ? 'text-primary translate-x-0.5'
+                            : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'
+                        }`}
+                      />
+                    </>
+                  )}
+                </NavLink>
               );
             })}
           </nav>
