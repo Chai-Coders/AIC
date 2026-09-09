@@ -30,6 +30,7 @@ venv/
 __pycache__/
 
 # Editor directories and files
+.freebuff/*
 .vscode/*
 !.vscode/extensions.json
 .idea
