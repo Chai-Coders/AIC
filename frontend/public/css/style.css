@@ -1275,7 +1275,6 @@ header {
 \*------------------------------------*/
 
 .blog {
-    background-color: #FFF;
     margin: 15px 0px;
 }
 
@@ -2263,33 +2262,90 @@ header {
             img.kiddo { 
                 width: 10%; 
                 height: 10%; 
-                
             } 
 
 /*-----------------------------------------------------------------------------------------------
+  Method 2: Soft Brand Tint & Accent Bar (Navbar vs Header Banner vs Body)
+-----------------------------------------------------------------------------------------------*/
 
-.glow {
-  font-size: 20px;
-  text-align: center;
+/* 1. Navbar Elevation & Crisp Separation */
+#nav.fixed-nav {
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #E2E8F0;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
 }
 
-#slideshow {
-  margin: 80px auto;
-  position: relative;
-  width: 240px;
-  height: 240px;
-  padding: 10px;
-   
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+/* 2. Title Section - Soft Brand Tint & Accent Bar */
+.header-wrapper {
+    background: linear-gradient(135deg, #F0F7FF 0%, #E8F2FC 100%) !important;
+    border-top: 1px solid #E2E8F0;
+    border-bottom: 1px solid #D8E5F3;
+    padding: 48px 0 !important;
 }
 
-#slideshow > div {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  right: 10px;
-  bottom: 10px;
+.header-banner-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
 }
-/*
+
+.header-banner-title {
+    color: #0F172A;
+    font-size: clamp(28px, 3.2vw, 38px);
+    font-weight: 800;
+    margin: 0;
+    padding-left: 18px;
+    border-left: 6px solid #EAB308;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+}
+
+.header-breadcrumb.breadcrumb {
+    background: #FFFFFF;
+    border: 1px solid #CBD5E1;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    border-radius: 30px;
+    padding: 10px 22px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    list-style: none;
+}
+
+.header-breadcrumb .breadcrumb-item {
+    font-size: 16px;
+    font-weight: 500;
+    color: #64748B;
+}
+
+.header-breadcrumb .breadcrumb-item a {
+    color: #0077B6;
+    text-decoration: none;
+    font-weight: 700;
+    transition: color 0.2s ease;
+}
+
+.header-breadcrumb .breadcrumb-item a:hover {
+    color: #005B8E;
+    text-decoration: underline;
+}
+
+.header-breadcrumb .breadcrumb-item.active {
+    color: #0F172A;
+    font-weight: 700;
+}
+
+.header-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: #94A3B8;
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+/* 3. Body Section Canvas */
+#blog.section {
+    background-color: #FFFFFF;
+}
 
 
