@@ -150,6 +150,7 @@ export const api = {
         return Array.isArray(res) ? res : res.results || [];
       },
       create: async (formData) => request('/gallery/', { method: 'POST', body: formData }),
+      update: async (id, formData) => request(`/gallery/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/gallery/${id}/`, { method: 'DELETE' }),
     },
     startups: {
@@ -160,6 +161,7 @@ export const api = {
         return Array.isArray(res) ? res : res.results || [];
       },
       create: async (formData) => request('/startups/', { method: 'POST', body: formData }),
+      update: async (id, formData) => request(`/startups/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/startups/${id}/`, { method: 'DELETE' }),
     },
     news: {
@@ -170,6 +172,7 @@ export const api = {
         return Array.isArray(res) ? res : res.results || [];
       },
       create: async (formData) => request('/news/', { method: 'POST', body: formData }),
+      update: async (id, formData) => request(`/news/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/news/${id}/`, { method: 'DELETE' }),
     },
     team: {
@@ -181,6 +184,7 @@ export const api = {
         return Array.isArray(res) ? res : res.results || [];
       },
       create: async (formData) => request('/team/', { method: 'POST', body: formData }),
+      update: async (id, formData) => request(`/team/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),
     },
   },

@@ -7,6 +7,7 @@ import {
   Calendar,
   Image as ImageIcon,
   Globe,
+  Edit3,
 } from 'lucide-react';
 
 export default function CardItem({
@@ -14,9 +15,10 @@ export default function CardItem({
   routeId,
   multiSelect,
   isSelected,
+  isEditing,
   isPreviewSelected,
   onToggleSelect,
-  onSelectForPreview,
+  onSelectForEdit,
   onRequestDelete,
 }) {
   // Helper to extract image URL safely
@@ -78,7 +80,7 @@ export default function CardItem({
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    onRequestDelete({
+    onRequestDelete?.({
       id: item.id,
       title: details.title,
       image: imageUrl,
@@ -87,25 +89,25 @@ export default function CardItem({
 
   const handleCardClick = () => {
     if (multiSelect) {
-      onToggleSelect(item.id);
-    } else if (routeId === 'news') {
-      onSelectForPreview?.(item);
+      onToggleSelect?.(item.id);
+    } else {
+      onSelectForEdit?.(item);
     }
   };
 
   // =========================================================================
-  // 1. STARTUP COMPACT HORIZONTAL RECTANGLE (3-COLUMN GRID MATCHING WIREFRAME)
+  // 1. STARTUP COMPACT HORIZONTAL RECTANGLE
   // =========================================================================
   if (routeId === 'startups') {
     return (
       <div
         onClick={handleCardClick}
-        className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] ${
-          multiSelect ? 'cursor-pointer' : 'hover:-translate-y-0.5'
-        } ${
-          isSelected
+        className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
+          isEditing
+            ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
+            : isSelected || isPreviewSelected
             ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
-            : 'border-border bg-card hover:border-primary/50 hover:shadow-md'
+            : 'border-border bg-card hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
         }`}
       >
         {/* Left: Startup Logo / Image */}
@@ -127,12 +129,22 @@ export default function CardItem({
         {/* Right: Startup Name & Exact Link */}
         <div className="min-w-0 flex-1 space-y-1 pr-6">
           <div className="flex items-center justify-between gap-1.5">
-            <h3 className="font-bold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors truncate">
+            <h3 className={`font-bold text-sm sm:text-base transition-colors truncate ${
+              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
+            }`}>
               {details.title}
             </h3>
-            <span className="text-[10px] font-mono text-muted-foreground shrink-0 bg-accent/60 px-1.5 py-0.5 rounded">
-              #{item.id}
-            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              {isEditing && (
+                <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                  <Edit3 className="w-2.5 h-2.5" />
+                  <span>Editing</span>
+                </span>
+              )}
+              <span className="text-[10px] font-mono text-muted-foreground bg-accent/60 px-1.5 py-0.5 rounded">
+                #{item.id}
+              </span>
+            </div>
           </div>
 
           {details.body && (
@@ -198,14 +210,16 @@ export default function CardItem({
   }
 
   // =========================================================================
-  // 2. NEWS ADAPTABLE HORIZONTAL RECTANGLE (MATCHING NEW WIREFRAME DIAGRAM)
+  // 2. NEWS ADAPTABLE HORIZONTAL RECTANGLE
   // =========================================================================
   if (routeId === 'news') {
     return (
       <div
         onClick={handleCardClick}
         className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
-          isPreviewSelected
+          isEditing
+            ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
+            : isPreviewSelected
             ? 'border-primary ring-2 ring-primary/50 bg-primary/10 shadow-md shadow-primary/15 sm:translate-x-1'
             : isSelected
             ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
@@ -228,15 +242,25 @@ export default function CardItem({
           )}
         </div>
 
-        {/* Right: Heading & Sub-heading (Multi-line adjustable vertical height) */}
+        {/* Right: Heading & Sub-heading */}
         <div className="min-w-0 flex-1 space-y-1 pr-6">
           <div className="flex items-start justify-between gap-1.5">
-            <h3 className="font-bold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors leading-snug">
+            <h3 className={`font-bold text-sm sm:text-base leading-snug transition-colors line-clamp-1 ${
+              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
+            }`}>
               {details.title}
             </h3>
-            <span className="text-[10px] font-mono text-muted-foreground shrink-0 bg-accent/60 px-1.5 py-0.5 rounded">
-              #{item.id}
-            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              {isEditing && (
+                <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                  <Edit3 className="w-2.5 h-2.5" />
+                  <span>Editing</span>
+                </span>
+              )}
+              <span className="text-[10px] font-mono text-muted-foreground bg-accent/60 px-1.5 py-0.5 rounded">
+                #{item.id}
+              </span>
+            </div>
           </div>
 
           {details.subtitle && (
@@ -296,17 +320,17 @@ export default function CardItem({
   }
 
   // =========================================================================
-  // 3. STANDARD 5-COLUMN CARD (GALLERY & TEAM)
+  // 3. STANDARD CARD (GALLERY & TEAM)
   // =========================================================================
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between select-none ${
-        multiSelect ? 'cursor-pointer' : 'hover:-translate-y-0.5'
-      } ${
-        isSelected
+      className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between select-none cursor-pointer ${
+        isEditing
+          ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
+          : isSelected || isPreviewSelected
           ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
-          : 'border-border bg-card hover:border-primary/50 hover:shadow-lg'
+          : 'border-border bg-card hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5'
       }`}
     >
       {/* Media / Thumbnail Section */}
@@ -324,6 +348,16 @@ export default function CardItem({
           <div className="flex flex-col items-center justify-center text-muted-foreground gap-1 p-3 text-center">
             <ImageIcon className="w-6 h-6 opacity-40" />
             <span className="text-[10px] font-mono opacity-60">No Image</span>
+          </div>
+        )}
+
+        {/* Editing Badge Overlay */}
+        {isEditing && (
+          <div className="absolute top-2 left-2 z-10">
+            <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
+              <Edit3 className="w-2.5 h-2.5" />
+              <span>Editing</span>
+            </span>
           </div>
         )}
 
@@ -366,7 +400,9 @@ export default function CardItem({
       <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
         <div className="space-y-1">
           <div className="flex items-start justify-between gap-1.5">
-            <h3 className="font-bold text-xs sm:text-sm text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+            <h3 className={`font-bold text-xs sm:text-sm line-clamp-1 transition-colors ${
+              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
+            }`}>
               {details.title}
             </h3>
             <span className="text-[9px] font-mono text-muted-foreground shrink-0 bg-accent/60 px-1.5 py-0.5 rounded">
