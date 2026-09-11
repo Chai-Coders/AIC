@@ -1,0 +1,478 @@
+/* ==========================================================================
+   Success Formula of AIC-IIITKottayam — Milestone Infographic
+   ========================================================================== */
+
+.success-section {
+  width: 100%;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: clamp(72px, 8vh, 112px) clamp(24px, 5vw, 80px);
+  box-sizing: border-box;
+}
+
+.success-section>.container {
+  width: 100%;
+  max-width: none;
+}
+
+/* Section Header */
+.success-header {
+  text-align: center;
+  max-width: 760px;
+  margin: 0 auto 54px;
+}
+
+.success-title {
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+
+.success-title-accent {
+  color: #ea580c;
+}
+
+.success-subtitle {
+  color: #64748b;
+  font-size: 1.4rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Wavy Timeline Path
+   ========================================================================== */
+
+.success-timeline {
+  --sf-card-h: 340px;
+  --sf-stem-h: 84px;
+  --sf-dot: 18px;
+
+  position: relative;
+  height: calc(var(--sf-card-h) * 2 + var(--sf-stem-h) * 2 + var(--sf-dot));
+  max-width: 1440px;
+  margin: 0 auto 84px;
+}
+
+.success-path {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 60px);
+  width: 100%;
+  height: 120px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Milestone wrappers alternate above / below the path. Each wrapper spans the
+   full timeline height so the node dot can be centered on the wavy path. */
+.sf-milestone {
+  position: absolute;
+  width: 320px;
+  height: 100%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sf-milestone.sf-top {
+  top: 0;
+  justify-content: flex-start;
+}
+
+.sf-milestone.sf-bottom {
+  bottom: 0;
+  justify-content: flex-end;
+}
+
+/* Milestone card */
+.sf-card {
+  position: relative;
+  height: var(--sf-card-h);
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 30px 28px 26px;
+  box-shadow: 0 6px 18px -6px rgba(15, 23, 42, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.sf-top:hover .sf-card {
+  transform: translateY(-4px);
+}
+
+.sf-bottom:hover .sf-card {
+  transform: translateY(4px);
+}
+
+.sf-milestone:hover .sf-card {
+  box-shadow: 0 16px 32px -10px rgba(15, 23, 42, 0.14);
+  border-color: rgba(2, 132, 199, 0.45);
+}
+
+.sf-card-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sf-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.sf-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* Milestone themes */
+.sf-card-blue .sf-badge,
+.sf-card-blue .sf-icon {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.sf-card-green .sf-badge,
+.sf-card-green .sf-icon {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.sf-card-purple .sf-badge,
+.sf-card-purple .sf-icon {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.sf-card-rose .sf-badge,
+.sf-card-rose .sf-icon {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+.sf-card-teal .sf-badge,
+.sf-card-teal .sf-icon {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.sf-title {
+  font-size: 1.65rem;
+  font-weight: 750;
+  color: #0f172a;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+  margin: 0 0 8px;
+}
+
+.sf-desc {
+  font-size: 1.3rem;
+  line-height: 1.7;
+  color: #475569;
+  margin: 0;
+  display: -webkit-box;
+  line-clamp: 5;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sf-apply {
+  color: #0284c7;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(2, 132, 199, 0.35);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.sf-apply:hover {
+  color: #0369a1;
+  border-color: #0369a1;
+}
+
+/* Connector stem + node dot sitting on the wavy path */
+.sf-stem {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: var(--sf-stem-h);
+  background: repeating-linear-gradient(to bottom,
+      #0284c7 0 6px,
+      transparent 6px 12px);
+}
+
+.sf-top .sf-stem {
+  top: var(--sf-card-h);
+}
+
+.sf-bottom .sf-stem {
+  top: auto;
+  bottom: var(--sf-card-h);
+}
+
+.sf-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--sf-dot);
+  height: var(--sf-dot);
+  border-radius: 50%;
+  background: #0284c7;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.25);
+}
+
+/* START / FINISH pills at the ends of the path */
+.sf-end {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 9999px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.3);
+}
+
+.sf-start {
+  left: 0;
+  background: #0284c7;
+}
+
+.sf-finish {
+  right: 0;
+  background: #ea580c;
+}
+
+/* ==========================================================================
+   Bottom Photo Cards
+   ========================================================================== */
+
+.success-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+.success-card {
+  position: relative;
+  margin: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  aspect-ratio: 16 / 11;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 26px -10px rgba(15, 23, 42, 0.18);
+}
+
+.success-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.success-card:hover img {
+  transform: scale(1.05);
+}
+
+.success-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+      rgba(9, 18, 34, 0) 40%,
+      rgba(9, 18, 34, 0.78) 100%);
+}
+
+.success-card figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 18px 16px;
+  z-index: 1;
+  text-align: left;
+}
+
+.success-card figcaption h4 {
+  margin: 0 0 4px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.success-card figcaption span {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1199px) {
+  .success-timeline {
+    max-width: 1100px;
+  }
+
+  .sf-milestone {
+    width: 280px;
+  }
+}
+
+@media (max-width: 991px) {
+  .success-timeline {
+    --sf-card-h: auto;
+
+    height: auto;
+    max-width: 640px;
+    margin-bottom: 56px;
+    padding: 24px 0 12px 46px;
+  }
+
+  .success-timeline::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 0;
+    bottom: 0;
+    border-left: 3px dashed #0284c7;
+  }
+
+  .success-path {
+    display: none;
+  }
+
+  .sf-milestone {
+    position: relative;
+    left: auto !important;
+    width: 100%;
+    height: auto;
+    transform: none;
+    display: block;
+    margin-bottom: 34px;
+  }
+
+  .sf-card {
+    padding: 28px 26px 24px;
+  }
+
+  .sf-desc {
+    line-clamp: none;
+    -webkit-line-clamp: none;
+    display: block;
+    overflow: visible;
+  }
+
+  .sf-milestone:last-child {
+    margin-bottom: 0;
+  }
+
+  .sf-milestone.sf-top,
+  .sf-milestone.sf-bottom {
+    top: auto;
+    bottom: auto;
+  }
+
+  .sf-stem {
+    display: none;
+  }
+
+  .sf-dot {
+    position: absolute;
+    left: -35px;
+    top: 30px;
+    transform: none;
+  }
+
+  .sf-start,
+  .sf-finish {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    transform: none;
+    width: fit-content;
+    margin: 0 0 24px;
+  }
+
+  .sf-finish {
+    margin: 10px 0 0;
+  }
+
+  .success-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  .success-section {
+    padding: 56px 20px 68px;
+  }
+
+  .success-header {
+    margin-bottom: 38px;
+  }
+
+  .success-subtitle {
+    font-size: 1.25rem;
+  }
+
+  .sf-title {
+    font-size: 1.4rem;
+  }
+
+  .sf-desc {
+    font-size: 1.18rem;
+  }
+}
+
+@media (max-width: 575px) {
+  .success-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .success-timeline {
+    padding-left: 40px;
+  }
+}

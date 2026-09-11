@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom';
 const HeaderBanner = ({ title, breadcrumbs = [] }) => {
   return (
     <div className="header-wrapper sm-padding bg-grey">
-      <div className="container">
-        <h2>{title}</h2>
-        <ul className="breadcrumb">
+      <div className="container header-banner-container">
+        <h2 className="header-banner-title">{title}</h2>
+        <ul className="breadcrumb header-breadcrumb">
           <li className="breadcrumb-item">
             <Link to="/">Home</Link>
           </li>
