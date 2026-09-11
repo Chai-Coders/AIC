@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Image, Rocket, Newspaper, Users } from 'lucide-react';
+import { Image, Rocket, Newspaper, Users, Video } from 'lucide-react';
 
 export default function HomeView() {
   return (
@@ -47,6 +47,13 @@ export default function HomeView() {
             className="p-3 rounded-2xl border border-border bg-card/80 hover:bg-accent hover:border-primary/50 text-foreground hover:text-primary transition-all cursor-pointer shadow-2xs group"
           >
             <Users className="w-5 h-5 group-hover:scale-110 transition-transform" />
+          </Link>
+          <Link
+            to="/background-video"
+            title="Background Video (/api/backgroundvideo/)"
+            className="p-3 rounded-2xl border border-border bg-card/80 hover:bg-accent hover:border-primary/50 text-foreground hover:text-primary transition-all cursor-pointer shadow-2xs group"
+          >
+            <Video className="w-5 h-5 group-hover:scale-110 transition-transform" />
           </Link>
         </div>
       </div>

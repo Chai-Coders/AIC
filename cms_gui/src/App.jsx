@@ -8,6 +8,7 @@ import GalleryPage from './pages/GalleryPage';
 import StartupsPage from './pages/StartupsPage';
 import NewsPage from './pages/NewsPage';
 import TeamPage from './pages/TeamPage';
+import BackgroundVideoPage from './pages/BackgroundVideoPage';
 import LoginPage from './components/LoginPage';
 import { Loader2, Sparkles } from 'lucide-react';
 
@@ -61,6 +62,12 @@ export default function App() {
                 {/* Team Members Routes */}
                 <Route path="team" element={<TeamPage />} />
                 <Route path="api/team" element={<Navigate to="/team" replace />} />
+
+                {/* Background Video Route */}
+                <Route path="background-video" element={<BackgroundVideoPage />} />
+                <Route path="backgroundvideo" element={<Navigate to="/background-video" replace />} />
+                <Route path="api/backgroundvideo" element={<Navigate to="/background-video" replace />} />
+                <Route path="api/background-video" element={<Navigate to="/background-video" replace />} />
               </Route>
 
               {/* Fallback Catch-All Route */}

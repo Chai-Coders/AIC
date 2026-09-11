@@ -187,5 +187,11 @@ export const api = {
       update: async (id, formData) => request(`/team/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),
     },
+    backgroundVideo: {
+      name: 'Background Video',
+      endpoint: '/api/backgroundvideo/',
+      get: async () => request('/backgroundvideo/'),
+      upload: async (formData) => request('/backgroundvideo/', { method: 'POST', body: formData }),
+    },
   },
 };

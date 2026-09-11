@@ -6,6 +6,7 @@ import {
   Rocket,
   Newspaper,
   Users,
+  Video,
   ChevronRight,
   Database,
   Terminal,
@@ -51,6 +52,14 @@ export const ROUTES = [
     description: 'Mentors, AIC Team & Governors',
     endpoint: '/api/team/',
     icon: Users,
+  },
+  {
+    path: '/background-video',
+    id: 'background-video',
+    name: 'Background Video',
+    description: 'Mux Video Stream & Upload',
+    endpoint: '/api/backgroundvideo/',
+    icon: Video,
   },
 ];
 

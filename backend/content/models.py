@@ -66,3 +66,21 @@ class TeamMember(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
+
+
+class BackgroundVideo(models.Model):
+    video_name = models.CharField(max_length=255, default='Main Background Video')
+    video_url = models.URLField(max_length=500)
+    thumbnail_url = models.URLField(max_length=500, blank=True, null=True)
+    mux_asset_id = models.CharField(max_length=100, blank=True, null=True)
+    mux_playback_id = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Background Video'
+        verbose_name_plural = 'Background Videos'
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return self.video_name
