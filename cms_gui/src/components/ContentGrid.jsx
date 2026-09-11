@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import CardItem from './CardItem';
 import EditBar from './EditBar';
@@ -32,11 +32,52 @@ export default function ContentGrid({
   // - If editingItem is null: the side card is in "Add New Record" mode
   // - If editingItem is set: the side card is in "Edit Record" mode
   const [editingItem, setEditingItem] = useState(null);
+  const editCardRef = useRef(null);
 
   // Delete Confirmation Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Multi-select sync:
+  // - If enabled: reset edit card to Add New mode
+  // - If disabled: clear all selected items so nothing remains selected
+  useEffect(() => {
+    if (multiSelect) {
+      setEditingItem(null);
+    } else {
+      setSelectedIds(new Set());
+    }
+  }, [multiSelect]);
+
+  // Auto scroll to edit card whenever an item is selected or Add New is clicked
+  const handleSelectForEdit = (selected) => {
+    if (multiSelect) return; // Disabled during multi-select
+    setEditingItem(selected);
+    if (editCardRef.current) {
+      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleAddNew = () => {
+    if (multiSelect) return;
+    setEditingItem(null);
+    if (editCardRef.current) {
+      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleToggleMultiSelect = () => {
+    setMultiSelect((prev) => {
+      const next = !prev;
+      if (next) {
+        setEditingItem(null); // Reset edit card to Add New mode immediately
+      } else {
+        setSelectedIds(new Set()); // Deselect all items when turned off
+      }
+      return next;
+    });
+  };
 
   // Fetch data from Django API
   const fetchData = useCallback(async () => {
@@ -219,15 +260,22 @@ export default function ContentGrid({
               </div>
             )}
 
-            {/* Quick Add / Reset Button */}
+            {/* Quick Add / Reset Button (Disabled when multiSelect is active) */}
             <button
               type="button"
-              onClick={() => setEditingItem(null)}
-              title={`Switch side card to Add New ${routeName.replace(/s$/, '')}`}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs ${
-                editingItem === null
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'border border-border bg-card hover:bg-accent text-foreground'
+              onClick={handleAddNew}
+              disabled={multiSelect}
+              title={
+                multiSelect
+                  ? 'Adding items is disabled during Multi-Select'
+                  : `Switch side card to Add New ${routeName.replace(/s$/, '')}`
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs ${
+                multiSelect
+                  ? 'opacity-40 cursor-not-allowed border border-border bg-muted/40 text-muted-foreground'
+                  : editingItem === null
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
+                  : 'border border-border bg-card hover:bg-accent text-foreground cursor-pointer'
               }`}
             >
               <Plus className="w-3.5 h-3.5" />
@@ -237,9 +285,7 @@ export default function ContentGrid({
             {/* Multi-Select Toggle Button */}
             <button
               type="button"
-              onClick={() => {
-                setMultiSelect((prev) => !prev);
-              }}
+              onClick={handleToggleMultiSelect}
               title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
                 multiSelect
@@ -360,8 +406,9 @@ export default function ContentGrid({
             </div>
             <button
               type="button"
-              onClick={() => setEditingItem(null)}
-              className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto"
+              onClick={handleAddNew}
+              disabled={multiSelect}
+              className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               <span>Fill New Record Form</span>
@@ -381,9 +428,9 @@ export default function ContentGrid({
                 routeId={routeId}
                 multiSelect={multiSelect}
                 isSelected={selectedIds.has(item.id)}
-                isEditing={editingItem?.id === item.id}
+                isEditing={!multiSelect && editingItem?.id === item.id}
                 onToggleSelect={handleToggleSelect}
-                onSelectForEdit={(selected) => setEditingItem(selected)}
+                onSelectForEdit={handleSelectForEdit}
                 onRequestDelete={handleRequestSingleDelete}
               />
             ))}
@@ -402,9 +449,9 @@ export default function ContentGrid({
                 routeId={routeId}
                 multiSelect={multiSelect}
                 isSelected={selectedIds.has(item.id)}
-                isEditing={editingItem?.id === item.id}
+                isEditing={!multiSelect && editingItem?.id === item.id}
                 onToggleSelect={handleToggleSelect}
-                onSelectForEdit={(selected) => setEditingItem(selected)}
+                onSelectForEdit={handleSelectForEdit}
                 onRequestDelete={handleRequestSingleDelete}
               />
             ))}
@@ -423,9 +470,9 @@ export default function ContentGrid({
                 routeId={routeId}
                 multiSelect={multiSelect}
                 isSelected={selectedIds.has(item.id)}
-                isEditing={editingItem?.id === item.id}
+                isEditing={!multiSelect && editingItem?.id === item.id}
                 onToggleSelect={handleToggleSelect}
-                onSelectForEdit={(selected) => setEditingItem(selected)}
+                onSelectForEdit={handleSelectForEdit}
                 onRequestDelete={handleRequestSingleDelete}
               />
             ))}
@@ -444,9 +491,9 @@ export default function ContentGrid({
                 routeId={routeId}
                 multiSelect={multiSelect}
                 isSelected={selectedIds.has(item.id)}
-                isEditing={editingItem?.id === item.id}
+                isEditing={!multiSelect && editingItem?.id === item.id}
                 onToggleSelect={handleToggleSelect}
-                onSelectForEdit={(selected) => setEditingItem(selected)}
+                onSelectForEdit={handleSelectForEdit}
                 onRequestDelete={handleRequestSingleDelete}
               />
             ))}
@@ -455,14 +502,21 @@ export default function ContentGrid({
       </div>
 
       {/* ========================================================================= */}
-      {/* FIXED SIDE EDIT/ADD CARD: ALWAYS visible on all routes                    */}
+      {/* FIXED SIDE EDIT/ADD CARD:                                                 */}
+      {/* On mobile screens, it appears at top (order-first)                        */}
+      {/* On desktop screens (lg:), it appears sticky on the right (lg:order-last)   */}
+      {/* Disabled when Multi-Select is enabled                                    */}
       {/* ========================================================================= */}
-      <aside className="w-full lg:w-[350px] xl:w-[390px] shrink-0 lg:sticky lg:top-20 z-20">
-        <div className="h-[calc(100vh-6.5rem)] min-h-[560px] max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
+      <aside
+        ref={editCardRef}
+        className="w-full lg:w-[350px] xl:w-[390px] shrink-0 order-first lg:order-last lg:sticky lg:top-20 z-20"
+      >
+        <div className="h-[520px] sm:h-[580px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[560px] lg:max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
           <EditBar
             routeId={routeId}
             routeName={routeName}
             initialData={editingItem}
+            disabled={multiSelect}
             onSuccess={() => {
               fetchData();
               setEditingItem(null);

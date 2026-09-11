@@ -31,4 +31,4 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeamMember
-        fields = ['id', 'name', 'role', 'category', 'category_display', 'photo', 'bio']
+        fields = ['id', 'name', 'role', 'category', 'category_display', 'photo', 'bio', 'created_at']

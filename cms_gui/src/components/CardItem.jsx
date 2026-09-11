@@ -153,24 +153,32 @@ export default function CardItem({
             </p>
           )}
 
-          {details.link ? (
-            <a
-              href={details.link}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title={details.link}
-              className="flex items-center gap-1 text-xs font-mono text-primary hover:underline truncate"
-            >
-              <Globe className="w-3 h-3 shrink-0" />
-              <span className="truncate">{details.link}</span>
-              <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
-            </a>
-          ) : (
-            <span className="text-[11px] font-mono text-muted-foreground/60 block">
-              No link attached
-            </span>
-          )}
+          <div className="flex items-center gap-3 pt-0.5">
+            {item.created_at && (
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono shrink-0">
+                <Calendar className="w-3 h-3 text-muted-foreground/70" />
+                <span>{new Date(item.created_at).toLocaleDateString()}</span>
+              </span>
+            )}
+            {details.link ? (
+              <a
+                href={details.link}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title={details.link}
+                className="flex items-center gap-1 text-xs font-mono text-primary hover:underline truncate"
+              >
+                <Globe className="w-3 h-3 shrink-0" />
+                <span className="truncate">{details.link}</span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+              </a>
+            ) : (
+              <span className="text-[11px] font-mono text-muted-foreground/60 block">
+                No link attached
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Multi-Select Checkbox Indicator */}

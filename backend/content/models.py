@@ -57,6 +57,7 @@ class TeamMember(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
     photo = models.ImageField(upload_to='team/')
     bio = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         ordering = ['name']
