@@ -7,8 +7,17 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 from content.views import BackgroundVideoView
+from django.http import JsonResponse, HttpResponse
+
+def health_check(request):
+    if request.method == 'HEAD':
+        return HttpResponse(status=200)
+    return JsonResponse({"status": "healthy", "service": "cms-backend"}, status=200)
 
 urlpatterns = [
+    path('', health_check, name='root_health'),
+    path('health', health_check, name='health_check_noslash'),
+    path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     path('api/', include('content.urls')),
     path('backgroundvideo/', BackgroundVideoView.as_view(), name='root_background_video_compact'),
