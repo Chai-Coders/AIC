@@ -210,8 +210,11 @@ CORS_ALLOW_CREDENTIALS = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# Media Storage Configuration
-USE_CLOUDINARY = os.environ.get('USE_CLOUDINARY', 'False').lower() in ('true', '1', 'yes') and bool(os.environ.get('CLOUDINARY_CLOUD_NAME'))
+# Media Storage Configuration: Auto-enable Cloudinary if credentials exist (unless explicitly set to False)
+USE_CLOUDINARY = os.environ.get(
+    'USE_CLOUDINARY', 
+    'True' if os.environ.get('CLOUDINARY_CLOUD_NAME') else 'False'
+).lower() in ('true', '1', 'yes') and bool(os.environ.get('CLOUDINARY_CLOUD_NAME'))
 
 if USE_CLOUDINARY:
     STORAGES = {
