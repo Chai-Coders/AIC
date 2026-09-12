@@ -1,5 +1,6 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import DefaultRouter, APIRootView
+from rest_framework.reverse import reverse
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from .views import (
@@ -11,7 +12,20 @@ from .views import (
 )
 from .auth_views import CustomTokenObtainPairView, CurrentUserView, LogoutView
 
-router = DefaultRouter()
+class CustomAPIRootView(APIRootView):
+    """Custom API Root View to include backgroundvideo in the API root dictionary."""
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if isinstance(response.data, dict):
+            namespace = request.resolver_match.namespace if request.resolver_match else None
+            view_name = f'{namespace}:background_video_compact' if namespace else 'background_video_compact'
+            response.data['backgroundvideo'] = reverse(view_name, request=request)
+        return response
+
+class CustomRouter(DefaultRouter):
+    APIRootView = CustomAPIRootView
+
+router = CustomRouter()
 router.register(r'gallery', GalleryViewSet, basename='gallery')
 router.register(r'startups', StartupViewSet, basename='startup')
 router.register(r'news', NewsUpdateViewSet, basename='news')
