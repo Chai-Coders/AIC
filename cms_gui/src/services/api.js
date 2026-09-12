@@ -1,4 +1,4 @@
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export function getAuthToken() {
   return localStorage.getItem('cms_access_token');
