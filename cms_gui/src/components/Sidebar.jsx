@@ -6,6 +6,7 @@ import {
   Rocket,
   Newspaper,
   Users,
+  Video,
   ChevronRight,
   Database,
   Terminal,
@@ -51,6 +52,14 @@ export const ROUTES = [
     description: 'Mentors, AIC Team & Governors',
     endpoint: '/api/team/',
     icon: Users,
+  },
+  {
+    path: '/background-video',
+    id: 'background-video',
+    name: 'Background Video',
+    description: 'Mux Video Stream & Upload',
+    endpoint: '/api/backgroundvideo/',
+    icon: Video,
   },
 ];
 
@@ -148,17 +157,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </nav>
         </div>
 
-        {/* Sidebar Footer info */}
-        <div className="p-4 border-t border-sidebar-border bg-sidebar/50 text-[11px] text-sidebar-foreground/60 space-y-1">
-          <div className="flex items-center justify-between font-mono">
-            <span>Django REST</span>
-            <span className="flex items-center gap-1 text-emerald-500">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Connected
-            </span>
-          </div>
-          <p className="truncate text-[10px]">http://localhost:8000/api</p>
-        </div>
       </aside>
     </>
   );

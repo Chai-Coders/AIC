@@ -2,7 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
-from .views import GalleryViewSet, StartupViewSet, NewsUpdateViewSet, TeamMemberViewSet
+from .views import (
+    GalleryViewSet,
+    StartupViewSet,
+    NewsUpdateViewSet,
+    TeamMemberViewSet,
+    BackgroundVideoView,
+)
 from .auth_views import CustomTokenObtainPairView, CurrentUserView, LogoutView
 
 router = DefaultRouter()
@@ -21,5 +27,10 @@ auth_urlpatterns = [
 
 urlpatterns = [
     path('auth/', include(auth_urlpatterns)),
+    # Background Video Endpoints (both naming styles)
+    path('backgroundvideo/', BackgroundVideoView.as_view(), name='background_video_compact'),
+    path('backgroundvideo', BackgroundVideoView.as_view(), name='background_video_compact_noslash'),
+    path('background-video/', BackgroundVideoView.as_view(), name='background_video_hyphen'),
+    path('background-video', BackgroundVideoView.as_view(), name='background_video_hyphen_noslash'),
     path('', include(router.urls)),
 ]

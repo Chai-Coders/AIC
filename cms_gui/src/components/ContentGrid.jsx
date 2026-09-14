@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import CardItem from './CardItem';
-import NewsDetailPane from './NewsDetailPane';
-import AddItemModal from './AddItemModal';
+import EditBar from './EditBar';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import {
   RefreshCw,
@@ -29,16 +28,56 @@ export default function ContentGrid({
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [teamCategory, setTeamCategory] = useState('');
 
-  // Selected news item for preview pane (diagram split view)
-  const [selectedNewsItem, setSelectedNewsItem] = useState(null);
-
-  // Add Item Modal State
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  // Fixed Side Edit/Add Card State:
+  // - If editingItem is null: the side card is in "Add New Record" mode
+  // - If editingItem is set: the side card is in "Edit Record" mode
+  const [editingItem, setEditingItem] = useState(null);
+  const editCardRef = useRef(null);
 
   // Delete Confirmation Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Multi-select sync:
+  // - If enabled: reset edit card to Add New mode
+  // - If disabled: clear all selected items so nothing remains selected
+  useEffect(() => {
+    if (multiSelect) {
+      setEditingItem(null);
+    } else {
+      setSelectedIds(new Set());
+    }
+  }, [multiSelect]);
+
+  // Auto scroll to edit card whenever an item is selected or Add New is clicked
+  const handleSelectForEdit = (selected) => {
+    if (multiSelect) return; // Disabled during multi-select
+    setEditingItem(selected);
+    if (editCardRef.current) {
+      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleAddNew = () => {
+    if (multiSelect) return;
+    setEditingItem(null);
+    if (editCardRef.current) {
+      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleToggleMultiSelect = () => {
+    setMultiSelect((prev) => {
+      const next = !prev;
+      if (next) {
+        setEditingItem(null); // Reset edit card to Add New mode immediately
+      } else {
+        setSelectedIds(new Set()); // Deselect all items when turned off
+      }
+      return next;
+    });
+  };
 
   // Fetch data from Django API
   const fetchData = useCallback(async () => {
@@ -69,7 +108,7 @@ export default function ContentGrid({
 
   useEffect(() => {
     fetchData();
-    setSelectedNewsItem(null);
+    setEditingItem(null); // Reset side card to "Add New" mode on route change
   }, [fetchData, routeId]);
 
   // Request single item delete (opens modal)
@@ -111,8 +150,9 @@ export default function ContentGrid({
           return next;
         });
 
-        if (selectedNewsItem?.id === id) {
-          setSelectedNewsItem(null);
+        // If the deleted item was currently being edited, reset side card to Add New
+        if (editingItem?.id === id) {
+          setEditingItem(null);
         }
 
         showToast?.(`Item "${pendingDelete.item.title || `#${id}`}" was deleted.`, 'success');
@@ -133,8 +173,8 @@ export default function ContentGrid({
           }
         }
 
-        if (selectedNewsItem && selectedIds.has(selectedNewsItem.id)) {
-          setSelectedNewsItem(null);
+        if (editingItem && selectedIds.has(editingItem.id)) {
+          setEditingItem(null);
         }
 
         setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
@@ -157,7 +197,7 @@ export default function ContentGrid({
     }
   };
 
-  // Toggle selection for a single item
+  // Toggle selection for a single item (multi-select mode)
   const handleToggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -180,299 +220,314 @@ export default function ContentGrid({
   };
 
   return (
-    <div className="w-full space-y-6">
-      {/* Top Section / Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
-              {routeName}
-            </h2>
-            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent text-accent-foreground border border-border">
-              {items.length} {items.length === 1 ? 'record' : 'records'}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            GET {endpointUrl}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Team Category Filter if in team section */}
-          {routeId === 'team' && (
-            <div className="flex items-center gap-1.5 bg-card border border-border px-3 py-1.5 rounded-xl text-xs shadow-2xs">
-              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-              <select
-                value={teamCategory}
-                onChange={(e) => setTeamCategory(e.target.value)}
-                aria-label="Filter Team Members by Category"
-                className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer font-medium"
-              >
-                <option value="" className="bg-card text-foreground">All Categories</option>
-                <option value="mentor" className="bg-card text-foreground">International Mentors</option>
-                <option value="team" className="bg-card text-foreground">AIC Team</option>
-                <option value="governor" className="bg-card text-foreground">Board of Governors</option>
-              </select>
-            </div>
-          )}
-
-          {/* Add Item Button */}
-          <button
-            type="button"
-            onClick={() => setAddModalOpen(true)}
-            title={`Add new ${routeName} item (POST)`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Item</span>
-          </button>
-
-          {/* Multi-Select Toggle Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setMultiSelect((prev) => !prev);
-              if (!multiSelect) {
-                setSelectedNewsItem(null);
-              }
-            }}
-            title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
-              multiSelect
-                ? 'border-primary bg-primary/15 text-primary shadow-xs font-semibold'
-                : 'border-border bg-card hover:bg-accent text-foreground'
-            }`}
-          >
-            {multiSelect ? (
-              <CheckSquare className="w-3.5 h-3.5 text-primary" />
-            ) : (
-              <Square className="w-3.5 h-3.5 text-muted-foreground" />
-            )}
-            <span>Multi-Select</span>
-          </button>
-
-          {/* Refresh Button */}
-          <button
-            type="button"
-            onClick={fetchData}
-            disabled={loading}
-            title="Refresh records from backend"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Multi-Select Floating / Sticky Action Bar */}
-      {multiSelect && items.length > 0 && (
-        <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3.5 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSelectAll}
-              className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
-            >
-              {selectedIds.size === items.length ? (
-                <CheckSquare className="w-4 h-4 text-primary" />
-              ) : (
-                <Square className="w-4 h-4 text-muted-foreground" />
-              )}
-              <span>
-                {selectedIds.size === items.length ? 'Deselect All' : 'Select All'}
+    <div className="flex flex-col lg:flex-row w-full gap-6 items-start">
+      {/* ========================================================================= */}
+      {/* MAIN CONTENT AREA: List takes maximum available remaining space           */}
+      {/* ========================================================================= */}
+      <div className="flex-1 min-w-0 w-full space-y-6">
+        {/* Top Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight text-foreground">
+                {routeName}
+              </h2>
+              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent text-accent-foreground border border-border font-semibold">
+                {items.length} {items.length === 1 ? 'record' : 'records'}
               </span>
-            </button>
-
-            <span className="text-xs font-mono font-medium text-foreground bg-primary/20 px-2.5 py-0.5 rounded-full">
-              {selectedIds.size} of {items.length} selected
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleRequestBulkDelete}
-              disabled={selectedIds.size === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold transition-all shadow-md shadow-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Selected ({selectedIds.size})</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading Skeleton */}
-      {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl border border-border bg-card/60 p-4 space-y-4 animate-pulse"
-            >
-              <div className="w-full aspect-16/10 bg-muted/50 rounded-xl" />
-              <div className="space-y-2">
-                <div className="h-4 bg-muted/60 rounded w-3/4" />
-                <div className="h-3 bg-muted/40 rounded w-1/2" />
-              </div>
-              <div className="h-8 bg-muted/30 rounded" />
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Error View */}
-      {!loading && error && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-4 max-w-lg mx-auto my-8">
-          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-destructive">
-              Failed to load records
-            </h3>
-            <p className="text-xs text-muted-foreground">{error}</p>
-          </div>
-          <button
-            type="button"
-            onClick={fetchData}
-            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
-          >
-            Retry Fetching
-          </button>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-4 max-w-md mx-auto my-8">
-          <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-foreground">
-              No records in {routeName}
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              No items found for {endpointUrl}. You can add your first record directly here.
+            <p className="text-xs text-muted-foreground font-mono mt-0.5">
+              GET {endpointUrl}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setAddModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add First {routeName.replace(/s$/, '')}</span>
-          </button>
-        </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* 1. NEWS ROUTE: Responsive Split Layout (Master-Detail matching Wireframe)  */}
-      {/* ========================================================================= */}
-      {!loading && !error && items.length > 0 && routeId === 'news' && (
-        <div className="w-full">
-          {selectedNewsItem ? (
-            <div className="w-full flex flex-col lg:flex-row gap-6 items-start">
-              {/* Left Side: Detail Preview Pane (Fixed max height, internal vertical scroll) */}
-              <div className="w-full lg:w-[48%] xl:w-[50%] shrink-0 sticky top-20">
-                <NewsDetailPane
-                  newsItem={selectedNewsItem}
-                  onClose={() => setSelectedNewsItem(null)}
-                  onRequestDelete={handleRequestSingleDelete}
-                />
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Team Category Filter if on team route */}
+            {routeId === 'team' && (
+              <div className="flex items-center gap-1.5 bg-card border border-border px-3 py-1.5 rounded-xl text-xs shadow-2xs">
+                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                <select
+                  value={teamCategory}
+                  onChange={(e) => setTeamCategory(e.target.value)}
+                  aria-label="Filter Team Members by Category"
+                  className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer font-medium"
+                >
+                  <option value="" className="bg-card text-foreground">All Categories</option>
+                  <option value="mentor" className="bg-card text-foreground">International Mentors</option>
+                  <option value="team" className="bg-card text-foreground">AIC Team</option>
+                  <option value="governor" className="bg-card text-foreground">Board of Governors</option>
+                </select>
               </div>
+            )}
 
-              {/* Right Side: News Cards List (Independently scrollable down) */}
-              <div className="flex-1 min-w-0 w-full">
-                <div className="grid grid-cols-1 gap-3.5 max-h-[calc(100vh-10.5rem)] overflow-y-auto pr-1">
-                  {items.map((item) => (
-                    <CardItem
-                      key={item.id}
-                      item={item}
-                      routeId={routeId}
-                      multiSelect={multiSelect}
-                      isSelected={selectedIds.has(item.id)}
-                      isPreviewSelected={selectedNewsItem?.id === item.id}
-                      onToggleSelect={handleToggleSelect}
-                      onSelectForPreview={(news) => {
-                        setSelectedNewsItem((prev) =>
-                          prev?.id === news.id ? null : news
-                        );
-                      }}
-                      onRequestDelete={handleRequestSingleDelete}
-                    />
-                  ))}
+            {/* Quick Add / Reset Button (Disabled when multiSelect is active) */}
+            <button
+              type="button"
+              onClick={handleAddNew}
+              disabled={multiSelect}
+              title={
+                multiSelect
+                  ? 'Adding items is disabled during Multi-Select'
+                  : `Switch side card to Add New ${routeName.replace(/s$/, '')}`
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs ${
+                multiSelect
+                  ? 'opacity-40 cursor-not-allowed border border-border bg-muted/40 text-muted-foreground'
+                  : editingItem === null
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
+                  : 'border border-border bg-card hover:bg-accent text-foreground cursor-pointer'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add New</span>
+            </button>
+
+            {/* Multi-Select Toggle Button */}
+            <button
+              type="button"
+              onClick={handleToggleMultiSelect}
+              title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
+                multiSelect
+                  ? 'border-primary bg-primary/15 text-primary shadow-xs font-semibold'
+                  : 'border-border bg-card hover:bg-accent text-foreground'
+              }`}
+            >
+              {multiSelect ? (
+                <CheckSquare className="w-3.5 h-3.5 text-primary" />
+              ) : (
+                <Square className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+              <span>Multi-Select</span>
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={fetchData}
+              disabled={loading}
+              title="Refresh records from backend"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Multi-Select Floating Action Bar */}
+        {multiSelect && items.length > 0 && (
+          <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3.5 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
+              >
+                {selectedIds.size === items.length ? (
+                  <CheckSquare className="w-4 h-4 text-primary" />
+                ) : (
+                  <Square className="w-4 h-4 text-muted-foreground" />
+                )}
+                <span>
+                  {selectedIds.size === items.length ? 'Deselect All' : 'Select All'}
+                </span>
+              </button>
+
+              <span className="text-xs font-mono font-medium text-foreground bg-primary/20 px-2.5 py-0.5 rounded-full">
+                {selectedIds.size} of {items.length} selected
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRequestBulkDelete}
+                disabled={selectedIds.size === 0}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold transition-all shadow-md shadow-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Selected ({selectedIds.size})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Skeleton */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div
+                key={idx}
+                className="rounded-2xl border border-border bg-card/60 p-4 space-y-3 animate-pulse"
+              >
+                <div className="w-full aspect-16/10 bg-muted/50 rounded-xl" />
+                <div className="space-y-2">
+                  <div className="h-4 bg-muted/60 rounded w-3/4" />
+                  <div className="h-3 bg-muted/40 rounded w-1/2" />
                 </div>
+                <div className="h-7 bg-muted/30 rounded" />
               </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error View */}
+        {!loading && error && (
+          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-4 max-w-lg mx-auto my-8">
+            <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-destructive">
+                Failed to load records
+              </h3>
+              <p className="text-xs text-muted-foreground">{error}</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-content">
-              {items.map((item) => (
-                <CardItem
-                  key={item.id}
-                  item={item}
-                  routeId={routeId}
-                  multiSelect={multiSelect}
-                  isSelected={selectedIds.has(item.id)}
-                  isPreviewSelected={false}
-                  onToggleSelect={handleToggleSelect}
-                  onSelectForPreview={(news) => setSelectedNewsItem(news)}
-                  onRequestDelete={handleRequestSingleDelete}
-                />
-              ))}
+            <button
+              type="button"
+              onClick={fetchData}
+              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+            >
+              Retry Fetching
+            </button>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && items.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-4 max-w-md mx-auto my-8">
+            <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-foreground">
+                No records in {routeName}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                No items found for {endpointUrl}. Use the fixed form on the side to create the first record.
+              </p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={handleAddNew}
+              disabled={multiSelect}
+              className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Fill New Record Form</span>
+            </button>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 1. GALLERY ROUTE: Responsive Grid                                         */}
+        {/* ========================================================================= */}
+        {!loading && !error && items.length > 0 && routeId === 'gallery' && (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
+            {items.map((item) => (
+              <CardItem
+                key={item.id}
+                item={item}
+                routeId={routeId}
+                multiSelect={multiSelect}
+                isSelected={selectedIds.has(item.id)}
+                isEditing={!multiSelect && editingItem?.id === item.id}
+                onToggleSelect={handleToggleSelect}
+                onSelectForEdit={handleSelectForEdit}
+                onRequestDelete={handleRequestSingleDelete}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 2. STARTUPS ROUTE: Responsive Grid                                        */}
+        {/* ========================================================================= */}
+        {!loading && !error && items.length > 0 && routeId === 'startups' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 animate-fade-content">
+            {items.map((item) => (
+              <CardItem
+                key={item.id}
+                item={item}
+                routeId={routeId}
+                multiSelect={multiSelect}
+                isSelected={selectedIds.has(item.id)}
+                isEditing={!multiSelect && editingItem?.id === item.id}
+                onToggleSelect={handleToggleSelect}
+                onSelectForEdit={handleSelectForEdit}
+                onRequestDelete={handleRequestSingleDelete}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 3. NEWS ROUTE: Responsive List / Grid                                     */}
+        {/* ========================================================================= */}
+        {!loading && !error && items.length > 0 && routeId === 'news' && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-fade-content">
+            {items.map((item) => (
+              <CardItem
+                key={item.id}
+                item={item}
+                routeId={routeId}
+                multiSelect={multiSelect}
+                isSelected={selectedIds.has(item.id)}
+                isEditing={!multiSelect && editingItem?.id === item.id}
+                onToggleSelect={handleToggleSelect}
+                onSelectForEdit={handleSelectForEdit}
+                onRequestDelete={handleRequestSingleDelete}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* 4. TEAM ROUTE: Responsive Grid                                            */}
+        {/* ========================================================================= */}
+        {!loading && !error && items.length > 0 && routeId === 'team' && (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
+            {items.map((item) => (
+              <CardItem
+                key={item.id}
+                item={item}
+                routeId={routeId}
+                multiSelect={multiSelect}
+                isSelected={selectedIds.has(item.id)}
+                isEditing={!multiSelect && editingItem?.id === item.id}
+                onToggleSelect={handleToggleSelect}
+                onSelectForEdit={handleSelectForEdit}
+                onRequestDelete={handleRequestSingleDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* FIXED SIDE EDIT/ADD CARD:                                                 */}
+      {/* On mobile screens, it appears at top (order-first)                        */}
+      {/* On desktop screens (lg:), it appears sticky on the right (lg:order-last)   */}
+      {/* Disabled when Multi-Select is enabled                                    */}
+      {/* ========================================================================= */}
+      <aside
+        ref={editCardRef}
+        className="w-full lg:w-[350px] xl:w-[390px] shrink-0 order-first lg:order-last lg:sticky lg:top-20 z-20"
+      >
+        <div className="h-[520px] sm:h-[580px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[560px] lg:max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
+          <EditBar
+            routeId={routeId}
+            routeName={routeName}
+            initialData={editingItem}
+            disabled={multiSelect}
+            onSuccess={() => {
+              fetchData();
+              setEditingItem(null);
+            }}
+            onReset={() => setEditingItem(null)}
+            showToast={showToast}
+          />
         </div>
-      )}
+      </aside>
 
-      {/* ========================================================================= */}
-      {/* 2. GALLERY & TEAM: 5-Column Responsive Card Grid (At least 5 in a row)    */}
-      {/* ========================================================================= */}
-      {!loading && !error && items.length > 0 && (routeId === 'gallery' || routeId === 'team') && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
-          {items.map((item) => (
-            <CardItem
-              key={item.id}
-              item={item}
-              routeId={routeId}
-              multiSelect={multiSelect}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={handleToggleSelect}
-              onRequestDelete={handleRequestSingleDelete}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 3. STARTUPS: 3-Column Compact Horizontal Grid                            */}
-      {/* ========================================================================= */}
-      {!loading && !error && items.length > 0 && routeId === 'startups' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 animate-fade-content">
-          {items.map((item) => (
-            <CardItem
-              key={item.id}
-              item={item}
-              routeId={routeId}
-              multiSelect={multiSelect}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={handleToggleSelect}
-              onRequestDelete={handleRequestSingleDelete}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Dynamic Add Item Form Modal */}
-      <AddItemModal
-        isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        routeId={routeId}
-        routeName={routeName}
-        onSuccess={fetchData}
-        showToast={showToast}
-      />
-
-      {/* Custom Confirmation Popup Modal */}
+      {/* Custom Confirmation Popup Modal for Deletes */}
       <DeleteConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => {

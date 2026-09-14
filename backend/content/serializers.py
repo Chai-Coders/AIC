@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GalleryItem, Startup, NewsUpdate, TeamMember
+from .models import GalleryItem, Startup, NewsUpdate, TeamMember, BackgroundVideo
 
 class GallerySerializer(serializers.ModelSerializer):
     subtext = serializers.CharField(required=False, allow_blank=True, default='')
@@ -31,4 +31,28 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeamMember
-        fields = ['id', 'name', 'role', 'category', 'category_display', 'photo', 'bio']
+        fields = ['id', 'name', 'role', 'category', 'category_display', 'photo', 'bio', 'created_at']
+
+
+class BackgroundVideoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BackgroundVideo
+        fields = [
+            'id',
+            'video_name',
+            'video_url',
+            'thumbnail_url',
+            'mux_asset_id',
+            'mux_playback_id',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'video_url',
+            'thumbnail_url',
+            'mux_asset_id',
+            'mux_playback_id',
+            'created_at',
+            'updated_at',
+        ]
