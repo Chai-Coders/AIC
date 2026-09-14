@@ -136,7 +136,7 @@ const HomeSlider = () => {
                       <a className="ready-btn right-btn page-scroll" href="https://forms.gle/2c4NgmXp4B16zGet6" target="_blank" rel="noopener noreferrer">
                         Apply for Incubation
                       </a>
-                      <Link className="ready-btn page-scroll" to="/summary.html">
+                      <Link className="ready-btn page-scroll" to="/summary">
                         Learn More
                       </Link>
                     </div>

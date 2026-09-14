@@ -41,7 +41,7 @@ const HomeAbout = () => {
                   </p>
                 </div>
 
-                <Link to="/summary.html" className="about-action-btn about-btn-blue">
+                <Link to="/summary" className="about-action-btn about-btn-blue">
                   Read more <i className="fa fa-arrow-right"></i>
                 </Link>
 
@@ -75,7 +75,7 @@ const HomeAbout = () => {
                   </p>
                 </div>
 
-                <Link to="/aicteam.html" className="about-action-btn about-btn-yellow">
+                <Link to="/aicteam" className="about-action-btn about-btn-yellow">
                   Read more <i className="fa fa-arrow-right"></i>
                 </Link>
 
@@ -112,7 +112,7 @@ const HomeAbout = () => {
                   </p>
                 </div>
 
-                <Link to="/summary.html" className="about-action-btn about-btn-blue">
+                <Link to="/summary" className="about-action-btn about-btn-blue">
                   Read more <i className="fa fa-arrow-right"></i>
                 </Link>
 

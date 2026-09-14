@@ -17,45 +17,98 @@ const StartupGrid = () => {
 
   return (
     <div className="container-fluid" style={{ padding: '40px 15px' }}>
-      {/* Static programme information */}
-      <div className="row" style={{ maxWidth: '1100px', margin: '0 auto 40px' }}>
-        <div className="col-md-12">
-          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '0' }}>KEY FEATURES</h3>
-          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
-            <li>Dedicated acceleration support for growth-stage startups</li>
-            <li>Mentor network and expert interventions for scale-up challenges</li>
-            <li>Access to partner ecosystem, industry connects, and market channels</li>
-            <li>Strategic support in product, operations, and business expansion</li>
-          </ul>
-
-          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>
-            PROGRAM FLOW &amp; Engagements
-          </h3>
-          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
-            <li>Startup selection based on growth potential and readiness</li>
-            <li>Goal setting with milestone-driven acceleration roadmap</li>
-            <li>Periodic reviews with domain experts and business mentors</li>
-            <li>Investor readiness, market access, and strategic partnership support</li>
-          </ul>
-
-          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>EXPECTED OUTCOME</h3>
-          <ul style={{ color: '#333', fontSize: '16px', lineHeight: '1.8', paddingLeft: '20px' }}>
-            <li>Faster go-to-market and improved business traction</li>
-            <li>Improved fundraising readiness and growth strategy execution</li>
-            <li>Scalable operating model with stronger market presence</li>
-          </ul>
-
-          <h3 style={{ fontWeight: '700', color: '#222', marginTop: '26px' }}>APPLICATION LINK</h3>
-          <p style={{ marginBottom: '0' }}>
-            <a
-              href="https://forms.gle/2c4NgmXp4B16zGet6"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="main-btn"
-            >
-              Apply for Acceleration Program
-            </a>
+      {/* Static programme information styled like /sisfs */}
+      <div className="container" style={{ maxWidth: '1140px', margin: '0 auto 40px' }}>
+        {/* Intro Highlight Banner */}
+        <div style={{ background: '#F8FAFC', padding: '24px 28px', borderRadius: '8px', borderLeft: '4px solid #0077B6', marginBottom: '24px' }}>
+          <p style={{ fontSize: '16px', lineHeight: '1.8', color: '#334155', margin: 0 }}>
+            The <strong>AIC-IIITKottayam Acceleration Program</strong> empowers growth-stage and early-stage startups with dedicated mentoring, technical infrastructure, funding avenues, and strategic partner networks to accelerate their commercialization journey.
           </p>
+        </div>
+
+        {/* Grid of Key Features & Program Flow */}
+        <div className="row" style={{ marginBottom: '24px' }}>
+          <div className="col-md-6" style={{ marginBottom: '20px' }}>
+            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '8px', border: '1px solid #E2E8F0', height: '100%', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)' }}>
+              <h4 style={{ color: '#0F172A', fontWeight: '700', fontSize: '18px', marginBottom: '14px', display: 'flex', alignItems: 'center' }}>
+                <i className="fa fa-check-circle" style={{ color: '#0077B6', marginRight: '10px' }}></i>
+                KEY FEATURES
+              </h4>
+              <ul style={{ color: '#334155', paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', margin: 0 }}>
+                <li>Dedicated acceleration support for growth-stage startups</li>
+                <li>Mentor network and expert interventions for scale-up challenges</li>
+                <li>Access to partner ecosystem, industry connects, and market channels</li>
+                <li>Strategic support in product, operations, and business expansion</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="col-md-6" style={{ marginBottom: '20px' }}>
+            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '8px', border: '1px solid #E2E8F0', height: '100%', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)' }}>
+              <h4 style={{ color: '#0F172A', fontWeight: '700', fontSize: '18px', marginBottom: '14px', display: 'flex', alignItems: 'center' }}>
+                <i className="fa fa-refresh" style={{ color: '#0077B6', marginRight: '10px' }}></i>
+                PROGRAM FLOW &amp; ENGAGEMENTS
+              </h4>
+              <ul style={{ color: '#334155', paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', margin: 0 }}>
+                <li>Startup selection based on growth potential and market readiness</li>
+                <li>Goal setting with milestone-driven acceleration roadmap</li>
+                <li>Periodic reviews with domain experts and seasoned business mentors</li>
+                <li>Investor readiness, market access, and strategic partnership support</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Grid of Expected Outcome & Support Ecosystem */}
+        <div className="row" style={{ marginBottom: '24px' }}>
+          <div className="col-md-6" style={{ marginBottom: '20px' }}>
+            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '8px', border: '1px solid #E2E8F0', height: '100%', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)' }}>
+              <h4 style={{ color: '#0F172A', fontWeight: '700', fontSize: '18px', marginBottom: '14px', display: 'flex', alignItems: 'center' }}>
+                <i className="fa fa-trophy" style={{ color: '#EAB308', marginRight: '10px' }}></i>
+                EXPECTED OUTCOME
+              </h4>
+              <ul style={{ color: '#334155', paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', margin: 0 }}>
+                <li>Faster go-to-market and improved business traction</li>
+                <li>Improved fundraising readiness and growth strategy execution</li>
+                <li>Scalable operating model with stronger market presence</li>
+                <li>Direct linkage with institutional investors and industry collaborators</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="col-md-6" style={{ marginBottom: '20px' }}>
+            <div style={{ background: '#FFFFFF', padding: '24px', borderRadius: '8px', border: '1px solid #E2E8F0', height: '100%', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.03)' }}>
+              <h4 style={{ color: '#0F172A', fontWeight: '700', fontSize: '18px', marginBottom: '14px', display: 'flex', alignItems: 'center' }}>
+                <i className="fa fa-rocket" style={{ color: '#0077B6', marginRight: '10px' }}></i>
+                ACCELERATION HIGHLIGHTS
+              </h4>
+              <ul style={{ color: '#334155', paddingLeft: '20px', fontSize: '15px', lineHeight: '1.8', margin: 0 }}>
+                <li>1-on-1 strategic growth mentorship sessions</li>
+                <li>Dedicated cloud credits, prototyping labs, and testing setup</li>
+                <li>Corporate tie-ups and pilot opportunities with partner network</li>
+                <li>Access to AIM, DPIIT, SISFS and venture funding schemes</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Application Link CTA Banner */}
+        <div style={{ background: '#F8FAFC', padding: '24px', borderRadius: '8px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
+          <h4 style={{ fontWeight: '700', color: '#0F172A', marginBottom: '12px' }}>
+            Ready to Accelerate Your Startup?
+          </h4>
+          <p style={{ fontSize: '15px', color: '#475569', marginBottom: '16px' }}>
+            Join the AIC-IIITKottayam Acceleration Program and fast-track your scale-up journey.
+          </p>
+          <a
+            href="https://forms.gle/2c4NgmXp4B16zGet6"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="main-btn"
+            style={{ display: 'inline-block', padding: '10px 28px', fontSize: '15px' }}
+          >
+            Apply for Acceleration Program <i className="fa fa-external-link" style={{ marginLeft: '8px' }}></i>
+          </a>
         </div>
       </div>
 

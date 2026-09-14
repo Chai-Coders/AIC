@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import HomePage from './pages/HomePage';
 import BoardMemberPage from './pages/BoardMemberPage';
@@ -43,39 +43,37 @@ function App() {
     <>
       <ScrollToTop />
       <Routes>
+        {/* Core Clean Routes */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/index.html" element={<HomePage />} />
-        
-        <Route path="/boardmember.html" element={<BoardMemberPage />} />
         <Route path="/boardmember" element={<BoardMemberPage />} />
-        
-        <Route path="/aicteam.html" element={<AicTeamPage />} />
         <Route path="/aicteam" element={<AicTeamPage />} />
-        
-        <Route path="/mentor.html" element={<MentorPage />} />
         <Route path="/mentor" element={<MentorPage />} />
-        
-        <Route path="/startup.html" element={<StartupPage />} />
         <Route path="/startup" element={<StartupPage />} />
-        
-        <Route path="/summary.html" element={<SummaryPage />} />
         <Route path="/summary" element={<SummaryPage />} />
-        
-        <Route path="/news.html" element={<NewsPage />} />
         <Route path="/news" element={<NewsPage />} />
-        
-        <Route path="/SIA.html" element={<SiaPage />} />
+        <Route path="/sia" element={<SiaPage />} />
         <Route path="/SIA" element={<SiaPage />} />
-        
-        <Route path="/SISFS.html" element={<SisfsPage />} />
+        <Route path="/sisfs" element={<SisfsPage />} />
         <Route path="/SISFS" element={<SisfsPage />} />
-        
-        <Route path="/careers.html" element={<CareersPage />} />
         <Route path="/careers" element={<CareersPage />} />
-        
-        <Route path="/gallery.html" element={<GalleryPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
-        
+
+        {/* Backward compatibility redirects for legacy .html URLs */}
+        <Route path="/index.html" element={<Navigate to="/" replace />} />
+        <Route path="/index" element={<Navigate to="/" replace />} />
+        <Route path="/boardmember.html" element={<Navigate to="/boardmember" replace />} />
+        <Route path="/aicteam.html" element={<Navigate to="/aicteam" replace />} />
+        <Route path="/mentor.html" element={<Navigate to="/mentor" replace />} />
+        <Route path="/startup.html" element={<Navigate to="/startup" replace />} />
+        <Route path="/summary.html" element={<Navigate to="/summary" replace />} />
+        <Route path="/news.html" element={<Navigate to="/news" replace />} />
+        <Route path="/SIA.html" element={<Navigate to="/sia" replace />} />
+        <Route path="/sia.html" element={<Navigate to="/sia" replace />} />
+        <Route path="/SISFS.html" element={<Navigate to="/sisfs" replace />} />
+        <Route path="/sisfs.html" element={<Navigate to="/sisfs" replace />} />
+        <Route path="/careers.html" element={<Navigate to="/careers" replace />} />
+        <Route path="/gallery.html" element={<Navigate to="/gallery" replace />} />
+
         {/* Fallback route */}
         <Route path="*" element={<HomePage />} />
       </Routes>

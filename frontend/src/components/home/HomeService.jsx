@@ -144,8 +144,8 @@ const HomeService = () => {
           <div className="bento-grid">
             
             {/* Row 1 - Card 1: Training & Mentorship (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(234, 179, 8, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -160,16 +160,16 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> 1-on-1 Mentors</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> Tech Labs</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> 1-on-1 Mentors</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Tech Labs</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 1 - Card 2: Patent & IP Support (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(2, 132, 199, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -184,16 +184,16 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> IP Guidance</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> Prior-Art Search</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> IP Guidance</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Prior-Art Search</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 1 - Card 3: Idea Generation Hub (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(234, 179, 8, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -208,16 +208,16 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> Hackathons</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> Prototyping</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Hackathons</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Prototyping</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 2 - Card 4: Marketing & GTM (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(2, 132, 199, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -232,16 +232,16 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> GTM Strategy</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> Product Launch</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> GTM Strategy</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Product Launch</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 2 - Card 5: Institutional Prestige & Credibility (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(234, 179, 8, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -256,16 +256,16 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> IIITK Heritage</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#EAB308', fontSize: '6px' }}></i> NITI Aayog Recognized</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> IIITK Heritage</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> NITI Aayog Recognized</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 2 - Card 6: Global Visibility & Investor Network (4 Cols) */}
-            <div style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(2, 132, 199, 0.9)">
+            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
+              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
                 <div className="bento-card-content">
                   <div>
                     <div className="bento-top-bar">
@@ -280,25 +280,25 @@ const HomeService = () => {
                     </p>
                   </div>
                   <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> Investor Pitch Days</span>
-                    <span className="bento-chip"><i className="fa fa-circle" style={{ color: '#0284C7', fontSize: '6px' }}></i> Global Demo Days</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Investor Pitch Days</span>
+                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Global Demo Days</span>
                   </div>
                 </div>
               </SpotlightCard>
             </div>
 
             {/* Row 3 (Bottom Row) - Achievements Section (12 Cols Full Width) */}
-            <div style={{ gridColumn: 'span 12' }}>
-              <SpotlightCard spotlightColor="rgba(2, 132, 199, 0.9)">
+            <div className="bento-col bento-col-achievements" style={{ gridColumn: 'span 12' }}>
+              <SpotlightCard className="theme-achievements" spotlightColor="rgba(0, 134, 230, 0.4)">
                 <div className="bento-stats-content">
                   <div className="bento-stats-hub-header">
                     <div className="bento-stats-hub-title-group">
-                      <div className="bento-icon-box" style={{ background: 'rgba(2, 132, 199, 0.1)', color: '#0284C7', border: '1px solid rgba(2, 132, 199, 0.2)' }}>
+                      <div className="bento-icon-box">
                         <i className="fa fa-line-chart"></i>
                       </div>
                       <h3 className="bento-stats-hub-title">Key Ecosystem Achievements</h3>
                     </div>
-                    <span className="bento-tag" style={{ background: 'rgba(2, 132, 199, 0.08)', color: '#0284C7' }}>Impact</span>
+                    <span className="bento-tag">Impact</span>
                   </div>
 
                   <div className="bento-stats-matrix">

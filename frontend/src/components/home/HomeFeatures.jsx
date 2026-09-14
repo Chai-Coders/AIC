@@ -17,21 +17,21 @@ const milestones = [
     icon: 'fa fa-map-marker',
     title: 'Reaching the Centre Directly',
     desc: 'The strength of the partners will be reaped in to the centre. For instance, IISER-TVM is a sort of knowledge park. We will include their strengths by directly connecting experts to our customers.',
-    theme: 'green'
+    theme: 'blue'
   },
   {
     num: '03',
     icon: 'fa fa-sitemap',
     title: 'Expanding the Network',
     desc: 'We expand the networking (contacts) with the support of the proposed partners for attracting a few more customers in the long run.',
-    theme: 'purple'
+    theme: 'yellow'
   },
   {
     num: '04',
     icon: 'fa fa-lightbulb-o',
     title: 'Encouraging Innovation & R&D',
     desc: 'We inspire our partners and customers to submit a few innovative R&D projects so that the expertise level of AIC-IIITKottayam will be increased.',
-    theme: 'rose'
+    theme: 'yellow'
   },
   {
     num: '05',
@@ -39,7 +39,7 @@ const milestones = [
     title: 'Continuous Verification',
     desc: 'We periodically verify and satisfy the existing customers so that they will remain as an indirect advertisement medium of the centre.',
     apply: true,
-    theme: 'teal'
+    theme: 'blue'
   }
 ];
 
@@ -105,10 +105,6 @@ const HomeFeatures = () => {
             />
           </svg>
 
-          <div className="sf-end sf-start">
-            <i className="fa fa-flag" aria-hidden="true"></i> START
-          </div>
-
           {milestones.map((milestone, idx) => {
             const side = idx % 2 === 0 ? 'sf-top' : 'sf-bottom';
             return (
@@ -148,10 +144,6 @@ const HomeFeatures = () => {
               </div>
             );
           })}
-
-          <div className="sf-end sf-finish">
-            FINISH <i className="fa fa-flag-checkered" aria-hidden="true"></i>
-          </div>
         </div>
 
         {/* Photo Cards */}

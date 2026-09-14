@@ -93,16 +93,19 @@
 }
 
 /* Milestone card */
+/* Milestone card */
 .sf-card {
   position: relative;
   height: var(--sf-card-h);
   box-sizing: border-box;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
   border-radius: 18px;
   padding: 30px 28px 26px;
-  box-shadow: 0 6px 18px -6px rgba(15, 23, 42, 0.08);
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 6px 20px -6px rgba(15, 23, 42, 0.08);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.35s ease;
+  overflow: hidden;
 }
 
 .sf-top:hover .sf-card {
@@ -111,11 +114,6 @@
 
 .sf-bottom:hover .sf-card {
   transform: translateY(4px);
-}
-
-.sf-milestone:hover .sf-card {
-  box-shadow: 0 16px 32px -10px rgba(15, 23, 42, 0.14);
-  border-color: rgba(2, 132, 199, 0.45);
 }
 
 .sf-card-head {
@@ -135,54 +133,97 @@
   font-size: 1.2rem;
   font-weight: 800;
   flex-shrink: 0;
+  transition: transform 0.35s ease, background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 .sf-icon {
   width: 58px;
   height: 58px;
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24px;
   flex-shrink: 0;
+  transition: transform 0.35s ease, background 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
-/* Milestone themes */
+/* ==========================================================================
+   Milestone Themes: Strong Bright Blue & Strong Bright Yellow
+   ========================================================================== */
+
+/* Blue Theme */
+.sf-card-blue {
+  background: linear-gradient(150deg, #EBF6FF 0%, rgba(0, 134, 230, 0.75) 100%);
+  border: 1.5px solid rgba(0, 134, 230, 0.45);
+}
+
 .sf-card-blue .sf-badge,
 .sf-card-blue .sf-icon {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: rgb(0, 134, 230);
+  color: #FFFFFF;
+  border: 1.5px solid rgba(0, 100, 200, 0.35);
+  box-shadow: 0 4px 14px rgba(0, 134, 230, 0.4);
 }
 
-.sf-card-green .sf-badge,
-.sf-card-green .sf-icon {
-  background: #dcfce7;
-  color: #15803d;
+/* Yellow Theme */
+.sf-card-yellow {
+  background: linear-gradient(150deg, #FEFBEA 0%, rgba(245, 214, 56, 0.75) 100%);
+  border: 1.5px solid rgba(245, 214, 56, 0.6);
 }
 
-.sf-card-purple .sf-badge,
-.sf-card-purple .sf-icon {
-  background: #ede9fe;
-  color: #6d28d9;
+.sf-card-yellow .sf-badge,
+.sf-card-yellow .sf-icon {
+  background: rgb(245, 214, 56);
+  color: #4A3500;
+  border: 1.5px solid rgba(180, 140, 10, 0.4);
+  box-shadow: 0 4px 14px rgba(245, 214, 56, 0.45);
 }
 
-.sf-card-rose .sf-badge,
-.sf-card-rose .sf-icon {
-  background: #fce7f3;
-  color: #be185d;
+/* ==========================================================================
+   Hover Inversion: Blue flips to Yellow, Yellow flips to Blue
+   ========================================================================== */
+
+.sf-milestone:hover .sf-card-blue,
+.sf-card-blue:hover {
+  background: linear-gradient(150deg, #FEFBEA 0%, rgba(245, 214, 56, 0.75) 100%) !important;
+  border-color: rgba(245, 214, 56, 0.7) !important;
+  box-shadow: 0 16px 36px -8px rgba(245, 214, 56, 0.45) !important;
 }
 
-.sf-card-teal .sf-badge,
-.sf-card-teal .sf-icon {
-  background: #ccfbf1;
-  color: #0f766e;
+.sf-milestone:hover .sf-card-blue .sf-badge,
+.sf-milestone:hover .sf-card-blue .sf-icon,
+.sf-card-blue:hover .sf-badge,
+.sf-card-blue:hover .sf-icon {
+  background: rgb(245, 214, 56) !important;
+  color: #4A3500 !important;
+  border-color: rgba(180, 140, 10, 0.5) !important;
+  box-shadow: 0 4px 14px rgba(245, 214, 56, 0.45) !important;
+  transform: scale(1.06);
+}
+
+.sf-milestone:hover .sf-card-yellow,
+.sf-card-yellow:hover {
+  background: linear-gradient(150deg, #EBF6FF 0%, rgba(0, 134, 230, 0.75) 100%) !important;
+  border-color: rgba(0, 134, 230, 0.65) !important;
+  box-shadow: 0 16px 36px -8px rgba(0, 134, 230, 0.4) !important;
+}
+
+.sf-milestone:hover .sf-card-yellow .sf-badge,
+.sf-milestone:hover .sf-card-yellow .sf-icon,
+.sf-card-yellow:hover .sf-badge,
+.sf-card-yellow:hover .sf-icon {
+  background: rgb(0, 134, 230) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(0, 100, 200, 0.4) !important;
+  box-shadow: 0 4px 14px rgba(0, 134, 230, 0.45) !important;
+  transform: scale(1.06);
 }
 
 .sf-title {
   font-size: 1.65rem;
   font-weight: 750;
-  color: #0f172a;
+  color: #0B192C;
   line-height: 1.3;
   letter-spacing: -0.2px;
   margin: 0 0 8px;
@@ -191,7 +232,7 @@
 .sf-desc {
   font-size: 1.3rem;
   line-height: 1.7;
-  color: #475569;
+  color: #1E293B;
   margin: 0;
   display: -webkit-box;
   line-clamp: 5;
@@ -201,16 +242,16 @@
 }
 
 .sf-apply {
-  color: #0284c7;
+  color: rgb(0, 134, 230);
   font-weight: 700;
   text-decoration: none;
-  border-bottom: 1px solid rgba(2, 132, 199, 0.35);
+  border-bottom: 1.5px solid rgba(0, 134, 230, 0.45);
   transition: color 0.2s ease, border-color 0.2s ease;
 }
 
 .sf-apply:hover {
-  color: #0369a1;
-  border-color: #0369a1;
+  color: #005FA8;
+  border-color: #005FA8;
 }
 
 /* Connector stem + node dot sitting on the wavy path */

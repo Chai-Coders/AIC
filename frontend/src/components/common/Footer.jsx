@@ -23,17 +23,17 @@ const Footer = () => {
             <div className="footer-link-columns">
               <ul>
                 <li><Link to="/">Home</Link></li>
-                <li><Link to="/summary.html">AIC IIITK at a Glance</Link></li>
-                <li><Link to="/aicteam.html">People &amp; Culture</Link></li>
-                <li><Link to="/SIA.html">Programs</Link></li>
-                <li><Link to="/startup.html">Portfolio</Link></li>
+                <li><Link to="/summary">AIC IIITK at a Glance</Link></li>
+                <li><Link to="/aicteam">People &amp; Culture</Link></li>
+                <li><Link to="/sia">Programs</Link></li>
+                <li><Link to="/startup">Portfolio</Link></li>
               </ul>
               <ul>
-                <li><Link to="/news.html">News &amp; Media</Link></li>
-                <li><Link to="/SIA.html">Insights</Link></li>
-                <li><Link to="/mentor.html">Mentors</Link></li>
-                <li><Link to="/careers.html">Careers</Link></li>
-                <li><Link to="/gallery.html">Gallery</Link></li>
+                <li><Link to="/news">News &amp; Media</Link></li>
+                <li><Link to="/sia">Insights</Link></li>
+                <li><Link to="/mentor">Mentors</Link></li>
+                <li><Link to="/careers">Careers</Link></li>
+                <li><Link to="/gallery">Gallery</Link></li>
               </ul>
             </div>
           </div>
