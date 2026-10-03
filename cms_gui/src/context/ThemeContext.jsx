@@ -9,7 +9,7 @@ function getInitialTheme() {
   } catch {
     // Storage unavailable (private mode); fall back to the default theme
   }
-  return 'dark'; // Dark is the studio's default aesthetic; users can toggle
+  return 'light'; // Light suits the brand logo; users can switch to dark
 }
 
 export function ThemeProvider({ children }) {

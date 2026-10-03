@@ -1,4 +1,11 @@
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
+
+const STYLES = {
+  success: { Icon: CheckCircle2, color: 'text-success' },
+  error: { Icon: AlertCircle, color: 'text-destructive' },
+  warning: { Icon: AlertTriangle, color: 'text-warning' },
+  info: { Icon: Info, color: 'text-primary' },
+};
 
 export default function Toast({ toasts, removeToast }) {
   if (!toasts || toasts.length === 0) return null;
@@ -7,49 +14,24 @@ export default function Toast({ toasts, removeToast }) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-4 right-4 left-4 sm:left-auto sm:bottom-5 sm:right-5 z-50 flex flex-col gap-2 sm:max-w-sm sm:w-full pointer-events-none"
+      className="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col gap-2 sm:left-auto sm:right-6 sm:bottom-6 sm:w-96"
     >
       {toasts.map((toast) => {
-        let bg = 'bg-card border-border text-foreground';
-        let Icon = Info;
-
-        if (toast.type === 'success') {
-          bg = 'bg-card border-primary/40 text-foreground';
-          Icon = CheckCircle2;
-        } else if (toast.type === 'error') {
-          bg = 'bg-card border-destructive/50 text-foreground';
-          Icon = AlertCircle;
-        } else if (toast.type === 'warning') {
-          bg = 'bg-card border-amber-500/50 text-foreground';
-          Icon = AlertCircle;
-        }
-
+        const { Icon, color } = STYLES[toast.type] || STYLES.info;
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto rounded-xl border p-3.5 shadow-xl backdrop-blur-lg flex items-start gap-3 transition-all duration-300 animate-in slide-in-from-bottom-2 fade-in ${bg}`}
+            className="pointer-events-auto flex items-start gap-3 rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200"
           >
-            <Icon
-              className={`w-4 h-4 shrink-0 mt-0.5 ${
-                toast.type === 'success'
-                  ? 'text-primary'
-                  : toast.type === 'error'
-                  ? 'text-destructive'
-                  : toast.type === 'warning'
-                  ? 'text-amber-500'
-                  : 'text-foreground'
-              }`}
-            />
-            <div className="text-xs flex-1 space-y-0.5">
-              <p className="font-medium leading-tight break-words">{toast.message}</p>
-            </div>
+            <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${color}`} />
+            <p className="flex-1 text-sm leading-snug break-words">{toast.message}</p>
             <button
               type="button"
               onClick={() => removeToast(toast.id)}
-              aria-label="Dismiss notification"
-              className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer p-0.5 rounded"
+              aria-label="Dismiss"
+              className="icon-btn -m-1 p-1"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         );

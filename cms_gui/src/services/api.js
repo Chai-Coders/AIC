@@ -79,7 +79,7 @@ async function request(endpoint, options = {}) {
       headers,
     });
   } catch (err) {
-    throw new Error('Unable to connect to CMS backend server. Please make sure the backend is running.', { cause: err });
+    throw new Error("Couldn't reach the server. Check your internet connection and try again.", { cause: err });
   }
 
   if (response.status === 401 && !skipAuthRefresh) {
@@ -109,12 +109,16 @@ async function request(endpoint, options = {}) {
         errData.non_field_errors?.[0] ||
         errData.message ||
         Object.entries(errData)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join(' | ');
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(' ');
     } catch {
       // Non-JSON error body (e.g. proxy/HTML error page)
     }
-    const error = new Error(errorDetail || `Error (${response.status}): ${response.statusText || 'Request failed'}`);
+    const fallback =
+      response.status >= 500
+        ? 'Something went wrong on the server. Please try again in a moment.'
+        : `The request failed (error ${response.status}). Please try again.`;
+    const error = new Error(errorDetail || fallback);
     error.status = response.status;
     throw error;
   }
@@ -141,6 +145,12 @@ async function listAll(endpoint, params = {}) {
     if (!res.next) break;
   }
   return items;
+}
+
+// Total number of records without fetching every page.
+async function countAll(endpoint) {
+  const res = await request(`${endpoint}?page=1`);
+  return Array.isArray(res) ? res.length : res.count ?? (res.results || []).length;
 }
 
 export const api = {
@@ -192,6 +202,7 @@ export const api = {
       name: 'Gallery',
       endpoint: '/api/gallery/',
       list: async () => listAll('/gallery/'),
+      count: async () => countAll('/gallery/'),
       create: async (formData) => request('/gallery/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/gallery/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/gallery/${id}/`, { method: 'DELETE' }),
@@ -200,6 +211,7 @@ export const api = {
       name: 'Startups',
       endpoint: '/api/startups/',
       list: async () => listAll('/startups/'),
+      count: async () => countAll('/startups/'),
       create: async (formData) => request('/startups/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/startups/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/startups/${id}/`, { method: 'DELETE' }),
@@ -208,6 +220,7 @@ export const api = {
       name: 'News Updates',
       endpoint: '/api/news/',
       list: async () => listAll('/news/'),
+      count: async () => countAll('/news/'),
       create: async (formData) => request('/news/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/news/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/news/${id}/`, { method: 'DELETE' }),
@@ -216,6 +229,7 @@ export const api = {
       name: 'Team Members',
       endpoint: '/api/team/',
       list: async (category) => listAll('/team/', category ? { category } : {}),
+      count: async () => countAll('/team/'),
       create: async (formData) => request('/team/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/team/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),
