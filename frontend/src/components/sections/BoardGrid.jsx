@@ -2,9 +2,10 @@ import React from 'react';
 import MemberCarousel from './MemberCarousel';
 import useApi from '../../hooks/useApi';
 import { fetchTeam } from '../../api/content';
+import { cdnImage } from '../../lib/image';
 
 const BoardGrid = () => {
-  const { data: members, loading, error } = useApi(() => fetchTeam('governor'));
+  const { data: members, loading, error } = useApi(fetchTeam('governor'));
 
   if (loading) {
     return (
@@ -37,7 +38,7 @@ const BoardGrid = () => {
   // Map API fields → shape expected by MemberCarousel/MemberCard
   const mapped = members.map((m) => ({
     ...m,
-    img: m.photo || null,
+    img: m.photo ? cdnImage(m.photo, 600) : null,
   }));
 
   return (

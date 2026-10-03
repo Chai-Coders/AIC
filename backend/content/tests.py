@@ -1,8 +1,9 @@
 import io
 import os
+import tempfile
 from unittest import mock
 from PIL import Image
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.contrib import admin
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -421,3 +422,28 @@ class AdminConfigTests(TestCase):
         self.assertTrue(admin.site.is_registered(TeamMember))
         self.assertTrue(admin.site.is_registered(BackgroundVideo))
 
+
+
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class PaginationPageSizeTests(APITestCase):
+    def setUp(self):
+        for i in range(25):
+            NewsUpdate.objects.create(
+                title=f'News {i}',
+                content='Body',
+                thumbnail=SimpleUploadedFile(f'n{i}.png', b'x', content_type='image/png'),
+            )
+
+    def test_default_page_size_is_20(self):
+        res = self.client.get('/api/news/')
+        self.assertEqual(len(res.data['results']), 20)
+        self.assertIsNotNone(res.data['next'])
+
+    def test_page_size_param_returns_all_items(self):
+        res = self.client.get('/api/news/?page_size=100')
+        self.assertEqual(len(res.data['results']), 25)
+        self.assertIsNone(res.data['next'])
+
+    def test_page_size_param_smaller_pages(self):
+        res = self.client.get('/api/news/?page_size=5')
+        self.assertEqual(len(res.data['results']), 5)
