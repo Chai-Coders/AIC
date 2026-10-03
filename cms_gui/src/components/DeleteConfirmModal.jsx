@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 
 export default function DeleteConfirmModal({
@@ -11,6 +11,18 @@ export default function DeleteConfirmModal({
   itemDetails = null,
   isDeleting = false,
 }) {
+  const cancelButtonRef = useRef(null);
+
+  // Focus the safe action when opened, and restore focus to the trigger on close.
+  useEffect(() => {
+    if (!isOpen) return;
+    const previouslyFocused = document.activeElement;
+    cancelButtonRef.current?.focus();
+    return () => {
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, [isOpen]);
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -41,8 +53,10 @@ export default function DeleteConfirmModal({
       >
         {/* Close Icon Button */}
         <button
+          type="button"
           onClick={onClose}
           disabled={isDeleting}
+          aria-label="Close"
           className="absolute top-4 right-4 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-40 cursor-pointer"
           title="Close modal"
         >
@@ -78,6 +92,9 @@ export default function DeleteConfirmModal({
             <div className="pt-2 border-t border-border/50 flex items-center gap-3">
               {itemDetails.image && (
                 <img
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
                   src={itemDetails.image}
                   alt={itemDetails.title}
                   className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
@@ -100,6 +117,7 @@ export default function DeleteConfirmModal({
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 pt-2">
           <button
+            ref={cancelButtonRef}
             type="button"
             onClick={onClose}
             disabled={isDeleting}

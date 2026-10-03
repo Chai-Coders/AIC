@@ -1,21 +1,37 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '../services/api';
 import {
   X,
   Upload,
-  Image as ImageIcon,
   Loader2,
   PlusCircle,
   AlertCircle,
   Globe,
   Save,
   RotateCcw,
-  Sparkles,
   Edit3,
   CheckSquare,
   Lock,
+  Undo2,
 } from 'lucide-react';
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function resolveImageUrl(item) {
+  const imgPath = item?.image || item?.logo_or_image || item?.thumbnail || item?.photo;
+  if (!imgPath || typeof imgPath !== 'string') return null;
+  if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('/')) {
+    return imgPath;
+  }
+  return `/${imgPath}`;
+}
+
+function emptyForm(routeId) {
+  return routeId === 'team' ? { category: 'team' } : {};
+}
+
+// The parent remounts this component (via `key`) whenever the edited record,
+// route or multi-select lock changes, so state is initialised from props here.
 export default function EditBar({
   routeId,
   routeName,
@@ -25,52 +41,18 @@ export default function EditBar({
   showToast,
   disabled = false,
 }) {
-  const [formData, setFormData] = useState({});
+  const isEditing = !disabled && !!initialData;
+  const existingImageUrl = isEditing ? resolveImageUrl(initialData) : null;
+
+  const [formData, setFormData] = useState(() => (isEditing ? { ...initialData } : emptyForm(routeId)));
   const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(existingImageUrl);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const isEditing = !disabled && !!initialData;
   const singularName = routeName ? routeName.replace(/s$/, '') : 'Item';
-
-  // Initialize or reset form state whenever initialData or routeId changes
-  useEffect(() => {
-    if (initialData && !disabled) {
-      setFormData({ ...initialData });
-      // Extract existing image URL safely
-      const imgPath =
-        initialData.image ||
-        initialData.logo_or_image ||
-        initialData.thumbnail ||
-        initialData.photo;
-
-      if (imgPath) {
-        if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
-          setPreviewUrl(imgPath);
-        } else if (imgPath.startsWith('/')) {
-          setPreviewUrl(imgPath);
-        } else {
-          setPreviewUrl(`/${imgPath}`);
-        }
-      } else {
-        setPreviewUrl(null);
-      }
-    } else {
-      setFormData(
-        routeId === 'team'
-          ? { category: 'team' }
-          : {}
-      );
-      setPreviewUrl(null);
-    }
-    setSelectedFile(null);
-    setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [initialData, routeId, disabled]);
 
   // Clean up blob URL
   useEffect(() => {
@@ -81,26 +63,48 @@ export default function EditBar({
     };
   }, [previewUrl]);
 
-  const handleFileChange = (e) => {
-    if (disabled) return;
-    const file = e.target.files?.[0];
-    if (file) {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setError(null);
+  const acceptFile = (file) => {
+    if (disabled || !file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file (PNG, JPG, WEBP).');
+      return;
     }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(`Image is ${(file.size / (1024 * 1024)).toFixed(1)} MB; the limit is 10 MB.`);
+      return;
+    }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setError(null);
   };
 
+  const handleFileChange = (e) => {
+    acceptFile(e.target.files?.[0]);
+    // Allow re-selecting the same file after removing it
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!disabled) setDragActive(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    acceptFile(e.dataTransfer.files?.[0]);
+  };
+
+  // In edit mode the record must keep an image, so "remove" reverts to the saved one.
   const handleRemoveFile = () => {
     if (disabled) return;
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
     setSelectedFile(null);
-    setPreviewUrl(null);
+    setPreviewUrl(existingImageUrl);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -109,7 +113,7 @@ export default function EditBar({
     if (isEditing) {
       onReset?.();
     } else {
-      setFormData(routeId === 'team' ? { category: 'team' } : {});
+      setFormData(emptyForm(routeId));
       setSelectedFile(null);
       setPreviewUrl(null);
       setError(null);
@@ -176,18 +180,13 @@ export default function EditBar({
         else if (routeId === 'team') data.append('photo', selectedFile);
       }
 
+      const resource = api.endpoints[routeId];
       if (isEditing) {
-        if (routeId === 'gallery') await api.endpoints.gallery.update(initialData.id, data);
-        else if (routeId === 'startups') await api.endpoints.startups.update(initialData.id, data);
-        else if (routeId === 'news') await api.endpoints.news.update(initialData.id, data);
-        else if (routeId === 'team') await api.endpoints.team.update(initialData.id, data);
+        await resource.update(initialData.id, data);
         showToast?.(`${singularName} #${initialData.id} updated successfully!`, 'success');
       } else {
-        if (routeId === 'gallery') await api.endpoints.gallery.create(data);
-        else if (routeId === 'startups') await api.endpoints.startups.create(data);
-        else if (routeId === 'news') await api.endpoints.news.create(data);
-        else if (routeId === 'team') await api.endpoints.team.create(data);
-        showToast?.(`New ${singularName} item created successfully!`, 'success');
+        await resource.create(data);
+        showToast?.(`New ${singularName} created successfully!`, 'success');
       }
 
       onSuccess?.();
@@ -201,9 +200,9 @@ export default function EditBar({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-card overflow-hidden select-none transition-all ${disabled ? 'bg-muted/10' : ''}`}>
+    <div className={`flex flex-col h-full bg-card overflow-hidden transition-all ${disabled ? 'bg-muted/10' : ''}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border shrink-0 bg-card/90 backdrop-blur-md">
+      <div className="flex items-center justify-between p-4 border-b border-border shrink-0 bg-card/90 backdrop-blur-md select-none">
         <div className="flex items-center gap-3">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
@@ -294,10 +293,11 @@ export default function EditBar({
             {/* 1. GALLERY FIELDS */}
             {routeId === 'gallery' && (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="edit-subtext" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Caption / Subtext
                 </label>
                 <input
+                  id="edit-subtext"
                   type="text"
                   value={formData.subtext || ''}
                   onChange={(e) =>
@@ -313,10 +313,11 @@ export default function EditBar({
             {routeId === 'startups' && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-name" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Startup Name *
                   </label>
                   <input
+                    id="edit-name"
                     type="text"
                     required
                     value={formData.name || ''}
@@ -329,12 +330,13 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-website_url" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Website URL
                   </label>
                   <div className="relative">
                     <Globe className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
+                      id="edit-website_url"
                       type="url"
                       value={formData.website_url || ''}
                       onChange={(e) =>
@@ -347,10 +349,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-description" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Description *
                   </label>
                   <textarea
+                    id="edit-description"
                     required
                     rows={4}
                     value={formData.description || ''}
@@ -368,10 +371,11 @@ export default function EditBar({
             {routeId === 'news' && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-title" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Article Title *
                   </label>
                   <input
+                    id="edit-title"
                     type="text"
                     required
                     value={formData.title || ''}
@@ -384,10 +388,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-subtitle" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Subtitle / Tagline
                   </label>
                   <input
+                    id="edit-subtitle"
                     type="text"
                     value={formData.subtitle || ''}
                     onChange={(e) =>
@@ -399,10 +404,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-content" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Article Content *
                   </label>
                   <textarea
+                    id="edit-content"
                     required
                     rows={5}
                     value={formData.content || ''}
@@ -420,10 +426,11 @@ export default function EditBar({
             {routeId === 'team' && (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-name" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Full Name *
                   </label>
                   <input
+                    id="edit-name"
                     type="text"
                     required
                     value={formData.name || ''}
@@ -436,10 +443,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-role" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Role / Designation *
                   </label>
                   <input
+                    id="edit-role"
                     type="text"
                     required
                     value={formData.role || ''}
@@ -452,10 +460,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-category" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Category *
                   </label>
                   <select
+                    id="edit-category"
                     value={formData.category || 'team'}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, category: e.target.value }))
@@ -469,10 +478,11 @@ export default function EditBar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="edit-bio" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Short Bio
                   </label>
                   <textarea
+                    id="edit-bio"
                     rows={3}
                     value={formData.bio || ''}
                     onChange={(e) =>
@@ -517,29 +527,53 @@ export default function EditBar({
                       {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : 'Attached to record'}
                     </p>
                   </div>
-                  {!disabled && (
+                  {!disabled && isEditing && !selectedFile && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-accent text-[11px] font-medium text-foreground transition-colors cursor-pointer shrink-0"
+                    >
+                      Replace
+                    </button>
+                  )}
+                  {!disabled && (selectedFile || !isEditing) && (
                     <button
                       type="button"
                       onClick={handleRemoveFile}
                       className="p-1.5 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                      title="Remove image"
+                      title={isEditing ? 'Keep current image' : 'Remove image'}
+                      aria-label={isEditing ? 'Keep current image' : 'Remove image'}
                     >
-                      <X className="w-4 h-4" />
+                      {isEditing ? <Undo2 className="w-4 h-4" /> : <X className="w-4 h-4" />}
                     </button>
                   )}
                 </div>
               ) : (
                 <div
+                  role="button"
+                  tabIndex={disabled ? -1 : 0}
+                  aria-disabled={disabled}
                   onClick={() => !disabled && fileInputRef.current?.click()}
-                  className={`rounded-xl border-2 border-dashed border-border p-4 text-center transition-all flex flex-col items-center justify-center gap-1.5 group ${
+                  onKeyDown={(e) => {
+                    if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`rounded-xl border-2 border-dashed p-4 text-center transition-all flex flex-col items-center justify-center gap-1.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                     disabled
-                      ? 'opacity-40 cursor-not-allowed bg-muted/20'
-                      : 'hover:border-primary/50 bg-background/40 hover:bg-accent/40 cursor-pointer'
+                      ? 'border-border opacity-40 cursor-not-allowed bg-muted/20'
+                      : dragActive
+                      ? 'border-primary bg-primary/10 cursor-copy'
+                      : 'border-border hover:border-primary/50 bg-background/40 hover:bg-accent/40 cursor-pointer'
                   }`}
                 >
                   <Upload className={`w-5 h-5 text-muted-foreground ${disabled ? '' : 'group-hover:text-primary transition-colors'}`} />
                   <p className="text-xs font-medium text-foreground">
-                    {disabled ? 'Upload disabled in Multi-Select' : 'Click or drag image to upload'}
+                    {disabled ? 'Upload disabled in Multi-Select' : dragActive ? 'Drop image to upload' : 'Click or drag image to upload'}
                   </p>
                   <p className="text-[10px] text-muted-foreground font-mono">
                     PNG, JPG, WEBP up to 10MB

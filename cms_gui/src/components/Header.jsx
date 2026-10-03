@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
@@ -12,10 +12,20 @@ import {
 export default function Header({
   sidebarOpen,
   setSidebarOpen,
-  activeRouteName,
 }) {
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logout();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 w-full h-16 border-b border-border bg-card/90 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between transition-colors select-none">
@@ -26,6 +36,8 @@ export default function Header({
           type="button"
           onClick={() => setSidebarOpen((prev) => !prev)}
           title={sidebarOpen ? 'Collapse Navigation' : 'Expand Navigation'}
+          aria-label={sidebarOpen ? 'Collapse Navigation' : 'Expand Navigation'}
+          aria-expanded={sidebarOpen}
           className="p-2 rounded-lg hover:bg-accent text-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center shrink-0"
         >
           {sidebarOpen ? (
@@ -55,6 +67,7 @@ export default function Header({
           type="button"
           onClick={toggleTheme}
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           className="p-2 rounded-lg hover:bg-accent text-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center shrink-0"
         >
           {theme === 'dark' ? (
@@ -67,9 +80,11 @@ export default function Header({
         {/* Sleek Minimal Logout Symbol Button (No text, symbol only) */}
         <button
           type="button"
-          onClick={logout}
+          onClick={handleLogout}
+          disabled={signingOut}
           title="Sign Out"
-          className="p-2 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer flex items-center justify-center shrink-0"
+          aria-label="Sign Out"
+          className="p-2 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer flex items-center justify-center shrink-0 disabled:opacity-50 disabled:cursor-wait"
         >
           <LogOut className="w-5 h-5" />
         </button>

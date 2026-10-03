@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Image, Rocket, Newspaper, Users, Video } from 'lucide-react';
 

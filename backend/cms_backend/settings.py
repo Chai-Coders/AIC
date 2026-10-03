@@ -100,7 +100,7 @@ if DATABASE_URL:
             default=DATABASE_URL,
             conn_max_age=600,
             conn_health_checks=True,
-            ssl_require=True,
+            ssl_require=os.environ.get('DB_SSL_REQUIRE', 'True').lower() in ('true', '1', 'yes'),
         )
     }
 else:

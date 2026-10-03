@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import CardItem from './CardItem';
 import EditBar from './EditBar';
@@ -22,11 +22,15 @@ export default function ContentGrid({
   setMultiSelect,
   showToast,
 }) {
+  // routeId matches the keys of api.endpoints (gallery, startups, news, team)
+  const resource = api.endpoints[routeId];
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [teamCategory, setTeamCategory] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Fixed Side Edit/Add Card State:
   // - If editingItem is null: the side card is in "Add New Record" mode
@@ -39,77 +43,81 @@ export default function ContentGrid({
   const [pendingDelete, setPendingDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Multi-select sync:
+  // Multi-select sync (adjusted during render, not in an effect):
   // - If enabled: reset edit card to Add New mode
   // - If disabled: clear all selected items so nothing remains selected
-  useEffect(() => {
+  const [prevMultiSelect, setPrevMultiSelect] = useState(multiSelect);
+  if (prevMultiSelect !== multiSelect) {
+    setPrevMultiSelect(multiSelect);
     if (multiSelect) {
       setEditingItem(null);
     } else {
       setSelectedIds(new Set());
     }
-  }, [multiSelect]);
+  }
 
-  // Auto scroll to edit card whenever an item is selected or Add New is clicked
+  // The edit card sits above the list on small screens; bring it into view there.
+  // On desktop it is sticky beside the list, so scrolling would only jump the page.
+  const scrollToEditCard = () => {
+    if (window.matchMedia('(max-width: 1023px)').matches) {
+      editCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handleSelectForEdit = (selected) => {
     if (multiSelect) return; // Disabled during multi-select
     setEditingItem(selected);
-    if (editCardRef.current) {
-      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    scrollToEditCard();
   };
 
   const handleAddNew = () => {
     if (multiSelect) return;
     setEditingItem(null);
-    if (editCardRef.current) {
-      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    scrollToEditCard();
   };
 
   const handleToggleMultiSelect = () => {
-    setMultiSelect((prev) => {
-      const next = !prev;
-      if (next) {
-        setEditingItem(null); // Reset edit card to Add New mode immediately
-      } else {
-        setSelectedIds(new Set()); // Deselect all items when turned off
-      }
-      return next;
-    });
+    setMultiSelect((prev) => !prev);
   };
 
-  // Fetch data from Django API
-  const fetchData = useCallback(async () => {
-    if (!routeId || routeId === 'home') return;
+  const reload = () => {
     setLoading(true);
     setError(null);
-    setSelectedIds(new Set());
+    setReloadKey((k) => k + 1);
+  };
 
-    try {
-      let data = [];
-      if (routeId === 'gallery') {
-        data = await api.endpoints.gallery.list();
-      } else if (routeId === 'startups') {
-        data = await api.endpoints.startups.list();
-      } else if (routeId === 'news') {
-        data = await api.endpoints.news.list();
-      } else if (routeId === 'team') {
-        data = await api.endpoints.team.list(teamCategory || undefined);
-      }
-      setItems(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(`Error fetching ${routeId}:`, err);
-      setError(err.message || `Failed to fetch data from ${endpointUrl}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [routeId, endpointUrl, teamCategory]);
+  const handleCategoryChange = (category) => {
+    setTeamCategory(category);
+    setLoading(true);
+    setError(null);
+  };
 
+  // Fetch data from Django API. Responses from superseded requests (e.g. a quick
+  // category switch) are ignored so they cannot overwrite newer results.
   useEffect(() => {
-    fetchData();
-    setEditingItem(null); // Reset side card to "Add New" mode on route change
-  }, [fetchData, routeId]);
+    if (!resource) return;
+    let cancelled = false;
+
+    const request = routeId === 'team' ? resource.list(teamCategory || undefined) : resource.list();
+    request
+      .then((data) => {
+        if (cancelled) return;
+        setItems(Array.isArray(data) ? data : []);
+        setSelectedIds(new Set());
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(`Error fetching ${routeId}:`, err);
+        setError(err.message || `Failed to fetch data from ${endpointUrl}`);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resource, routeId, endpointUrl, teamCategory, reloadKey]);
 
   // Request single item delete (opens modal)
   const handleRequestSingleDelete = (itemDetails) => {
@@ -138,10 +146,7 @@ export default function ContentGrid({
     try {
       if (pendingDelete.type === 'single') {
         const id = pendingDelete.item.id;
-        if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-        else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-        else if (routeId === 'news') await api.endpoints.news.delete(id);
-        else if (routeId === 'team') await api.endpoints.team.delete(id);
+        await resource.delete(id);
 
         setItems((prev) => prev.filter((i) => i.id !== id));
         setSelectedIds((prev) => {
@@ -158,32 +163,22 @@ export default function ContentGrid({
         showToast?.(`Item "${pendingDelete.item.title || `#${id}`}" was deleted.`, 'success');
       } else if (pendingDelete.type === 'bulk') {
         const idsToDelete = Array.from(selectedIds);
-        let successCount = 0;
-        let failCount = 0;
+        const results = await Promise.allSettled(idsToDelete.map((id) => resource.delete(id)));
+        const deletedIds = new Set(idsToDelete.filter((_, idx) => results[idx].status === 'fulfilled'));
+        const failCount = idsToDelete.length - deletedIds.size;
 
-        for (const id of idsToDelete) {
-          try {
-            if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-            else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-            else if (routeId === 'news') await api.endpoints.news.delete(id);
-            else if (routeId === 'team') await api.endpoints.team.delete(id);
-            successCount++;
-          } catch (e) {
-            failCount++;
-          }
-        }
-
-        if (editingItem && selectedIds.has(editingItem.id)) {
+        if (editingItem && deletedIds.has(editingItem.id)) {
           setEditingItem(null);
         }
 
-        setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
-        setSelectedIds(new Set());
+        // Only remove records the server actually deleted; failed ones stay selected for retry.
+        setItems((prev) => prev.filter((item) => !deletedIds.has(item.id)));
+        setSelectedIds(new Set(idsToDelete.filter((id) => !deletedIds.has(id))));
 
         if (failCount === 0) {
-          showToast?.(`Successfully deleted ${successCount} items.`, 'success');
+          showToast?.(`Successfully deleted ${deletedIds.size} items.`, 'success');
         } else {
-          showToast?.(`Deleted ${successCount} items (${failCount} failed).`, 'warning');
+          showToast?.(`Deleted ${deletedIds.size} items (${failCount} failed).`, 'warning');
         }
       }
 
@@ -248,7 +243,7 @@ export default function ContentGrid({
                 <Filter className="w-3.5 h-3.5 text-muted-foreground" />
                 <select
                   value={teamCategory}
-                  onChange={(e) => setTeamCategory(e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   aria-label="Filter Team Members by Category"
                   className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer font-medium"
                 >
@@ -304,7 +299,7 @@ export default function ContentGrid({
             {/* Refresh Button */}
             <button
               type="button"
-              onClick={fetchData}
+              onClick={reload}
               disabled={loading}
               title="Refresh records from backend"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
@@ -384,7 +379,7 @@ export default function ContentGrid({
             </div>
             <button
               type="button"
-              onClick={fetchData}
+              onClick={reload}
               className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
             >
               Retry Fetching
@@ -420,7 +415,7 @@ export default function ContentGrid({
         {/* 1. GALLERY ROUTE: Responsive Grid                                         */}
         {/* ========================================================================= */}
         {!loading && !error && items.length > 0 && routeId === 'gallery' && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,190px),1fr))] gap-3.5 sm:gap-4 animate-fade-content">
             {items.map((item) => (
               <CardItem
                 key={item.id}
@@ -483,7 +478,7 @@ export default function ContentGrid({
         {/* 4. TEAM ROUTE: Responsive Grid                                            */}
         {/* ========================================================================= */}
         {!loading && !error && items.length > 0 && routeId === 'team' && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,190px),1fr))] gap-3.5 sm:gap-4 animate-fade-content">
             {items.map((item) => (
               <CardItem
                 key={item.id}
@@ -509,16 +504,17 @@ export default function ContentGrid({
       {/* ========================================================================= */}
       <aside
         ref={editCardRef}
-        className="w-full lg:w-[350px] xl:w-[390px] shrink-0 order-first lg:order-last lg:sticky lg:top-20 z-20"
+        className="w-full lg:w-[350px] xl:w-[390px] shrink-0 order-first lg:order-last lg:sticky lg:top-20 z-10 scroll-mt-20"
       >
-        <div className="h-[520px] sm:h-[580px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[560px] lg:max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
+        <div className="h-[520px] sm:h-[580px] lg:h-[calc(100dvh-7rem)] lg:min-h-[480px] lg:max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
           <EditBar
+            key={`${routeId}-${editingItem?.id ?? 'new'}-${multiSelect ? 'locked' : 'open'}`}
             routeId={routeId}
             routeName={routeName}
             initialData={editingItem}
             disabled={multiSelect}
             onSuccess={() => {
-              fetchData();
+              reload();
               setEditingItem(null);
             }}
             onReset={() => setEditingItem(null)}

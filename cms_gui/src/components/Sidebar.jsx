@@ -1,86 +1,38 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  Home,
-  Image,
-  Rocket,
-  Newspaper,
-  Users,
-  Video,
-  ChevronRight,
-  Database,
-  Terminal,
-} from 'lucide-react';
-
-export const ROUTES = [
-  {
-    path: '/',
-    id: 'home',
-    name: 'Home',
-    description: 'Overview & Main Logo Canvas',
-    endpoint: null,
-    icon: Home,
-  },
-  {
-    path: '/gallery',
-    id: 'gallery',
-    name: 'Gallery Items',
-    description: 'Image Showcase & Visual Assets',
-    endpoint: '/api/gallery/',
-    icon: Image,
-  },
-  {
-    path: '/startups',
-    id: 'startups',
-    name: 'Startups',
-    description: 'Incubated Ventures & Portfolios',
-    endpoint: '/api/startups/',
-    icon: Rocket,
-  },
-  {
-    path: '/news',
-    id: 'news',
-    name: 'News Updates',
-    description: 'Articles, Press & Announcements',
-    endpoint: '/api/news/',
-    icon: Newspaper,
-  },
-  {
-    path: '/team',
-    id: 'team',
-    name: 'Team Members',
-    description: 'Mentors, AIC Team & Governors',
-    endpoint: '/api/team/',
-    icon: Users,
-  },
-  {
-    path: '/background-video',
-    id: 'background-video',
-    name: 'Background Video',
-    description: 'Mux Video Stream & Upload',
-    endpoint: '/api/backgroundvideo/',
-    icon: Video,
-  },
-];
+import { ChevronRight, Database, Terminal } from 'lucide-react';
+import { ROUTES } from '../routes';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
+  // On small screens the sidebar is an overlay, so close it after navigating.
+  const handleNavigate = () => {
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      setIsOpen(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-20 md:hidden"
+          aria-hidden="true"
+          className="fixed inset-0 top-16 bg-black/40 backdrop-blur-xs z-20 md:hidden"
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed md:sticky top-16 left-0 z-25 h-[calc(100vh-4rem)] bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex flex-col justify-between overflow-hidden shadow-lg md:shadow-none ${
-          isOpen ? 'w-64 sm:w-72 translate-x-0' : 'w-0 -translate-x-full md:w-0 md:translate-x-0'
+        aria-label="CMS navigation"
+        aria-hidden={!isOpen}
+        inert={!isOpen}
+        className={`fixed md:sticky top-16 left-0 z-25 h-[calc(100dvh-4rem)] shrink-0 bg-sidebar transition-all duration-300 ease-in-out flex flex-col justify-between overflow-hidden shadow-lg md:shadow-none ${
+          isOpen
+            ? 'w-64 sm:w-72 translate-x-0 border-r border-sidebar-border'
+            : 'w-0 -translate-x-full md:translate-x-0 border-r-0'
         }`}
       >
-        <div className="p-4 space-y-6 overflow-y-auto flex-1">
+        <div className="p-4 space-y-6 overflow-y-auto flex-1 w-64 sm:w-72">
           {/* Section Header */}
           <div className="flex items-center justify-between px-2 pt-1">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-sidebar-foreground/70">
@@ -102,6 +54,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                   key={route.path}
                   to={route.path}
                   end={route.path === '/'}
+                  onClick={handleNavigate}
                   className={({ isActive }) =>
                     `w-full group text-left px-3.5 py-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isActive

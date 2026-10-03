@@ -1,4 +1,9 @@
 @import "tailwindcss";
+/* Provides the animate-in / fade-in / zoom-in / slide-in-* utilities used across the UI */
+@import "tw-animate-css";
+
+/* Toggle dark mode from the .dark class set by ThemeContext (not the OS preference) */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {

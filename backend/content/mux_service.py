@@ -5,9 +5,17 @@ import requests
 MUX_API_BASE = 'https://api.mux.com/video/v1'
 
 
+class MuxConfigurationError(RuntimeError):
+    """Raised when Mux API credentials are not configured."""
+
+
 def get_mux_auth():
-    token_id = os.environ.get('MUX_TOKEN_ID', '0ae31943-7160-4e48-9a2f-a92073bd0228')
-    token_secret = os.environ.get('MUX_TOKEN_SECRET', 'hLJ+LIzoCcfW8F0Kon6oK8HcIaruyY2fAP9hXIwVfF2Xp8JfJYNh4M7VKlAVbj7SBHS2AvdrrSM')
+    token_id = os.environ.get('MUX_TOKEN_ID')
+    token_secret = os.environ.get('MUX_TOKEN_SECRET')
+    if not token_id or not token_secret:
+        raise MuxConfigurationError(
+            "Mux credentials are not configured. Set MUX_TOKEN_ID and MUX_TOKEN_SECRET."
+        )
     return (token_id, token_secret)
 
 
@@ -59,25 +67,26 @@ def upload_video_to_mux(file_obj, filename="background_video.mp4"):
     }
 
     # Upload using chunks/stream
-    put_res = requests.put(put_url, data=file_obj, headers=put_headers, timeout=120)
+    put_res = requests.put(put_url, data=file_obj, headers=put_headers, timeout=300)
     put_res.raise_for_status()
 
-    # Step 3: Poll Mux for Asset ID (up to 15 seconds)
+    # Step 3: Poll this upload for its Asset ID (up to 30 seconds).
+    # Only the asset belonging to *this* upload is accepted; guessing from the
+    # account's asset list could adopt (and later delete) an unrelated asset.
     asset_id = None
-    for _ in range(15):
+    for _ in range(30):
         time.sleep(1)
         check_res = requests.get(f"{MUX_API_BASE}/uploads/{upload_id}", auth=auth, timeout=10)
         if check_res.ok:
             data = check_res.json().get('data', {})
+            if data.get('status') in ('errored', 'cancelled', 'timed_out'):
+                error = data.get('error') or {}
+                raise RuntimeError(
+                    f"Mux rejected the upload ({data.get('status')}): {error.get('message', 'unknown error')}"
+                )
             asset_id = data.get('asset_id')
             if asset_id:
                 break
-
-    if not asset_id:
-        # Fallback: check asset list if created
-        assets_res = requests.get(f"{MUX_API_BASE}/assets?limit=1", auth=auth, timeout=10)
-        if assets_res.ok and assets_res.json().get('data'):
-            asset_id = assets_res.json()['data'][0].get('id')
 
     if not asset_id:
         raise RuntimeError("Video uploaded to Mux but asset creation timed out")
@@ -88,6 +97,8 @@ def upload_video_to_mux(file_obj, filename="background_video.mp4"):
         asset_res = requests.get(f"{MUX_API_BASE}/assets/{asset_id}", auth=auth, timeout=10)
         if asset_res.ok:
             asset_info = asset_res.json().get('data', {})
+            if asset_info.get('status') == 'errored':
+                raise RuntimeError(f"Mux failed to process asset {asset_id}")
             playback_ids = asset_info.get('playback_ids', [])
             if playback_ids:
                 playback_id = playback_ids[0].get('id')

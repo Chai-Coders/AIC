@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -13,9 +13,11 @@ import {
   Loader2,
   FileVideo,
   ExternalLink,
-  Layers,
   Radio,
 } from 'lucide-react';
+
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+const VIDEO_EXTENSIONS = /\.(mp4|mov|webm|mkv|m4v|avi)$/i;
 
 export default function BackgroundVideoPage() {
   const { showToast } = useOutletContext();
@@ -24,6 +26,7 @@ export default function BackgroundVideoPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Upload Form State
   const [videoName, setVideoName] = useState('');
@@ -31,45 +34,82 @@ export default function BackgroundVideoPage() {
   const [filePreviewUrl, setFilePreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
-  const fetchBackgroundVideo = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.endpoints.backgroundVideo.get();
-      setVideoData(data);
-      if (data?.video_name) {
-        setVideoName(data.video_name);
-      }
-    } catch (err) {
-      console.error('Failed to fetch background video:', err);
-      setError(err.message || 'Failed to load background video');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const hasActiveVideo = Boolean(videoData?.id && videoData?.video_url);
 
   useEffect(() => {
-    fetchBackgroundVideo();
-  }, []);
+    let cancelled = false;
+    api.endpoints.backgroundVideo
+      .get()
+      .then((data) => {
+        if (cancelled) return;
+        setVideoData(data);
+        // The API returns a placeholder name when no video exists; don't prefill the form with it.
+        if (data?.id && data.video_name) {
+          setVideoName((current) => current || data.video_name);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to fetch background video:', err);
+        setError(err.message || 'Failed to load background video');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  // Release the local preview blob when it is replaced or the page unmounts.
+  useEffect(() => {
+    return () => {
+      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    };
+  }, [filePreviewUrl]);
+
+  const refresh = () => {
+    setLoading(true);
+    setError(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  const clearSelectedFile = () => {
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-      setSelectedFile(file);
-      setFilePreviewUrl(URL.createObjectURL(file));
-      if (!videoName.trim()) {
-        setVideoName(file.name.replace(/\.[^/.]+$/, ''));
-      }
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('video/') && !VIDEO_EXTENSIONS.test(file.name)) {
+      showToast?.('Please choose a video file (MP4, MOV, WEBM).', 'error');
+      return;
+    }
+    if (file.size > MAX_VIDEO_BYTES) {
+      showToast?.(`Video is ${(file.size / (1024 * 1024)).toFixed(0)} MB; the limit is 500 MB.`, 'error');
+      return;
+    }
+    setSelectedFile(file);
+    setFilePreviewUrl(URL.createObjectURL(file));
+    setError(null);
+    if (!videoName.trim()) {
+      setVideoName(file.name.replace(/\.[^/.]+$/, ''));
     }
   };
 
-  const handleCopyUrl = () => {
+  const handleCopyUrl = async () => {
     if (!videoData?.video_url) return;
-    navigator.clipboard.writeText(videoData.video_url);
-    setCopied(true);
-    showToast?.('Streaming URL copied to clipboard!', 'success');
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(videoData.video_url);
+      setCopied(true);
+      showToast?.('Streaming URL copied to clipboard!', 'success');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      showToast?.('Could not access the clipboard. Select the URL and copy it manually.', 'error');
+    }
   };
 
   const handleUploadSubmit = async (e) => {
@@ -85,14 +125,11 @@ export default function BackgroundVideoPage() {
     try {
       const formData = new FormData();
       formData.append('videofile', selectedFile);
-      formData.append('videoname', videoName || selectedFile.name);
+      formData.append('videoname', videoName.trim() || selectedFile.name);
 
       const updated = await api.endpoints.backgroundVideo.upload(formData);
       setVideoData(updated);
-      setSelectedFile(null);
-      if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-      setFilePreviewUrl(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      clearSelectedFile();
 
       showToast?.('Background video uploaded to Mux and updated successfully!', 'success');
     } catch (err) {
@@ -115,7 +152,7 @@ export default function BackgroundVideoPage() {
               <span>Background Video</span>
             </h2>
             <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold flex items-center gap-1">
-              <Radio className="w-3 h-3 animate-pulse text-emerald-500" />
+              <Radio className={`w-3 h-3 ${hasActiveVideo ? 'animate-pulse text-emerald-500' : 'text-muted-foreground'}`} />
               <span>Mux Streaming</span>
             </span>
           </div>
@@ -126,7 +163,7 @@ export default function BackgroundVideoPage() {
 
         <button
           type="button"
-          onClick={fetchBackgroundVideo}
+          onClick={refresh}
           disabled={loading || uploading}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
         >
@@ -152,8 +189,15 @@ export default function BackgroundVideoPage() {
           <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <h3 className="text-sm font-bold text-foreground">Current Active Video</h3>
+                <span className="relative flex w-2 h-2">
+                  {hasActiveVideo && (
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 animate-ping" />
+                  )}
+                  <span className={`relative inline-flex w-2 h-2 rounded-full ${hasActiveVideo ? 'bg-emerald-500' : 'bg-muted-foreground/50'}`} />
+                </span>
+                <h3 className="text-sm font-bold text-foreground">
+                  {hasActiveVideo ? 'Current Active Video' : 'No Active Video'}
+                </h3>
               </div>
               {videoData?.updated_at && (
                 <span className="text-[11px] font-mono text-muted-foreground flex items-center gap-1">
@@ -165,7 +209,7 @@ export default function BackgroundVideoPage() {
 
             {/* Video Player / Poster Thumbnail */}
             <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black/80 border border-border flex items-center justify-center group shadow-md">
-              {videoData?.video_url ? (
+              {hasActiveVideo ? (
                 videoData.thumbnail_url ? (
                   <div className="relative w-full h-full">
                     <img
@@ -198,7 +242,7 @@ export default function BackgroundVideoPage() {
             </div>
 
             {/* Streaming URL Details */}
-            {videoData?.video_url && (
+            {hasActiveVideo && (
               <div className="space-y-2 pt-2 border-t border-border">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Mux HLS Streaming URL (.m3u8)
@@ -211,6 +255,7 @@ export default function BackgroundVideoPage() {
                     type="button"
                     onClick={handleCopyUrl}
                     title="Copy URL"
+                    aria-label="Copy streaming URL"
                     className="p-2 rounded-xl border border-border bg-background hover:bg-accent text-foreground transition-all cursor-pointer shadow-2xs shrink-0"
                   >
                     {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -220,6 +265,7 @@ export default function BackgroundVideoPage() {
                     target="_blank"
                     rel="noreferrer"
                     title="Open Stream"
+                    aria-label="Open stream in new tab"
                     className="p-2 rounded-xl border border-border bg-background hover:bg-accent text-foreground transition-all cursor-pointer shadow-2xs shrink-0"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -264,11 +310,13 @@ export default function BackgroundVideoPage() {
             <form onSubmit={handleUploadSubmit} className="space-y-4">
               {/* Video Title / Name */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <label htmlFor="video-name" className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   Video Label / Name
                 </label>
                 <input
+                  id="video-name"
                   type="text"
+                  disabled={uploading}
                   value={videoName}
                   onChange={(e) => setVideoName(e.target.value)}
                   placeholder="e.g. Hero Section Background Video"
@@ -283,31 +331,55 @@ export default function BackgroundVideoPage() {
                 </label>
 
                 {selectedFile ? (
-                  <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 flex items-center gap-3">
-                    <FileVideo className="w-8 h-8 text-primary shrink-0" />
-                    <div className="min-w-0 flex-1 text-xs">
-                      <p className="font-semibold text-foreground truncate">{selectedFile.name}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
+                  <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 space-y-3">
+                    {filePreviewUrl && (
+                      <video
+                        src={filePreviewUrl}
+                        className="w-full aspect-video rounded-lg bg-black object-contain"
+                        muted
+                        controls
+                        playsInline
+                        preload="metadata"
+                      />
+                    )}
+                    <div className="flex items-center gap-3">
+                      <FileVideo className="w-8 h-8 text-primary shrink-0" />
+                      <div className="min-w-0 flex-1 text-xs">
+                        <p className="font-semibold text-foreground truncate">{selectedFile.name}</p>
+                        <p className="text-[10px] font-mono text-muted-foreground">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="text-xs text-foreground hover:text-primary transition-colors font-medium px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Change
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSelectedFile}
+                        disabled={uploading}
+                        className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
-                        setFilePreviewUrl(null);
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                      }}
-                      className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium px-2 py-1"
-                    >
-                      Change
-                    </button>
                   </div>
                 ) : (
                   <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => fileInputRef.current?.click()}
-                    className="rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-background/40 hover:bg-accent/40 p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    className="rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-background/40 hover:bg-accent/40 p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Upload className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                     <div>

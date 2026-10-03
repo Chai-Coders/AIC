@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Trash2,
   CheckCircle2,
@@ -39,7 +38,7 @@ export default function CardItem({
       case 'gallery':
         return {
           title: item.subtext || `Gallery Item #${item.id}`,
-          subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Gallery Asset',
+          subtitle: null, // date is already shown in the card footer
           body: null,
           link: null,
         };
@@ -95,14 +94,32 @@ export default function CardItem({
     }
   };
 
+  // Cards are clickable divs; expose them to keyboard and assistive tech.
+  const interactiveProps = {
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': multiSelect ? isSelected : isEditing,
+    'aria-label': multiSelect
+      ? `${isSelected ? 'Deselect' : 'Select'} ${details.title}`
+      : `Edit ${details.title}`,
+    onClick: handleCardClick,
+    onKeyDown: (e) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCardClick();
+      }
+    },
+  };
+
   // =========================================================================
   // 1. STARTUP COMPACT HORIZONTAL RECTANGLE
   // =========================================================================
   if (routeId === 'startups') {
     return (
       <div
-        onClick={handleCardClick}
-        className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
+        {...interactiveProps}
+        className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
           isEditing
             ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
             : isSelected || isPreviewSelected
@@ -202,11 +219,12 @@ export default function CardItem({
 
         {/* Hover Delete Button */}
         {!multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-2.5 right-2.5 z-10 opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-visible:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
             <button
               type="button"
               onClick={handleDeleteClick}
               title="Delete startup"
+              aria-label={`Delete ${details.title}`}
               className="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -223,8 +241,8 @@ export default function CardItem({
   if (routeId === 'news') {
     return (
       <div
-        onClick={handleCardClick}
-        className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
+        {...interactiveProps}
+        className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
           isEditing
             ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
             : isPreviewSelected
@@ -312,11 +330,12 @@ export default function CardItem({
 
         {/* Hover Delete Button */}
         {!multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-2.5 right-2.5 z-10 opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-visible:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
             <button
               type="button"
               onClick={handleDeleteClick}
               title="Delete article"
+              aria-label={`Delete ${details.title}`}
               className="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -332,8 +351,8 @@ export default function CardItem({
   // =========================================================================
   return (
     <div
-      onClick={handleCardClick}
-      className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between select-none cursor-pointer ${
+      {...interactiveProps}
+      className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
         isEditing
           ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
           : isSelected || isPreviewSelected
@@ -390,11 +409,12 @@ export default function CardItem({
 
         {/* Hover Delete Button */}
         {!multiSelect && (
-          <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute top-2 right-2 z-10 opacity-100 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-visible:opacity-100 focus-within:opacity-100 transition-opacity duration-200">
             <button
               type="button"
               onClick={handleDeleteClick}
               title="Delete item"
+            aria-label={`Delete ${details.title}`}
               className="px-2 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             >
               <Trash2 className="w-3 h-3" />
@@ -418,9 +438,11 @@ export default function CardItem({
             </span>
           </div>
 
-          <p className="text-[11px] text-muted-foreground line-clamp-1 font-medium">
-            {details.subtitle}
-          </p>
+          {details.subtitle && (
+            <p className="text-[11px] text-muted-foreground line-clamp-1 font-medium">
+              {details.subtitle}
+            </p>
+          )}
 
           {details.body && (
             <p className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-snug pt-0.5">

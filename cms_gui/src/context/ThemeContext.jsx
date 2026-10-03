@@ -1,24 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
+function getInitialTheme() {
+  try {
     const saved = localStorage.getItem('cms_theme');
-    if (saved) return saved;
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'dark'; // default to dark as seen in the wireframe aesthetic, or allow toggle
-  });
+    if (saved === 'dark' || saved === 'light') return saved;
+  } catch {
+    // Storage unavailable (private mode); fall back to the default theme
+  }
+  return 'dark'; // Dark is the studio's default aesthetic; users can toggle
+}
+
+export function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+    root.classList.toggle('dark', theme === 'dark');
+    root.style.colorScheme = theme;
+    try {
+      localStorage.setItem('cms_theme', theme);
+    } catch {
+      // Ignore storage failures; theme still applies for this session
     }
-    localStorage.setItem('cms_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
@@ -32,6 +37,7 @@ export function ThemeProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {

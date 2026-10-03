@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -47,7 +47,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-background p-4 overflow-hidden select-none">
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-background p-4 overflow-hidden">
       {/* Subtle Ambient Glows */}
       <div className="absolute top-1/4 left-1/3 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 translate-x-1/2 translate-y-1/2 w-80 h-80 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
@@ -86,7 +86,7 @@ export default function LoginPage() {
 
           {/* Error Banner with Retry reminder */}
           {error && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 flex items-start gap-3 text-destructive animate-in fade-in duration-200">
+            <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 flex items-start gap-3 text-destructive animate-in fade-in duration-200">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <div className="text-xs space-y-1 flex-1 leading-relaxed">
                 <p className="font-semibold">{error}</p>
@@ -107,6 +107,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="user id"
+                aria-label="User ID"
                 autoComplete="username"
                 required
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-background/60 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
@@ -121,6 +122,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="password"
+                aria-label="Password"
                 autoComplete="current-password"
                 required
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-input bg-background/60 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"

@@ -1,4 +1,6 @@
 import io
+import os
+from unittest import mock
 from PIL import Image
 from django.test import TestCase
 from django.contrib.auth import get_user_model
@@ -8,7 +10,7 @@ from django.core.management import call_command
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from .models import GalleryItem, Startup, NewsUpdate, TeamMember
+from .models import GalleryItem, Startup, NewsUpdate, TeamMember, BackgroundVideo
 
 User = get_user_model()
 
@@ -301,6 +303,85 @@ class JWTAuthenticationTests(APITestCase):
         self.assertEqual(refresh_attempt.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
+    def test_logout_works_with_expired_or_missing_access_token(self):
+        login_res = self.client.post('/api/auth/login/', {
+            'username': 'staff_editor',
+            'password': 'StaffPassword123!'
+        }, format='json')
+        refresh_token = login_res.data['refresh']
+
+        # No Authorization header at all (e.g. access token already expired client-side)
+        self.client.credentials()
+        logout_res = self.client.post('/api/auth/logout/', {'refresh': refresh_token}, format='json')
+        self.assertEqual(logout_res.status_code, status.HTTP_200_OK)
+
+        refresh_attempt = self.client.post('/api/auth/refresh/', {'refresh': refresh_token}, format='json')
+        self.assertEqual(refresh_attempt.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_refresh_rotates_and_returns_new_refresh_token(self):
+        login_res = self.client.post('/api/auth/login/', {
+            'username': 'staff_editor',
+            'password': 'StaffPassword123!'
+        }, format='json')
+        refresh_res = self.client.post('/api/auth/refresh/', {'refresh': login_res.data['refresh']}, format='json')
+        self.assertEqual(refresh_res.status_code, status.HTTP_200_OK)
+        self.assertIn('refresh', refresh_res.data)
+        self.assertNotEqual(refresh_res.data['refresh'], login_res.data['refresh'])
+
+        # The old refresh token is blacklisted after rotation, so clients must store the new one
+        reuse_res = self.client.post('/api/auth/refresh/', {'refresh': login_res.data['refresh']}, format='json')
+        self.assertEqual(reuse_res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class BackgroundVideoAPITests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(username='video_admin', password='VideoPass123!', email='v@aic.org')
+
+    def test_get_without_video_returns_placeholder(self):
+        res = self.client.get('/api/backgroundvideo/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIsNone(res.data['id'])
+        self.assertIsNone(res.data['video_url'])
+
+    def test_upload_requires_authentication(self):
+        video = SimpleUploadedFile('clip.mp4', b'fake', content_type='video/mp4')
+        res = self.client.post('/api/backgroundvideo/', {'videofile': video}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_upload_rejects_non_video_files(self):
+        self.client.force_authenticate(self.admin)
+        res = self.client.post('/api/backgroundvideo/', {'videofile': generate_test_image('not_video.png')}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_upload_without_mux_credentials_returns_503(self):
+        self.client.force_authenticate(self.admin)
+        video = SimpleUploadedFile('clip.mp4', b'fake', content_type='video/mp4')
+        with mock.patch.dict(os.environ, {'MUX_TOKEN_ID': '', 'MUX_TOKEN_SECRET': ''}):
+            res = self.client.post('/api/backgroundvideo/', {'videofile': video}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def test_upload_replaces_video_and_deletes_previous_asset_after_save(self):
+        BackgroundVideo.objects.create(
+            video_name='Old', video_url='https://stream.mux.com/old.m3u8',
+            mux_asset_id='old-asset', mux_playback_id='old',
+        )
+        self.client.force_authenticate(self.admin)
+        mux_result = {
+            'mux_asset_id': 'new-asset', 'mux_playback_id': 'new',
+            'video_url': 'https://stream.mux.com/new.m3u8',
+            'thumbnail_url': 'https://image.mux.com/new/thumbnail.jpg',
+        }
+        video = SimpleUploadedFile('clip.mp4', b'fake', content_type='video/mp4')
+        with mock.patch('content.views.upload_video_to_mux', return_value=mux_result), \
+                mock.patch('content.views.delete_mux_asset') as delete_mock:
+            res = self.client.post('/api/backgroundvideo/', {'videofile': video, 'videoname': 'Hero'}, format='multipart')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['video_name'], 'Hero')
+        self.assertEqual(BackgroundVideo.objects.count(), 1)
+        self.assertEqual(BackgroundVideo.objects.get().mux_asset_id, 'new-asset')
+        delete_mock.assert_called_once_with('old-asset')
+
+
 class ManagementCommandTests(TestCase):
     def test_createsuperuser_if_not_exists_creates_new(self):
         call_command(
@@ -338,4 +419,5 @@ class AdminConfigTests(TestCase):
         self.assertTrue(admin.site.is_registered(Startup))
         self.assertTrue(admin.site.is_registered(NewsUpdate))
         self.assertTrue(admin.site.is_registered(TeamMember))
+        self.assertTrue(admin.site.is_registered(BackgroundVideo))
 
