@@ -1,6 +1,7 @@
 import React from 'react';
 import useApi from '../../hooks/useApi';
 import { fetchAllGallery } from '../../api/content';
+import { cdnImage, cdnImageProps } from '../../lib/image';
 
 const GalleryGrid = () => {
   const { data: galleryItems, loading, error } = useApi(fetchAllGallery);
@@ -40,10 +41,12 @@ const GalleryGrid = () => {
                   className="contact"
                   style={{ overflow: 'hidden', borderRadius: '4px', border: '1px solid #eee' }}
                 >
-                  <a target="_blank" rel="noopener noreferrer" href={item.image}>
+                  <a target="_blank" rel="noopener noreferrer" href={cdnImage(item.image, 1920)}>
                     <img
                       className="logo"
-                      src={item.image}
+                      {...cdnImageProps(item.image, [400, 800, 1200], '(min-width: 768px) 33vw, 100vw')}
+                      loading="lazy"
+                      decoding="async"
                       alt={item.subtext || `Gallery item ${item.id}`}
                       style={{
                         width: '100%',

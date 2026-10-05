@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Calendar, Trash2, Image as ImageIcon } from 'lucide-react';
 
 export default function NewsDetailPane({

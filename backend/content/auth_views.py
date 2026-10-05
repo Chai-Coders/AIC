@@ -35,8 +35,11 @@ class CurrentUserView(APIView):
 class LogoutView(APIView):
     """
     Blacklists the provided refresh token to securely log the user out.
+    The refresh token itself is the credential here, so an expired access
+    token must not prevent the client from revoking its session.
     """
-    permission_classes = [IsAuthenticated]
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LogoutSerializer(data=request.data)

@@ -1,549 +1,342 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import { TEAM_CATEGORIES } from '../routes';
 import CardItem from './CardItem';
 import EditBar from './EditBar';
 import DeleteConfirmModal from './DeleteConfirmModal';
-import {
-  RefreshCw,
-  Trash2,
-  CheckSquare,
-  Square,
-  AlertCircle,
-  FolderOpen,
-  Filter,
-  Plus,
-} from 'lucide-react';
+import { AlertCircle, CheckSquare, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 
-export default function ContentGrid({
-  routeId,
-  routeName,
-  endpointUrl,
-  multiSelect,
-  setMultiSelect,
-  showToast,
-}) {
+const plural = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
+export default function ContentGrid({ section, showToast }) {
+  const resource = api.endpoints[section.id];
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [reloadKey, setReloadKey] = useState(0);
+  const [query, setQuery] = useState('');
   const [teamCategory, setTeamCategory] = useState('');
 
-  // Fixed Side Edit/Add Card State:
-  // - If editingItem is null: the side card is in "Add New Record" mode
-  // - If editingItem is set: the side card is in "Edit Record" mode
-  const [editingItem, setEditingItem] = useState(null);
-  const editCardRef = useRef(null);
+  // Editor: undefined = closed, null = adding a new item, object = editing that item.
+  // The overview page's "Add" shortcut arrives with { addNew: true } in the route state.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(() => (location.state?.addNew ? null : undefined));
 
-  // Delete Confirmation Modal State
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  // Consume the shortcut so going back to this page doesn't reopen the form.
+  useEffect(() => {
+    if (location.state?.addNew) navigate('.', { replace: true, state: null });
+  }, [location.state, navigate]);
+
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
   const [pendingDelete, setPendingDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Multi-select sync:
-  // - If enabled: reset edit card to Add New mode
-  // - If disabled: clear all selected items so nothing remains selected
+  const reload = () => {
+    setLoading(true);
+    setError(null);
+    setReloadKey((k) => k + 1);
+  };
+
+  // Responses from superseded requests (e.g. a quick category switch) are ignored.
   useEffect(() => {
-    if (multiSelect) {
-      setEditingItem(null);
-    } else {
-      setSelectedIds(new Set());
-    }
-  }, [multiSelect]);
+    let cancelled = false;
+    const request = section.id === 'team' ? resource.list(teamCategory || undefined) : resource.list();
+    request
+      .then((data) => {
+        if (cancelled) return;
+        setItems(Array.isArray(data) ? data : []);
+        setSelectedIds(new Set());
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(`Error fetching ${section.id}:`, err);
+        setError(err.message || 'Could not load this section.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resource, section.id, teamCategory, reloadKey]);
 
-  // Auto scroll to edit card whenever an item is selected or Add New is clicked
-  const handleSelectForEdit = (selected) => {
-    if (multiSelect) return; // Disabled during multi-select
-    setEditingItem(selected);
-    if (editCardRef.current) {
-      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  const visibleItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => {
+      const { title, subtitle, tag } = section.summarize(item);
+      return [title, subtitle, tag].some((v) => v && String(v).toLowerCase().includes(q));
+    });
+  }, [items, query, section]);
+
+  const handleCategoryChange = (category) => {
+    if (category === teamCategory) return;
+    setTeamCategory(category);
+    setLoading(true);
+    setError(null);
   };
 
-  const handleAddNew = () => {
-    if (multiSelect) return;
-    setEditingItem(null);
-    if (editCardRef.current) {
-      editCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  const toggleSelecting = () => {
+    setSelecting((prev) => !prev);
+    setSelectedIds(new Set());
   };
 
-  const handleToggleMultiSelect = () => {
-    setMultiSelect((prev) => {
-      const next = !prev;
-      if (next) {
-        setEditingItem(null); // Reset edit card to Add New mode immediately
-      } else {
-        setSelectedIds(new Set()); // Deselect all items when turned off
-      }
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  // Fetch data from Django API
-  const fetchData = useCallback(async () => {
-    if (!routeId || routeId === 'home') return;
-    setLoading(true);
-    setError(null);
-    setSelectedIds(new Set());
-
-    try {
-      let data = [];
-      if (routeId === 'gallery') {
-        data = await api.endpoints.gallery.list();
-      } else if (routeId === 'startups') {
-        data = await api.endpoints.startups.list();
-      } else if (routeId === 'news') {
-        data = await api.endpoints.news.list();
-      } else if (routeId === 'team') {
-        data = await api.endpoints.team.list(teamCategory || undefined);
-      }
-      setItems(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(`Error fetching ${routeId}:`, err);
-      setError(err.message || `Failed to fetch data from ${endpointUrl}`);
-    } finally {
-      setLoading(false);
-    }
-  }, [routeId, endpointUrl, teamCategory]);
-
-  useEffect(() => {
-    fetchData();
-    setEditingItem(null); // Reset side card to "Add New" mode on route change
-  }, [fetchData, routeId]);
-
-  // Request single item delete (opens modal)
-  const handleRequestSingleDelete = (itemDetails) => {
-    setPendingDelete({
-      type: 'single',
-      item: itemDetails,
-    });
-    setDeleteModalOpen(true);
+  const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((i) => selectedIds.has(i.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(allVisibleSelected ? new Set() : new Set(visibleItems.map((i) => i.id)));
   };
 
-  // Request bulk delete (opens modal)
-  const handleRequestBulkDelete = () => {
-    if (selectedIds.size === 0) return;
-    setPendingDelete({
-      type: 'bulk',
-      count: selectedIds.size,
-    });
-    setDeleteModalOpen(true);
+  const requestDelete = (details) => {
+    setEditing(undefined);
+    setPendingDelete({ type: 'single', item: details });
   };
 
-  // Execute deletion upon modal confirmation
   const handleConfirmDelete = async () => {
     if (!pendingDelete) return;
     setIsDeleting(true);
-
     try {
       if (pendingDelete.type === 'single') {
-        const id = pendingDelete.item.id;
-        if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-        else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-        else if (routeId === 'news') await api.endpoints.news.delete(id);
-        else if (routeId === 'team') await api.endpoints.team.delete(id);
-
+        const { id, title } = pendingDelete.item;
+        await resource.delete(id);
         setItems((prev) => prev.filter((i) => i.id !== id));
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
+        showToast?.(`"${title}" was deleted from the website.`, 'success');
+      } else {
+        const ids = Array.from(selectedIds);
+        const results = await Promise.allSettled(ids.map((id) => resource.delete(id)));
+        const deleted = new Set(ids.filter((_, idx) => results[idx].status === 'fulfilled'));
+        const failed = ids.length - deleted.size;
 
-        // If the deleted item was currently being edited, reset side card to Add New
-        if (editingItem?.id === id) {
-          setEditingItem(null);
-        }
-
-        showToast?.(`Item "${pendingDelete.item.title || `#${id}`}" was deleted.`, 'success');
-      } else if (pendingDelete.type === 'bulk') {
-        const idsToDelete = Array.from(selectedIds);
-        let successCount = 0;
-        let failCount = 0;
-
-        for (const id of idsToDelete) {
-          try {
-            if (routeId === 'gallery') await api.endpoints.gallery.delete(id);
-            else if (routeId === 'startups') await api.endpoints.startups.delete(id);
-            else if (routeId === 'news') await api.endpoints.news.delete(id);
-            else if (routeId === 'team') await api.endpoints.team.delete(id);
-            successCount++;
-          } catch (e) {
-            failCount++;
-          }
-        }
-
-        if (editingItem && selectedIds.has(editingItem.id)) {
-          setEditingItem(null);
-        }
-
-        setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)));
-        setSelectedIds(new Set());
-
-        if (failCount === 0) {
-          showToast?.(`Successfully deleted ${successCount} items.`, 'success');
+        // Only drop what the server actually deleted; failures stay selected for a retry.
+        setItems((prev) => prev.filter((item) => !deleted.has(item.id)));
+        setSelectedIds(new Set(ids.filter((id) => !deleted.has(id))));
+        if (failed === 0) {
+          setSelecting(false);
+          showToast?.(`Deleted ${plural(deleted.size, section.noun)}.`, 'success');
         } else {
-          showToast?.(`Deleted ${successCount} items (${failCount} failed).`, 'warning');
+          showToast?.(`Deleted ${deleted.size}, but ${failed} could not be deleted. Please try again.`, 'warning');
         }
       }
-
-      setDeleteModalOpen(false);
       setPendingDelete(null);
     } catch (err) {
-      console.error('Delete execution error:', err);
-      showToast?.(err.message || 'Failed to delete items from server.', 'error');
+      console.error('Delete failed:', err);
+      showToast?.(err.message || 'Could not delete. Please try again.', 'error');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Toggle selection for a single item (multi-select mode)
-  const handleToggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  // Select all / Deselect all
-  const handleSelectAll = () => {
-    if (selectedIds.size === items.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(items.map((i) => i.id)));
-    }
-  };
+  const showList = !loading && !error && visibleItems.length > 0;
 
   return (
-    <div className="flex flex-col lg:flex-row w-full gap-6 items-start">
-      {/* ========================================================================= */}
-      {/* MAIN CONTENT AREA: List takes maximum available remaining space           */}
-      {/* ========================================================================= */}
-      <div className="flex-1 min-w-0 w-full space-y-6">
-        {/* Top Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">
-                {routeName}
-              </h2>
-              <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-accent text-accent-foreground border border-border font-semibold">
-                {items.length} {items.length === 1 ? 'record' : 'records'}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground font-mono mt-0.5">
-              GET {endpointUrl}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Team Category Filter if on team route */}
-            {routeId === 'team' && (
-              <div className="flex items-center gap-1.5 bg-card border border-border px-3 py-1.5 rounded-xl text-xs shadow-2xs">
-                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                <select
-                  value={teamCategory}
-                  onChange={(e) => setTeamCategory(e.target.value)}
-                  aria-label="Filter Team Members by Category"
-                  className="bg-transparent text-foreground text-xs focus:outline-none cursor-pointer font-medium"
-                >
-                  <option value="" className="bg-card text-foreground">All Categories</option>
-                  <option value="mentor" className="bg-card text-foreground">International Mentors</option>
-                  <option value="team" className="bg-card text-foreground">AIC Team</option>
-                  <option value="governor" className="bg-card text-foreground">Board of Governors</option>
-                </select>
-              </div>
-            )}
-
-            {/* Quick Add / Reset Button (Disabled when multiSelect is active) */}
-            <button
-              type="button"
-              onClick={handleAddNew}
-              disabled={multiSelect}
-              title={
-                multiSelect
-                  ? 'Adding items is disabled during Multi-Select'
-                  : `Switch side card to Add New ${routeName.replace(/s$/, '')}`
-              }
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs ${
-                multiSelect
-                  ? 'opacity-40 cursor-not-allowed border border-border bg-muted/40 text-muted-foreground'
-                  : editingItem === null
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
-                  : 'border border-border bg-card hover:bg-accent text-foreground cursor-pointer'
-              }`}
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add New</span>
-            </button>
-
-            {/* Multi-Select Toggle Button */}
-            <button
-              type="button"
-              onClick={handleToggleMultiSelect}
-              title={multiSelect ? 'Disable Multi-Selection' : 'Enable Multi-Selection'}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
-                multiSelect
-                  ? 'border-primary bg-primary/15 text-primary shadow-xs font-semibold'
-                  : 'border-border bg-card hover:bg-accent text-foreground'
-              }`}
-            >
-              {multiSelect ? (
-                <CheckSquare className="w-3.5 h-3.5 text-primary" />
-              ) : (
-                <Square className="w-3.5 h-3.5 text-muted-foreground" />
-              )}
-              <span>Multi-Select</span>
-            </button>
-
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={fetchData}
-              disabled={loading}
-              title="Refresh records from backend"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-primary' : ''}`} />
-              <span>Refresh</span>
-            </button>
-          </div>
+    <div className="space-y-6 pb-24">
+      {/* Page header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{section.name}</h1>
+          <p className="text-sm text-muted-foreground">{section.description}</p>
         </div>
-
-        {/* Multi-Select Floating Action Bar */}
-        {multiSelect && items.length > 0 && (
-          <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3.5 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSelectAll}
-                className="flex items-center gap-1.5 text-xs font-semibold text-foreground hover:text-primary transition-colors cursor-pointer"
-              >
-                {selectedIds.size === items.length ? (
-                  <CheckSquare className="w-4 h-4 text-primary" />
-                ) : (
-                  <Square className="w-4 h-4 text-muted-foreground" />
-                )}
-                <span>
-                  {selectedIds.size === items.length ? 'Deselect All' : 'Select All'}
-                </span>
-              </button>
-
-              <span className="text-xs font-mono font-medium text-foreground bg-primary/20 px-2.5 py-0.5 rounded-full">
-                {selectedIds.size} of {items.length} selected
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRequestBulkDelete}
-                disabled={selectedIds.size === 0}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold transition-all shadow-md shadow-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Selected ({selectedIds.size})</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Loading Skeleton */}
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((idx) => (
-              <div
-                key={idx}
-                className="rounded-2xl border border-border bg-card/60 p-4 space-y-3 animate-pulse"
-              >
-                <div className="w-full aspect-16/10 bg-muted/50 rounded-xl" />
-                <div className="space-y-2">
-                  <div className="h-4 bg-muted/60 rounded w-3/4" />
-                  <div className="h-3 bg-muted/40 rounded w-1/2" />
-                </div>
-                <div className="h-7 bg-muted/30 rounded" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Error View */}
-        {!loading && error && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-4 max-w-lg mx-auto my-8">
-            <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-semibold text-destructive">
-                Failed to load records
-              </h3>
-              <p className="text-xs text-muted-foreground">{error}</p>
-            </div>
-            <button
-              type="button"
-              onClick={fetchData}
-              className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
-            >
-              Retry Fetching
-            </button>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && items.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center space-y-4 max-w-md mx-auto my-8">
-            <FolderOpen className="w-10 h-10 text-muted-foreground/60 mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                No records in {routeName}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                No items found for {endpointUrl}. Use the fixed form on the side to create the first record.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleAddNew}
-              disabled={multiSelect}
-              className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 mx-auto disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Fill New Record Form</span>
-            </button>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 1. GALLERY ROUTE: Responsive Grid                                         */}
-        {/* ========================================================================= */}
-        {!loading && !error && items.length > 0 && routeId === 'gallery' && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
-            {items.map((item) => (
-              <CardItem
-                key={item.id}
-                item={item}
-                routeId={routeId}
-                multiSelect={multiSelect}
-                isSelected={selectedIds.has(item.id)}
-                isEditing={!multiSelect && editingItem?.id === item.id}
-                onToggleSelect={handleToggleSelect}
-                onSelectForEdit={handleSelectForEdit}
-                onRequestDelete={handleRequestSingleDelete}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 2. STARTUPS ROUTE: Responsive Grid                                        */}
-        {/* ========================================================================= */}
-        {!loading && !error && items.length > 0 && routeId === 'startups' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 animate-fade-content">
-            {items.map((item) => (
-              <CardItem
-                key={item.id}
-                item={item}
-                routeId={routeId}
-                multiSelect={multiSelect}
-                isSelected={selectedIds.has(item.id)}
-                isEditing={!multiSelect && editingItem?.id === item.id}
-                onToggleSelect={handleToggleSelect}
-                onSelectForEdit={handleSelectForEdit}
-                onRequestDelete={handleRequestSingleDelete}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 3. NEWS ROUTE: Responsive List / Grid                                     */}
-        {/* ========================================================================= */}
-        {!loading && !error && items.length > 0 && routeId === 'news' && (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 animate-fade-content">
-            {items.map((item) => (
-              <CardItem
-                key={item.id}
-                item={item}
-                routeId={routeId}
-                multiSelect={multiSelect}
-                isSelected={selectedIds.has(item.id)}
-                isEditing={!multiSelect && editingItem?.id === item.id}
-                onToggleSelect={handleToggleSelect}
-                onSelectForEdit={handleSelectForEdit}
-                onRequestDelete={handleRequestSingleDelete}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* 4. TEAM ROUTE: Responsive Grid                                            */}
-        {/* ========================================================================= */}
-        {!loading && !error && items.length > 0 && routeId === 'team' && (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5 sm:gap-4 animate-fade-content">
-            {items.map((item) => (
-              <CardItem
-                key={item.id}
-                item={item}
-                routeId={routeId}
-                multiSelect={multiSelect}
-                isSelected={selectedIds.has(item.id)}
-                isEditing={!multiSelect && editingItem?.id === item.id}
-                onToggleSelect={handleToggleSelect}
-                onSelectForEdit={handleSelectForEdit}
-                onRequestDelete={handleRequestSingleDelete}
-              />
-            ))}
-          </div>
-        )}
+        <button type="button" onClick={() => setEditing(null)} className="btn-primary self-start sm:self-auto">
+          <Plus className="h-4 w-4" />
+          <span>Add {section.noun}</span>
+        </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* FIXED SIDE EDIT/ADD CARD:                                                 */}
-      {/* On mobile screens, it appears at top (order-first)                        */}
-      {/* On desktop screens (lg:), it appears sticky on the right (lg:order-last)   */}
-      {/* Disabled when Multi-Select is enabled                                    */}
-      {/* ========================================================================= */}
-      <aside
-        ref={editCardRef}
-        className="w-full lg:w-[350px] xl:w-[390px] shrink-0 order-first lg:order-last lg:sticky lg:top-20 z-20"
-      >
-        <div className="h-[520px] sm:h-[580px] lg:h-[calc(100vh-6.5rem)] lg:min-h-[560px] lg:max-h-[860px] rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
-          <EditBar
-            routeId={routeId}
-            routeName={routeName}
-            initialData={editingItem}
-            disabled={multiSelect}
-            onSuccess={() => {
-              fetchData();
-              setEditingItem(null);
-            }}
-            onReset={() => setEditingItem(null)}
-            showToast={showToast}
+      {/* Team groups */}
+      {section.id === 'team' && (
+        <div role="tablist" aria-label="Team groups" className="flex gap-1 overflow-x-auto border-b border-border">
+          {[{ value: '', label: 'Everyone' }, ...TEAM_CATEGORIES].map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              role="tab"
+              aria-selected={teamCategory === c.value}
+              onClick={() => handleCategoryChange(c.value)}
+              className={`-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                teamCategory === c.value
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${section.name.toLowerCase()}…`}
+            aria-label={`Search ${section.name}`}
+            className="field pl-9"
           />
         </div>
-      </aside>
+        <div className="flex items-center gap-2 sm:ml-auto">
+          {!loading && !error && (
+            <span className="mr-1 text-sm text-muted-foreground">
+              {query ? `${visibleItems.length} of ${items.length}` : plural(items.length, 'item')}
+            </span>
+          )}
+          {items.length > 0 && (
+            <button type="button" onClick={toggleSelecting} className={selecting ? 'btn-secondary border-primary text-primary' : 'btn-secondary'}>
+              {selecting ? <X className="h-4 w-4" /> : <CheckSquare className="h-4 w-4" />}
+              <span>{selecting ? 'Done' : 'Select'}</span>
+            </button>
+          )}
+          <button type="button" onClick={reload} disabled={loading} title="Reload" aria-label="Reload" className="btn-secondary px-3">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
 
-      {/* Custom Confirmation Popup Modal for Deletes */}
-      <DeleteConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => {
-          if (!isDeleting) {
-            setDeleteModalOpen(false);
-            setPendingDelete(null);
+      {selecting && (
+        <p className="text-sm text-muted-foreground">Tap items to select them, then delete them all at once.</p>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className={section.layout === 'tiles' ? 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4' : 'space-y-3'}>
+          {Array.from({ length: section.layout === 'tiles' ? 8 : 5 }).map((_, idx) => (
+            <div
+              key={idx}
+              className={`animate-pulse rounded-xl border border-border bg-card ${section.layout === 'tiles' ? 'aspect-[4/5]' : 'h-24'}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Error */}
+      {!loading && error && (
+        <div className="mx-auto max-w-md space-y-4 rounded-xl border border-border bg-card p-8 text-center">
+          <AlertCircle className="mx-auto h-10 w-10 text-destructive" />
+          <div className="space-y-1">
+            <h2 className="font-semibold text-foreground">This section couldn’t be loaded</h2>
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </div>
+          <button type="button" onClick={reload} className="btn-primary">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && !error && visibleItems.length === 0 && (
+        <div className="mx-auto max-w-md space-y-4 rounded-xl border border-dashed border-input p-10 text-center">
+          <section.icon className="mx-auto h-10 w-10 text-muted-foreground/60" />
+          {query ? (
+            <>
+              <p className="text-sm text-muted-foreground">Nothing matches “{query}”.</p>
+              <button type="button" onClick={() => setQuery('')} className="btn-secondary">
+                Clear search
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <h2 className="font-semibold text-foreground">No {section.noun}s yet</h2>
+                <p className="text-sm text-muted-foreground">Add the first one and it will appear on the website.</p>
+              </div>
+              <button type="button" onClick={() => setEditing(null)} className="btn-primary">
+                <Plus className="h-4 w-4" />
+                <span>Add {section.noun}</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Items */}
+      {showList && (
+        <div
+          className={
+            section.layout === 'tiles'
+              ? 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4'
+              : 'grid grid-cols-1 gap-3'
           }
+        >
+          {visibleItems.map((item) => (
+            <CardItem
+              key={item.id}
+              item={item}
+              section={section}
+              selecting={selecting}
+              selected={selectedIds.has(item.id)}
+              onToggleSelect={toggleSelect}
+              onEdit={setEditing}
+              onDelete={requestDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Bulk action bar */}
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:left-64">
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
+            <button type="button" onClick={toggleSelectAll} className="btn-ghost px-3">
+              {allVisibleSelected ? 'Unselect all' : 'Select all'}
+            </button>
+            <span className="text-sm font-medium text-foreground">{selectedIds.size} selected</span>
+            <button
+              type="button"
+              onClick={() => setPendingDelete({ type: 'bulk', count: selectedIds.size })}
+              disabled={selectedIds.size === 0}
+              className="btn-danger ml-auto"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editing !== undefined && (
+        <EditBar
+          key={editing?.id ?? 'new'}
+          section={section}
+          item={editing}
+          onClose={() => setEditing(undefined)}
+          onSaved={() => {
+            setEditing(undefined);
+            reload();
+          }}
+          onDelete={requestDelete}
+          showToast={showToast}
+        />
+      )}
+
+      <DeleteConfirmModal
+        isOpen={!!pendingDelete}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
         }}
         onConfirm={handleConfirmDelete}
-        title={pendingDelete?.type === 'bulk' ? 'Delete Selected Records' : 'Delete Record'}
+        title={pendingDelete?.type === 'bulk' ? `Delete ${plural(pendingDelete.count, section.noun)}?` : `Delete this ${section.noun}?`}
         message={
           pendingDelete?.type === 'bulk'
-            ? `Are you sure you want to permanently delete these ${pendingDelete.count} selected items from ${routeName}?`
-            : `Are you sure you want to permanently delete "${pendingDelete?.item?.title || `Item #${pendingDelete?.item?.id}`}" from ${routeName}?`
+            ? 'They will be removed from the website. This can’t be undone.'
+            : 'It will be removed from the website. This can’t be undone.'
         }
-        itemCount={pendingDelete?.type === 'bulk' ? pendingDelete.count : 1}
+        confirmLabel={pendingDelete?.type === 'bulk' ? `Delete ${pendingDelete.count}` : 'Delete'}
         itemDetails={pendingDelete?.type === 'single' ? pendingDelete.item : null}
         isDeleting={isDeleting}
       />

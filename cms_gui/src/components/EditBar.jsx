@@ -1,601 +1,297 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '../services/api';
-import {
-  X,
-  Upload,
-  Image as ImageIcon,
-  Loader2,
-  PlusCircle,
-  AlertCircle,
-  Globe,
-  Save,
-  RotateCcw,
-  Sparkles,
-  Edit3,
-  CheckSquare,
-  Lock,
-} from 'lucide-react';
+import { resolveImageUrl } from '../lib/media';
+import { AlertCircle, ImagePlus, Loader2, Trash2, Upload, X } from 'lucide-react';
 
-export default function EditBar({
-  routeId,
-  routeName,
-  initialData, // If null or undefined, we are in "Add New" mode
-  onSuccess,
-  onReset,
-  showToast,
-  disabled = false,
-}) {
-  const [formData, setFormData] = useState({});
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+function initialValues(section, item) {
+  return Object.fromEntries(
+    section.fields.map((f) => [f.name, item?.[f.name] ?? f.defaultValue ?? ''])
+  );
+}
+
+const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// Slide-in panel for adding a new item or editing an existing one. The parent
+// mounts it fresh (via `key`) for each item, so state is initialised from props.
+export default function EditBar({ section, item, onClose, onSaved, onDelete, showToast }) {
+  const isEditing = !!item;
+  const existingImageUrl = resolveImageUrl(item, section.imageField);
+  const [initial] = useState(() => initialValues(section, item));
+  const [values, setValues] = useState(initial);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(existingImageUrl);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+  const panelRef = useRef(null);
 
-  const isEditing = !disabled && !!initialData;
-  const singularName = routeName ? routeName.replace(/s$/, '') : 'Item';
+  const isDirty =
+    !!selectedFile || section.fields.some((f) => String(values[f.name] ?? '') !== String(initial[f.name] ?? ''));
 
-  // Initialize or reset form state whenever initialData or routeId changes
+  const requestClose = () => {
+    if (saving) return;
+    if (isDirty && !window.confirm('You have unsaved changes. Close without saving?')) return;
+    onClose();
+  };
+
+  // Escape closes the panel; focus moves into it when it opens.
   useEffect(() => {
-    if (initialData && !disabled) {
-      setFormData({ ...initialData });
-      // Extract existing image URL safely
-      const imgPath =
-        initialData.image ||
-        initialData.logo_or_image ||
-        initialData.thumbnail ||
-        initialData.photo;
+    panelRef.current?.querySelector('input, textarea, select')?.focus();
+  }, []);
 
-      if (imgPath) {
-        if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
-          setPreviewUrl(imgPath);
-        } else if (imgPath.startsWith('/')) {
-          setPreviewUrl(imgPath);
-        } else {
-          setPreviewUrl(`/${imgPath}`);
-        }
-      } else {
-        setPreviewUrl(null);
-      }
-    } else {
-      setFormData(
-        routeId === 'team'
-          ? { category: 'team' }
-          : {}
-      );
-      setPreviewUrl(null);
-    }
-    setSelectedFile(null);
-    setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [initialData, routeId, disabled]);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') requestClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  });
 
-  // Clean up blob URL
+  // Release the local preview when it is replaced or the panel closes.
   useEffect(() => {
     return () => {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
+  const acceptFile = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('That file is not an image. Please choose a JPG, PNG or WEBP picture.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError(`That picture is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Please choose one under 10 MB.`);
+      return;
+    }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setError(null);
+  };
+
   const handleFileChange = (e) => {
-    if (disabled) return;
-    const file = e.target.files?.[0];
-    if (file) {
-      if (previewUrl && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-      }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setError(null);
-    }
+    acceptFile(e.target.files?.[0]);
+    e.target.value = '';
   };
 
-  const handleRemoveFile = () => {
-    if (disabled) return;
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragActive(false);
+    acceptFile(e.dataTransfer.files?.[0]);
+  };
+
+  const undoNewImage = () => {
     setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setPreviewUrl(existingImageUrl);
   };
 
-  const handleResetForm = () => {
-    if (disabled) return;
-    if (isEditing) {
-      onReset?.();
-    } else {
-      setFormData(routeId === 'team' ? { category: 'team' } : {});
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setError(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
+  const setValue = (name, value) => setValues((prev) => ({ ...prev, [name]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (disabled) return;
     setError(null);
 
-    // Validation
-    if (!isEditing) {
-      if (routeId === 'gallery' && !selectedFile) {
-        setError('Please upload an image for this gallery item.');
-        return;
-      }
-      if (routeId === 'startups') {
-        if (!formData.name?.trim()) return setError('Startup name is required.');
-        if (!formData.description?.trim()) return setError('Description is required.');
-        if (!selectedFile) return setError('Please upload a logo or banner image.');
-      }
-      if (routeId === 'news') {
-        if (!formData.title?.trim()) return setError('Article title is required.');
-        if (!formData.content?.trim()) return setError('Article content is required.');
-        if (!selectedFile) return setError('Please upload a thumbnail image.');
-      }
-      if (routeId === 'team') {
-        if (!formData.name?.trim()) return setError('Member full name is required.');
-        if (!formData.role?.trim()) return setError('Role / Designation is required.');
-        if (!formData.category) return setError('Category is required.');
-        if (!selectedFile) return setError('Please upload a member photo.');
-      }
-    } else {
-      if (routeId === 'startups' && !formData.name?.trim()) return setError('Startup name is required.');
-      if (routeId === 'startups' && !formData.description?.trim()) return setError('Description is required.');
-      if (routeId === 'news' && !formData.title?.trim()) return setError('Article title is required.');
-      if (routeId === 'news' && !formData.content?.trim()) return setError('Article content is required.');
-      if (routeId === 'team' && !formData.name?.trim()) return setError('Member name is required.');
-      if (routeId === 'team' && !formData.role?.trim()) return setError('Role / Designation is required.');
+    const missing = section.fields.find((f) => f.required && !String(values[f.name] ?? '').trim());
+    if (missing) {
+      setError(`Please fill in "${missing.label}".`);
+      document.getElementById(`field-${missing.name}`)?.focus();
+      return;
+    }
+    if (!isEditing && !selectedFile) {
+      setError(`Please add a ${section.imageLabel.toLowerCase()}.`);
+      return;
     }
 
-    setLoading(true);
-
+    setSaving(true);
     try {
       const data = new FormData();
+      section.fields.forEach((f) => data.append(f.name, String(values[f.name] ?? '').trim()));
+      if (selectedFile) data.append(section.imageField, selectedFile);
 
-      // Append text fields
-      Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'id' || key === 'created_at' || key === 'published_date' || key === 'category_display') return;
-        if (key === 'image' || key === 'logo_or_image' || key === 'thumbnail' || key === 'photo') return;
-
-        if (value !== undefined && value !== null) {
-          data.append(key, value);
-        }
-      });
-
-      // Append file if newly selected
-      if (selectedFile) {
-        if (routeId === 'gallery') data.append('image', selectedFile);
-        else if (routeId === 'startups') data.append('logo_or_image', selectedFile);
-        else if (routeId === 'news') data.append('thumbnail', selectedFile);
-        else if (routeId === 'team') data.append('photo', selectedFile);
-      }
-
+      const resource = api.endpoints[section.id];
       if (isEditing) {
-        if (routeId === 'gallery') await api.endpoints.gallery.update(initialData.id, data);
-        else if (routeId === 'startups') await api.endpoints.startups.update(initialData.id, data);
-        else if (routeId === 'news') await api.endpoints.news.update(initialData.id, data);
-        else if (routeId === 'team') await api.endpoints.team.update(initialData.id, data);
-        showToast?.(`${singularName} #${initialData.id} updated successfully!`, 'success');
+        await resource.update(item.id, data);
+        showToast?.('Changes saved. They are now live on the website.', 'success');
       } else {
-        if (routeId === 'gallery') await api.endpoints.gallery.create(data);
-        else if (routeId === 'startups') await api.endpoints.startups.create(data);
-        else if (routeId === 'news') await api.endpoints.news.create(data);
-        else if (routeId === 'team') await api.endpoints.team.create(data);
-        showToast?.(`New ${singularName} item created successfully!`, 'success');
+        await resource.create(data);
+        showToast?.(`${capitalize(section.noun)} added to the website.`, 'success');
       }
-
-      onSuccess?.();
-      handleResetForm();
+      onSaved();
     } catch (err) {
-      console.error('Submit error:', err);
-      setError(err.message || 'Failed to save record. Please check the inputs.');
+      console.error('Save failed:', err);
+      setError(err.message || 'Could not save. Please check the details and try again.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
+  const title = isEditing ? `Edit ${section.noun}` : `Add ${section.noun}`;
+
   return (
-    <div className={`flex flex-col h-full bg-card overflow-hidden select-none transition-all ${disabled ? 'bg-muted/10' : ''}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border shrink-0 bg-card/90 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-              disabled
-                ? 'bg-muted text-muted-foreground border border-border'
-                : isEditing
-                ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
-                : 'bg-primary/15 text-primary border border-primary/30'
-            }`}
-          >
-            {disabled ? (
-              <Lock className="w-4 h-4" />
-            ) : isEditing ? (
-              <Edit3 className="w-4 h-4" />
-            ) : (
-              <PlusCircle className="w-4 h-4" />
-            )}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold tracking-tight text-foreground">
-                {disabled
-                  ? `Add New ${singularName}`
-                  : isEditing
-                  ? `Edit ${singularName}`
-                  : `Add New ${singularName}`}
-              </h3>
-              <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
-                  disabled
-                    ? 'bg-muted text-muted-foreground border border-border'
-                    : isEditing
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                    : 'bg-primary/15 text-primary border border-primary/30'
-                }`}
-              >
-                {disabled ? 'Disabled' : isEditing ? `#${initialData.id}` : 'Create'}
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              {disabled
-                ? 'Multi-Select mode active'
-                : isEditing
-                ? 'Modify fields below and save changes'
-                : `Enter details to add to ${routeName}`}
-            </p>
-          </div>
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-150" onClick={requestClose} aria-hidden="true" />
+
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editor-title"
+        className="relative flex h-full w-full max-w-lg flex-col bg-card shadow-2xl animate-in slide-in-from-right duration-200"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
+          <h2 id="editor-title" className="text-lg font-semibold text-foreground">
+            {capitalize(title)}
+          </h2>
+          <button type="button" onClick={requestClose} aria-label="Close" className="icon-btn -mr-2">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {isEditing && !disabled && (
-          <button
-            type="button"
-            onClick={handleResetForm}
-            title="Switch to Add New mode"
-            className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg border border-border bg-background hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-2xs"
-          >
-            <PlusCircle className="w-3 h-3 text-primary" />
-            <span>New</span>
-          </button>
-        )}
-      </div>
-
-      {/* Form Content (Scrollable) */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 custom-scrollbar">
-        {/* Multi-Select Disabled Mode Alert */}
-        {disabled && (
-          <div className="rounded-xl border border-primary/30 bg-primary/10 p-3.5 flex items-start gap-2.5 text-primary text-xs animate-in fade-in shadow-2xs">
-            <CheckSquare className="w-4 h-4 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="font-semibold text-foreground">Multi-Select Enabled</p>
-              <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Item editing is paused while Multi-Select is active. Click checkboxes to select items for deletion, or turn off Multi-Select to add/edit items.
-              </p>
+        <form id="item-editor" onSubmit={handleSubmit} noValidate className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
+          {error && (
+            <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error Alert */}
-        {!disabled && error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 flex items-start gap-2.5 text-destructive text-xs animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span className="flex-1 font-medium leading-relaxed">{error}</span>
-          </div>
-        )}
+          {/* Image */}
+          <div className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">
+              {section.imageLabel}
+              {!isEditing && <span className="text-destructive"> *</span>}
+            </span>
 
-        <form id="side-edit-form" onSubmit={handleSubmit} className="space-y-4">
-          <fieldset disabled={disabled || loading} className="space-y-4 disabled:opacity-60">
-            {/* 1. GALLERY FIELDS */}
-            {routeId === 'gallery' && (
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Caption / Subtext
-                </label>
-                <input
-                  type="text"
-                  value={formData.subtext || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, subtext: e.target.value }))
-                  }
-                  placeholder="e.g. Incubation Center Grand Hall"
-                  className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                />
-              </div>
-            )}
-
-            {/* 2. STARTUPS FIELDS */}
-            {routeId === 'startups' && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Startup Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="e.g. Infusory Future Tech Labs"
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Website URL
-                  </label>
-                  <div className="relative">
-                    <Globe className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="url"
-                      value={formData.website_url || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, website_url: e.target.value }))
-                      }
-                      placeholder="https://example.com"
-                      className="w-full pl-8.5 pr-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Description *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={formData.description || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, description: e.target.value }))
-                    }
-                    placeholder="Brief summary of venture, domain, and vision..."
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all resize-none shadow-2xs leading-relaxed disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 3. NEWS FIELDS */}
-            {routeId === 'news' && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Article Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.title || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, title: e.target.value }))
-                    }
-                    placeholder="e.g. National Hackathon 2026 Announced"
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Subtitle / Tagline
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.subtitle || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, subtitle: e.target.value }))
-                    }
-                    placeholder="Short summary tagline"
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Article Content *
-                  </label>
-                  <textarea
-                    required
-                    rows={5}
-                    value={formData.content || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, content: e.target.value }))
-                    }
-                    placeholder="Complete article body and details..."
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all resize-none shadow-2xs leading-relaxed disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 4. TEAM FIELDS */}
-            {routeId === 'team' && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="e.g. Dr. Jane Doe"
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Role / Designation *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.role || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, role: e.target.value }))
-                    }
-                    placeholder="e.g. Chief Executive Officer"
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Category *
-                  </label>
-                  <select
-                    value={formData.category || 'team'}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, category: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all shadow-2xs cursor-pointer disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  >
-                    <option value="team">AIC Team</option>
-                    <option value="mentor">International Mentor</option>
-                    <option value="governor">Board of Governors</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Short Bio
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formData.bio || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, bio: e.target.value }))
-                    }
-                    placeholder="Professional background and domain..."
-                    className="w-full px-3 py-2 rounded-xl border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary transition-all resize-none shadow-2xs leading-relaxed disabled:bg-muted/40 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* COMMON IMAGE UPLOAD ZONE */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {routeId === 'gallery'
-                    ? 'Image Asset'
-                    : routeId === 'startups'
-                    ? 'Logo / Banner'
-                    : routeId === 'news'
-                    ? 'Thumbnail Image'
-                    : 'Profile Photo'} {!isEditing && <span className="text-destructive">*</span>}
-                </label>
-                {isEditing && !selectedFile && previewUrl && (
-                  <span className="text-[10px] text-muted-foreground font-mono">Current image kept</span>
-                )}
-              </div>
-
-              {previewUrl ? (
-                <div className="relative rounded-xl border border-border bg-background/60 p-2.5 flex items-center gap-3 shadow-2xs">
+            {previewUrl ? (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="flex h-56 items-center justify-center bg-muted">
                   <img
                     src={previewUrl}
-                    alt="Upload preview"
-                    className="w-14 h-14 rounded-lg object-cover border border-border shrink-0"
+                    alt="Preview"
+                    className={`h-full w-full ${section.imageFit === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
                   />
-                  <div className="min-w-0 flex-1 text-xs">
-                    <p className="font-semibold text-foreground truncate">
-                      {selectedFile ? selectedFile.name : 'Existing Media'}
-                    </p>
-                    <p className="text-muted-foreground text-[10px] font-mono">
-                      {selectedFile ? `${(selectedFile.size / 1024).toFixed(1)} KB` : 'Attached to record'}
-                    </p>
-                  </div>
-                  {!disabled && (
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+                  <span className="min-w-0 truncate text-[13px] text-muted-foreground">
+                    {selectedFile ? selectedFile.name : 'Current picture'}
+                  </span>
+                  <div className="flex shrink-0 gap-1">
+                    {selectedFile && (
+                      <button type="button" onClick={undoNewImage} disabled={saving} className="btn-ghost px-2.5 py-1.5 text-[13px]">
+                        {isEditing ? 'Keep old picture' : 'Remove'}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={handleRemoveFile}
-                      className="p-1.5 rounded-lg hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                      title="Remove image"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={saving}
+                      className="btn-secondary px-3 py-1.5 text-[13px]"
                     >
-                      <X className="w-4 h-4" />
+                      <ImagePlus className="h-4 w-4" />
+                      Change picture
                     </button>
-                  )}
+                  </div>
                 </div>
-              ) : (
-                <div
-                  onClick={() => !disabled && fileInputRef.current?.click()}
-                  className={`rounded-xl border-2 border-dashed border-border p-4 text-center transition-all flex flex-col items-center justify-center gap-1.5 group ${
-                    disabled
-                      ? 'opacity-40 cursor-not-allowed bg-muted/20'
-                      : 'hover:border-primary/50 bg-background/40 hover:bg-accent/40 cursor-pointer'
-                  }`}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                disabled={saving}
+                className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-10 text-center transition-colors ${
+                  dragActive ? 'border-primary bg-accent' : 'border-input hover:border-primary/60 hover:bg-muted/60'
+                }`}
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Upload className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-medium text-foreground">
+                  {dragActive ? 'Drop the picture here' : 'Choose a picture'}
+                </span>
+                <span className="text-[13px] text-muted-foreground">or drag one here · JPG, PNG or WEBP, up to 10 MB</span>
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          </div>
+
+          {section.fields.map((f) => (
+            <div key={f.name} className="space-y-1.5">
+              <label htmlFor={`field-${f.name}`} className="block text-sm font-medium text-foreground">
+                {f.label}
+                {f.required && <span className="text-destructive"> *</span>}
+              </label>
+              {f.type === 'textarea' ? (
+                <textarea
+                  id={`field-${f.name}`}
+                  rows={f.rows || 4}
+                  value={values[f.name]}
+                  onChange={(e) => setValue(f.name, e.target.value)}
+                  placeholder={f.placeholder}
+                  disabled={saving}
+                  className="field resize-y leading-relaxed"
+                />
+              ) : f.type === 'select' ? (
+                <select
+                  id={`field-${f.name}`}
+                  value={values[f.name]}
+                  onChange={(e) => setValue(f.name, e.target.value)}
+                  disabled={saving}
+                  className="field"
                 >
-                  <Upload className={`w-5 h-5 text-muted-foreground ${disabled ? '' : 'group-hover:text-primary transition-colors'}`} />
-                  <p className="text-xs font-medium text-foreground">
-                    {disabled ? 'Upload disabled in Multi-Select' : 'Click or drag image to upload'}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    PNG, JPG, WEBP up to 10MB
-                  </p>
-                </div>
+                  {f.options.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id={`field-${f.name}`}
+                  type={f.type}
+                  value={values[f.name]}
+                  onChange={(e) => setValue(f.name, e.target.value)}
+                  placeholder={f.placeholder}
+                  maxLength={f.maxLength}
+                  disabled={saving}
+                  className="field"
+                />
               )}
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={disabled}
-                onChange={handleFileChange}
-              />
+              {f.help && <p className="text-[13px] text-muted-foreground">{f.help}</p>}
             </div>
-          </fieldset>
+          ))}
         </form>
-      </div>
 
-      {/* Sticky Bottom Actions */}
-      <div className="p-3.5 border-t border-border bg-card shrink-0 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleResetForm}
-          disabled={disabled || loading}
-          className="px-3 py-2 rounded-xl border border-border bg-background hover:bg-accent text-foreground text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs flex items-center gap-1.5"
-        >
-          <RotateCcw className="w-3 h-3 text-muted-foreground" />
-          <span>{isEditing ? 'Cancel' : 'Clear'}</span>
-        </button>
-
-        <button
-          type="submit"
-          form="side-edit-form"
-          disabled={disabled || loading}
-          className={`flex-1 px-4 py-2 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-            disabled
-              ? 'bg-muted text-muted-foreground shadow-none'
-              : isEditing
-              ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
-              : 'bg-primary hover:bg-primary/90 shadow-primary/20 text-primary-foreground'
-          }`}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
-            </>
-          ) : (
-            <>
-              {isEditing ? <Save className="w-3.5 h-3.5" /> : <PlusCircle className="w-3.5 h-3.5" />}
-              <span>{isEditing ? 'Update Record' : 'Create Record'}</span>
-            </>
+        <div className="flex shrink-0 items-center gap-2 border-t border-border px-6 py-4">
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => onDelete({ id: item.id, title: section.summarize(item).title, image: existingImageUrl })}
+              disabled={saving}
+              className="btn-ghost px-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete</span>
+            </button>
           )}
-        </button>
+          <div className="ml-auto flex gap-2">
+            <button type="button" onClick={requestClose} disabled={saving} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" form="item-editor" disabled={saving} className="btn-primary">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span>{saving ? 'Saving…' : isEditing ? 'Save changes' : `Add ${section.noun}`}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

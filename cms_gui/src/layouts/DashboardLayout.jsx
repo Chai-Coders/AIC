@@ -1,68 +1,56 @@
-import React, { useState } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
-import Sidebar, { ROUTES } from '../components/Sidebar';
+import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
 
 export default function DashboardLayout() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [multiSelect, setMultiSelect] = useState(false);
+  // Only used on small screens; on desktop the menu is always visible.
+  const [menuOpen, setMenuOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
-  const addToast = (message, type = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  };
-
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
+
+  const addToast = useCallback((message, type = 'info') => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev.slice(-3), { id, message, type }]);
+    setTimeout(() => removeToast(id), 5000);
+  }, [removeToast]);
+
+  // Close the slide-out menu with Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuOpen]);
+
+  const outletContext = useMemo(() => ({ showToast: addToast }), [addToast]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Find active route name based on current pathname
-  const currentRouteMeta = ROUTES.find((r) => r.path === location.pathname) || null;
-
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col transition-colors duration-200">
-      {/* Persistent Header */}
-      <Header
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        activeRouteName={currentRouteMeta?.name}
-      />
+    <div className="flex min-h-dvh w-full bg-background text-foreground">
+      <Sidebar isOpen={menuOpen} setIsOpen={setMenuOpen} />
 
-      {/* Main Body Area: Collapsible Sidebar + Content Grid */}
-      <div className="flex-1 flex w-full relative">
-        {/* Collapsible Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          setIsOpen={setSidebarOpen}
-        />
-
-        {/* Dynamic Routed Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-[1720px] mx-auto w-full">
-            <Outlet
-              context={{
-                multiSelect,
-                setMultiSelect,
-                showToast: addToast,
-              }}
-            />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Header onOpenMenu={() => setMenuOpen(true)} />
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+          <div className="mx-auto w-full max-w-6xl">
+            <Outlet context={outletContext} />
           </div>
         </main>
       </div>
 
-      {/* Global Toast Container */}
       <Toast toasts={toasts} removeToast={removeToast} />
     </div>
   );

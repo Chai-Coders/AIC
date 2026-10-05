@@ -1,451 +1,155 @@
-import React from 'react';
-import {
-  Trash2,
-  CheckCircle2,
-  Circle,
-  ExternalLink,
-  Calendar,
-  Image as ImageIcon,
-  Globe,
-  Edit3,
-} from 'lucide-react';
+import { useState } from 'react';
+import { Check, ExternalLink, ImageOff, Pencil, Trash2 } from 'lucide-react';
+import { resolveImageUrl } from '../lib/media';
 
-export default function CardItem({
-  item,
-  routeId,
-  multiSelect,
-  isSelected,
-  isEditing,
-  isPreviewSelected,
-  onToggleSelect,
-  onSelectForEdit,
-  onRequestDelete,
-}) {
-  // Helper to extract image URL safely
-  const getImageUrl = (item) => {
-    const raw = item.image || item.logo_or_image || item.thumbnail || item.photo;
-    if (!raw) return null;
-    if (typeof raw === 'string') {
-      if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-      if (raw.startsWith('/')) return raw;
-      return `/${raw}`;
-    }
-    return null;
-  };
+function Thumbnail({ src, alt, fit, className }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className={`flex items-center justify-center overflow-hidden bg-muted ${className}`}>
+      {src && !failed ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          className={`h-full w-full ${fit === 'contain' ? 'object-contain p-2' : 'object-cover'}`}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <ImageOff className="h-6 w-6 text-muted-foreground/50" />
+      )}
+    </div>
+  );
+}
 
-  // Helper to get title and description based on schema
-  const getItemDetails = (item, routeId) => {
-    switch (routeId) {
-      case 'gallery':
-        return {
-          title: item.subtext || `Gallery Item #${item.id}`,
-          subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Gallery Asset',
-          body: null,
-          link: null,
-        };
-      case 'startups':
-        return {
-          title: item.name || `Startup #${item.id}`,
-          subtitle: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Startup Venture',
-          body: item.description,
-          link: item.website_url,
-        };
-      case 'news':
-        return {
-          title: item.title || `News #${item.id}`,
-          subtitle: item.subtitle || (item.published_date ? new Date(item.published_date).toLocaleDateString() : 'News Update'),
-          body: item.content,
-          link: null,
-        };
-      case 'team':
-        return {
-          title: item.name || `Team Member #${item.id}`,
-          subtitle: item.role || 'Member',
-          categoryDisplay: item.category_display || (item.category ? item.category.toUpperCase() : null),
-          body: item.bio,
-          link: null,
-        };
-      default:
-        return {
-          title: item.title || item.name || item.subtext || `Item #${item.id}`,
-          subtitle: 'Content item',
-          body: item.description || item.bio || item.content,
-          link: null,
-        };
-    }
-  };
+function SelectBox({ selected }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors ${
+        selected ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card'
+      }`}
+    >
+      {selected && <Check className="h-4 w-4" strokeWidth={3} />}
+    </span>
+  );
+}
 
-  const imageUrl = getImageUrl(item);
-  const details = getItemDetails(item, routeId);
+export default function CardItem({ item, section, selecting, selected, onToggleSelect, onEdit, onDelete }) {
+  const { title, subtitle, meta, tag, link } = section.summarize(item);
+  const imageUrl = resolveImageUrl(item, section.imageField);
+  const isTile = section.layout === 'tiles';
 
-  const handleDeleteClick = (e) => {
+  const handleActivate = () => (selecting ? onToggleSelect(item.id) : onEdit(item));
+
+  const handleDelete = (e) => {
     e.stopPropagation();
-    onRequestDelete?.({
-      id: item.id,
-      title: details.title,
-      image: imageUrl,
-    });
+    onDelete({ id: item.id, title, image: imageUrl });
   };
 
-  const handleCardClick = () => {
-    if (multiSelect) {
-      onToggleSelect?.(item.id);
-    } else {
-      onSelectForEdit?.(item);
-    }
+  const handleEdit = (e) => {
+    e.stopPropagation();
+    onEdit(item);
   };
 
-  // =========================================================================
-  // 1. STARTUP COMPACT HORIZONTAL RECTANGLE
-  // =========================================================================
-  if (routeId === 'startups') {
-    return (
-      <div
-        onClick={handleCardClick}
-        className={`group relative rounded-2xl border transition-all duration-200 overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
-          isEditing
-            ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
-            : isSelected || isPreviewSelected
-            ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
-            : 'border-border bg-card hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
-        }`}
+  const cardProps = {
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': selecting ? selected : undefined,
+    'aria-label': selecting ? `${selected ? 'Unselect' : 'Select'} ${title}` : `Edit ${title}`,
+    onClick: handleActivate,
+    onKeyDown: (e) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleActivate();
+      }
+    },
+  };
+
+  const frame = `group relative overflow-hidden rounded-xl border bg-card transition-all focus:outline-none focus-visible:ring-3 focus-visible:ring-primary/40 ${
+    selected ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/40 hover:shadow-md'
+  }`;
+
+  const actions = !selecting && (
+    <div className="flex shrink-0 items-center gap-1">
+      <button type="button" onClick={handleEdit} className="btn-ghost px-2.5 py-1.5 text-[13px]">
+        <Pencil className="h-3.5 w-3.5" />
+        <span>Edit</span>
+      </button>
+      <button
+        type="button"
+        onClick={handleDelete}
+        title="Delete"
+        aria-label={`Delete ${title}`}
+        className="icon-btn p-1.5 hover:bg-destructive/10 hover:text-destructive"
       >
-        {/* Left: Startup Logo / Image */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-background/80 border border-border overflow-hidden flex items-center justify-center p-1.5 shrink-0">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={details.title}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <ImageIcon className="w-6 h-6 text-muted-foreground opacity-40" />
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+
+  if (isTile) {
+    return (
+      <div {...cardProps} className={`${frame} flex flex-col`}>
+        <Thumbnail
+          src={imageUrl}
+          alt={title}
+          fit={section.imageFit}
+          className={section.id === 'team' ? 'aspect-square' : 'aspect-[4/3]'}
+        />
+        {selecting && (
+          <div className="absolute left-3 top-3">
+            <SelectBox selected={selected} />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-1 p-3.5">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">{title}</h3>
+          {subtitle && <p className="line-clamp-1 text-[13px] text-muted-foreground">{subtitle}</p>}
+          {(meta || tag) && (
+            <div className="mt-auto flex flex-wrap items-center gap-2 pt-1.5">
+              {tag && (
+                <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">{tag}</span>
+              )}
+              {meta && <span className="text-xs text-muted-foreground">{meta}</span>}
+            </div>
           )}
         </div>
+        {actions && <div className="flex justify-end border-t border-border px-2 py-1.5">{actions}</div>}
+      </div>
+    );
+  }
 
-        {/* Right: Startup Name & Exact Link */}
-        <div className="min-w-0 flex-1 space-y-1 pr-6">
-          <div className="flex items-center justify-between gap-1.5">
-            <h3 className={`font-bold text-sm sm:text-base transition-colors truncate ${
-              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
-            }`}>
-              {details.title}
-            </h3>
-            <div className="flex items-center gap-1 shrink-0">
-              {isEditing && (
-                <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                  <Edit3 className="w-2.5 h-2.5" />
-                  <span>Editing</span>
-                </span>
-              )}
-              <span className="text-[10px] font-mono text-muted-foreground bg-accent/60 px-1.5 py-0.5 rounded">
-                #{item.id}
-              </span>
-            </div>
-          </div>
-
-          {details.body && (
-            <p className="text-[11px] text-muted-foreground/85 line-clamp-1 leading-normal">
-              {details.body}
-            </p>
-          )}
-
-          <div className="flex items-center gap-3 pt-0.5">
-            {item.created_at && (
-              <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono shrink-0">
-                <Calendar className="w-3 h-3 text-muted-foreground/70" />
-                <span>{new Date(item.created_at).toLocaleDateString()}</span>
-              </span>
-            )}
-            {details.link ? (
+  return (
+    <div {...cardProps} className={`${frame} flex items-center gap-4 p-3 sm:p-4`}>
+      {selecting && <SelectBox selected={selected} />}
+      <Thumbnail
+        src={imageUrl}
+        alt={title}
+        fit={section.imageFit}
+        className="h-16 w-16 shrink-0 rounded-lg border border-border sm:h-20 sm:w-20"
+      />
+      <div className="min-w-0 flex-1 space-y-1">
+        <h3 className="line-clamp-1 text-[15px] font-semibold text-foreground">{title}</h3>
+        {subtitle && <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">{subtitle}</p>}
+        {(meta || link) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted-foreground">
+            {meta && <span>{meta}</span>}
+            {link && (
               <a
-                href={details.link}
+                href={link}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                title={details.link}
-                className="flex items-center gap-1 text-xs font-mono text-primary hover:underline truncate"
+                className="inline-flex min-w-0 items-center gap-1 text-primary hover:underline"
               >
-                <Globe className="w-3 h-3 shrink-0" />
-                <span className="truncate">{details.link}</span>
-                <ExternalLink className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                <span className="truncate">{link.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}</span>
+                <ExternalLink className="h-3 w-3 shrink-0" />
               </a>
-            ) : (
-              <span className="text-[11px] font-mono text-muted-foreground/60 block">
-                No link attached
-              </span>
             )}
           </div>
-        </div>
-
-        {/* Multi-Select Checkbox Indicator */}
-        {multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-20">
-            <div
-              className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                isSelected
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-background/90 backdrop-blur-md border border-border text-muted-foreground'
-              }`}
-            >
-              {isSelected ? (
-                <CheckCircle2 className="w-3.5 h-3.5 fill-primary text-primary-foreground" />
-              ) : (
-                <Circle className="w-3.5 h-3.5" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Hover Delete Button */}
-        {!multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              type="button"
-              onClick={handleDeleteClick}
-              title="Delete startup"
-              className="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
         )}
       </div>
-    );
-  }
-
-  // =========================================================================
-  // 2. NEWS ADAPTABLE HORIZONTAL RECTANGLE
-  // =========================================================================
-  if (routeId === 'news') {
-    return (
-      <div
-        onClick={handleCardClick}
-        className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-row items-center p-3.5 sm:p-4 gap-3.5 select-none min-h-[96px] cursor-pointer ${
-          isEditing
-            ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
-            : isPreviewSelected
-            ? 'border-primary ring-2 ring-primary/50 bg-primary/10 shadow-md shadow-primary/15 sm:translate-x-1'
-            : isSelected
-            ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
-            : 'border-border bg-card hover:border-primary/50 hover:shadow-md hover:-translate-y-0.5'
-        }`}
-      >
-        {/* Left: News Thumbnail Image */}
-        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-muted/40 border border-border overflow-hidden flex items-center justify-center shrink-0">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={details.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          ) : (
-            <ImageIcon className="w-7 h-7 text-muted-foreground opacity-40" />
-          )}
-        </div>
-
-        {/* Right: Heading & Sub-heading */}
-        <div className="min-w-0 flex-1 space-y-1 pr-6">
-          <div className="flex items-start justify-between gap-1.5">
-            <h3 className={`font-bold text-sm sm:text-base leading-snug transition-colors line-clamp-1 ${
-              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
-            }`}>
-              {details.title}
-            </h3>
-            <div className="flex items-center gap-1 shrink-0">
-              {isEditing && (
-                <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                  <Edit3 className="w-2.5 h-2.5" />
-                  <span>Editing</span>
-                </span>
-              )}
-              <span className="text-[10px] font-mono text-muted-foreground bg-accent/60 px-1.5 py-0.5 rounded">
-                #{item.id}
-              </span>
-            </div>
-          </div>
-
-          {details.subtitle && (
-            <p className="text-xs text-muted-foreground font-medium leading-normal line-clamp-2">
-              {details.subtitle}
-            </p>
-          )}
-
-          {details.body && !details.subtitle && (
-            <p className="text-xs text-muted-foreground/80 line-clamp-2 leading-normal">
-              {details.body}
-            </p>
-          )}
-
-          {item.published_date && (
-            <div className="flex items-center gap-1 text-[11px] text-muted-foreground/70 font-mono pt-0.5">
-              <Calendar className="w-3 h-3" />
-              <span>{new Date(item.published_date).toLocaleDateString()}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Multi-Select Checkbox Indicator */}
-        {multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-20">
-            <div
-              className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                isSelected
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-background/90 backdrop-blur-md border border-border text-muted-foreground'
-              }`}
-            >
-              {isSelected ? (
-                <CheckCircle2 className="w-3.5 h-3.5 fill-primary text-primary-foreground" />
-              ) : (
-                <Circle className="w-3.5 h-3.5" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Hover Delete Button */}
-        {!multiSelect && (
-          <div className="absolute top-2.5 right-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              type="button"
-              onClick={handleDeleteClick}
-              title="Delete article"
-              className="p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // =========================================================================
-  // 3. STANDARD CARD (GALLERY & TEAM)
-  // =========================================================================
-  return (
-    <div
-      onClick={handleCardClick}
-      className={`group relative rounded-2xl border transition-all duration-300 ease-out overflow-hidden flex flex-col justify-between select-none cursor-pointer ${
-        isEditing
-          ? 'border-amber-500 ring-2 ring-amber-500/50 bg-amber-500/5 shadow-md shadow-amber-500/10 -translate-y-0.5'
-          : isSelected || isPreviewSelected
-          ? 'border-primary ring-2 ring-primary/40 bg-primary/5 shadow-md shadow-primary/10'
-          : 'border-border bg-card hover:border-primary/50 hover:shadow-lg hover:-translate-y-0.5'
-      }`}
-    >
-      {/* Media / Thumbnail Section */}
-      <div className="relative w-full aspect-16/10 bg-muted/40 overflow-hidden flex items-center justify-center border-b border-border">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={details.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center text-muted-foreground gap-1 p-3 text-center">
-            <ImageIcon className="w-6 h-6 opacity-40" />
-            <span className="text-[10px] font-mono opacity-60">No Image</span>
-          </div>
-        )}
-
-        {/* Editing Badge Overlay */}
-        {isEditing && (
-          <div className="absolute top-2 left-2 z-10">
-            <span className="text-[10px] font-semibold bg-amber-500 text-white px-2 py-0.5 rounded-full flex items-center gap-1 shadow-md">
-              <Edit3 className="w-2.5 h-2.5" />
-              <span>Editing</span>
-            </span>
-          </div>
-        )}
-
-        {/* Multi-Select Checkbox Indicator */}
-        {multiSelect && (
-          <div className="absolute top-2 right-2 z-20">
-            <div
-              className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                isSelected
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-background/90 backdrop-blur-md border border-border text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {isSelected ? (
-                <CheckCircle2 className="w-3.5 h-3.5 fill-primary text-primary-foreground" />
-              ) : (
-                <Circle className="w-3.5 h-3.5" />
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Hover Delete Button */}
-        {!multiSelect && (
-          <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button
-              type="button"
-              onClick={handleDeleteClick}
-              title="Delete item"
-              className="px-2 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1 transition-all shadow-md cursor-pointer bg-background/95 backdrop-blur-md border border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="w-3 h-3" />
-              <span>Delete</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Content Details */}
-      <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
-        <div className="space-y-1">
-          <div className="flex items-start justify-between gap-1.5">
-            <h3 className={`font-bold text-xs sm:text-sm line-clamp-1 transition-colors ${
-              isEditing ? 'text-amber-500' : 'text-foreground group-hover:text-primary'
-            }`}>
-              {details.title}
-            </h3>
-            <span className="text-[9px] font-mono text-muted-foreground shrink-0 bg-accent/60 px-1.5 py-0.5 rounded">
-              #{item.id}
-            </span>
-          </div>
-
-          <p className="text-[11px] text-muted-foreground line-clamp-1 font-medium">
-            {details.subtitle}
-          </p>
-
-          {details.body && (
-            <p className="text-[11px] text-muted-foreground/80 line-clamp-2 leading-snug pt-0.5">
-              {details.body}
-            </p>
-          )}
-        </div>
-
-        {/* Footer Meta */}
-        <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-          <span className="flex items-center gap-1 truncate">
-            <Calendar className="w-3 h-3 text-muted-foreground/70 shrink-0" />
-            <span className="truncate">
-              {item.created_at || item.published_date
-                ? new Date(item.created_at || item.published_date).toLocaleDateString()
-                : 'Active'}
-            </span>
-          </span>
-          {details.categoryDisplay && (
-            <span className="text-primary font-medium shrink-0 ml-1 text-[9px] uppercase px-1.5 py-0.5 bg-primary/10 rounded">
-              {details.categoryDisplay}
-            </span>
-          )}
-        </div>
-      </div>
+      {actions && <div className="hidden sm:block">{actions}</div>}
     </div>
   );
 }

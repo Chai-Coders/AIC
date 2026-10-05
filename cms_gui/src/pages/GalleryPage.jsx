@@ -1,18 +1,8 @@
-import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import ContentGrid from '../components/ContentGrid';
+import { SECTIONS } from '../routes';
 
 export default function GalleryPage() {
-  const { multiSelect, setMultiSelect, showToast } = useOutletContext();
-
-  return (
-    <ContentGrid
-      routeId="gallery"
-      routeName="Gallery Items"
-      endpointUrl="/api/gallery/"
-      multiSelect={multiSelect}
-      setMultiSelect={setMultiSelect}
-      showToast={showToast}
-    />
-  );
+  const { showToast } = useOutletContext();
+  return <ContentGrid key="gallery" section={SECTIONS.gallery} showToast={showToast} />;
 }

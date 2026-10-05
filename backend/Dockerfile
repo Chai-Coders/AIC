@@ -25,4 +25,5 @@ COPY . /app/
 EXPOSE 8000
 
 # Default command to run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "cms_backend.wsgi:application"]
+# Video uploads stream to Mux and poll for the asset, which exceeds the 30s default worker timeout
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "360", "cms_backend.wsgi:application"]

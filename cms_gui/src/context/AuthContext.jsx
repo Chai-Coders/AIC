@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api, getAuthToken, clearTokens } from '../services/api';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { api, getAuthToken, clearTokens, SESSION_EXPIRED_EVENT } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -13,55 +13,82 @@ export function AuthProvider({ children }) {
     }
   });
   const [token, setToken] = useState(() => getAuthToken());
-  const [loading, setLoading] = useState(true);
+  // Only block the UI on startup when there is a stored session to verify.
+  const [loading, setLoading] = useState(() => !!getAuthToken());
 
+  // Verify a stored session once on startup.
   useEffect(() => {
-    const verifyUser = async () => {
-      if (token) {
-        try {
-          const userData = await api.auth.getMe();
-          setUser(userData);
-        } catch (err) {
+    if (!getAuthToken()) return;
+    let cancelled = false;
+
+    api.auth
+      .getMe()
+      .then((userData) => {
+        if (!cancelled) setUser(userData);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // Only drop the session when the backend actually rejected it; a network
+        // blip or server error should not log the admin out.
+        if (err.status === 401 || err.status === 403) {
           console.warn('Session expired or invalid:', err);
           clearTokens();
           setUser(null);
           setToken(null);
+        } else {
+          console.warn('Could not verify session, keeping cached user:', err);
         }
-      }
-      setLoading(false);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
     };
+  }, []);
 
-    verifyUser();
-  }, [token]);
+  // Any request that fails auth (and cannot refresh) signs the user out of the UI.
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setToken(null);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+  }, []);
 
-  const login = async (username, password) => {
+  const login = useCallback(async (username, password) => {
     const data = await api.auth.login(username, password);
     setToken(data.access);
     setUser(data.user || { username });
     return data;
-  };
+  }, []);
 
-  const logout = async () => {
-    await api.auth.logout();
-    setUser(null);
-    setToken(null);
-  };
+  const logout = useCallback(async () => {
+    try {
+      await api.auth.logout();
+    } finally {
+      setUser(null);
+      setToken(null);
+    }
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!token,
-        loading,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!token,
+      loading,
+      login,
+      logout,
+    }),
+    [user, token, loading, login, logout]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

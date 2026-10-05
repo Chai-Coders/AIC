@@ -2,6 +2,7 @@ import React from 'react';
 import useApi from '../../hooks/useApi';
 import { fetchAllStartups } from '../../api/content';
 import MemberCarousel from './MemberCarousel';
+import { cdnImage } from '../../lib/image';
 
 // Partners section has no API endpoint — stays static
 const partners = [
@@ -178,14 +179,18 @@ const StartupGrid = () => {
                     {item.website_url ? (
                       <a href={item.website_url} target="_blank" rel="noopener noreferrer">
                         <img
-                          src={item.logo_or_image}
+                          src={cdnImage(item.logo_or_image, 600)}
+                          loading="lazy"
+                          decoding="async"
                           alt={item.name}
                           style={{ maxHeight: '160px', maxWidth: '90%', objectFit: 'contain' }}
                         />
                       </a>
                     ) : (
                       <img
-                        src={item.logo_or_image}
+                        src={cdnImage(item.logo_or_image, 600)}
+                          loading="lazy"
+                          decoding="async"
                         alt={item.name}
                         style={{ maxHeight: '160px', maxWidth: '90%', objectFit: 'contain' }}
                       />

@@ -24,7 +24,7 @@ const MemberCard = ({ member, className = '', boardLayout = false }) => {
       <article className={`member-carousel-card member-carousel-card--board ${className}`.trim()}>
         <div className="member-carousel-portrait member-carousel-portrait--board">
           {member.img ? (
-            <img src={member.img} alt={member.name} />
+            <img src={member.img} alt={member.name} loading="lazy" decoding="async" />
           ) : (
             <span aria-hidden="true">{initialsFor(member.name)}</span>
           )}
@@ -42,7 +42,7 @@ const MemberCard = ({ member, className = '', boardLayout = false }) => {
     <>
       <div className="member-carousel-portrait">
         {member.img ? (
-          <img src={member.img} alt={member.name} />
+          <img src={member.img} alt={member.name} loading="lazy" decoding="async" />
         ) : (
           <span aria-hidden="true">{initialsFor(member.name)}</span>
         )}

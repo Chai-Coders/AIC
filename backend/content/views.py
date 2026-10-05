@@ -12,7 +12,9 @@ from .serializers import (
     TeamMemberSerializer,
     BackgroundVideoSerializer,
 )
-from .mux_service import upload_video_to_mux, delete_mux_asset
+from .mux_service import upload_video_to_mux, delete_mux_asset, MuxConfigurationError
+
+VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm', '.mkv', '.m4v', '.avi')
 
 class GalleryViewSet(viewsets.ModelViewSet):
     queryset = GalleryItem.objects.all()
@@ -96,6 +98,13 @@ class BackgroundVideoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        content_type = (getattr(file_obj, 'content_type', '') or '').lower()
+        if not content_type.startswith('video/') and not file_obj.name.lower().endswith(VIDEO_EXTENSIONS):
+            return Response(
+                {"error": "Unsupported file type. Please upload a video file (MP4, MOV, WEBM, MKV)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         video_name = (
             request.data.get('videoname') or
             request.data.get('video_name') or
@@ -106,6 +115,8 @@ class BackgroundVideoView(APIView):
         try:
             # Upload to Mux and receive streaming URL & playback ID
             mux_result = upload_video_to_mux(file_obj, filename=file_obj.name)
+        except MuxConfigurationError as err:
+            return Response({"error": str(err)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as err:
             return Response(
                 {"error": f"Failed to upload video to Mux: {str(err)}"},
@@ -114,11 +125,8 @@ class BackgroundVideoView(APIView):
 
         # Check existing background video to clean up and replace
         existing = BackgroundVideo.objects.first()
+        previous_asset_id = existing.mux_asset_id if existing else None
         if existing:
-            # Delete previous Mux asset if different
-            if existing.mux_asset_id and existing.mux_asset_id != mux_result.get('mux_asset_id'):
-                delete_mux_asset(existing.mux_asset_id)
-
             existing.video_name = video_name
             existing.video_url = mux_result['video_url']
             existing.thumbnail_url = mux_result.get('thumbnail_url')
@@ -134,6 +142,11 @@ class BackgroundVideoView(APIView):
                 mux_asset_id=mux_result.get('mux_asset_id'),
                 mux_playback_id=mux_result.get('mux_playback_id'),
             )
+
+        # Only remove the previous Mux asset once the new one is saved, so a
+        # failed save never leaves the site without a playable video.
+        if previous_asset_id and previous_asset_id != instance.mux_asset_id:
+            delete_mux_asset(previous_asset_id)
 
         serializer = BackgroundVideoSerializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)

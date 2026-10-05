@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -10,25 +9,19 @@ import NewsPage from './pages/NewsPage';
 import TeamPage from './pages/TeamPage';
 import BackgroundVideoPage from './pages/BackgroundVideoPage';
 import LoginPage from './components/LoginPage';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 function AuthLoader({ children }) {
   const { loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground space-y-4 select-none">
-        <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary animate-pulse shadow-sm">
-          <Sparkles className="w-6 h-6" />
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-          <span>Connecting to CMS Studio...</span>
-        </div>
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-background">
+        <img src="/logo1.png" alt="AIC IIITK" className="h-8 w-auto dark:brightness-0 dark:invert" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />
       </div>
     );
   }
-
   return children;
 }
 

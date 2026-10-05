@@ -1,4 +1,7 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+// All backend routes live under /api (proxied to Django by Vite in dev).
+const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '');
+
+export const SESSION_EXPIRED_EVENT = 'cms:session-expired';
 
 export function getAuthToken() {
   return localStorage.getItem('cms_access_token');
@@ -19,76 +22,103 @@ export function clearTokens() {
   localStorage.removeItem('cms_user');
 }
 
+// Shared in-flight refresh so parallel 401s don't each rotate (and blacklist) the same refresh token.
+let refreshPromise = null;
+
+function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refresh = getRefreshToken();
+      if (!refresh) return null;
+      try {
+        const res = await fetch(`${API_BASE}/auth/refresh/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        // ROTATE_REFRESH_TOKENS is on: the old refresh token is now blacklisted.
+        setTokens(data.access, data.refresh || refresh);
+        return data.access;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+function expireSession() {
+  clearTokens();
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
+
 async function request(endpoint, options = {}) {
+  const { _isRetry, skipAuth, skipAuthRefresh, ...fetchOptions } = options;
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   const headers = {
-    ...(options.headers || {}),
+    ...(fetchOptions.headers || {}),
   };
 
   const token = getAuthToken();
-  if (token && !headers['Authorization']) {
+  if (token && !skipAuth && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+  if (!(fetchOptions.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
 
   let response;
   try {
     response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
   } catch (err) {
-    throw new Error('Unable to connect to CMS backend server. Please make sure the backend is running.');
+    throw new Error("Couldn't reach the server. Check your internet connection and try again.", { cause: err });
   }
 
-  if (response.status === 401) {
-    // Attempt token refresh if available
-    const refresh = getRefreshToken();
-    if (refresh && !options._isRetry) {
-      try {
-        const refreshRes = await fetch(`${API_BASE}/auth/refresh/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh }),
+  if (response.status === 401 && !skipAuthRefresh) {
+    if (!_isRetry && getRefreshToken()) {
+      const newAccess = await refreshAccessToken();
+      if (newAccess) {
+        return request(endpoint, {
+          ...options,
+          _isRetry: true,
+          headers: {
+            ...(fetchOptions.headers || {}),
+            Authorization: `Bearer ${newAccess}`,
+          },
         });
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          setTokens(refreshData.access, refresh);
-          return request(endpoint, {
-            ...options,
-            _isRetry: true,
-            headers: {
-              ...headers,
-              Authorization: `Bearer ${refreshData.access}`,
-            },
-          });
-        }
-      } catch (e) {
-        // Refresh failed, clear session
       }
     }
-    clearTokens();
+    expireSession();
   }
 
   if (!response.ok) {
-    let errorDetail = 'Operation failed';
+    let errorDetail;
     try {
       const errData = await response.json();
       errorDetail =
         errData.detail ||
+        errData.error ||
         errData.non_field_errors?.[0] ||
         errData.message ||
         Object.entries(errData)
-          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join(' | ') ||
-        `Error (${response.status}): ${response.statusText}`;
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join(' ');
     } catch {
-      errorDetail = `Error (${response.status}): ${response.statusText}`;
+      // Non-JSON error body (e.g. proxy/HTML error page)
     }
-    const error = new Error(errorDetail);
+    const fallback =
+      response.status >= 500
+        ? 'Something went wrong on the server. Please try again in a moment.'
+        : `The request failed (error ${response.status}). Please try again.`;
+    const error = new Error(errorDetail || fallback);
     error.status = response.status;
     throw error;
   }
@@ -104,6 +134,25 @@ async function request(endpoint, options = {}) {
   }
 }
 
+// DRF paginates list endpoints (PAGE_SIZE=20); walk every page so the CMS shows all records.
+async function listAll(endpoint, params = {}) {
+  const items = [];
+  for (let page = 1; page <= 500; page++) {
+    const query = new URLSearchParams({ ...params, page: String(page) });
+    const res = await request(`${endpoint}?${query}`);
+    if (Array.isArray(res)) return res;
+    items.push(...(res.results || []));
+    if (!res.next) break;
+  }
+  return items;
+}
+
+// Total number of records without fetching every page.
+async function countAll(endpoint) {
+  const res = await request(`${endpoint}?page=1`);
+  return Array.isArray(res) ? res.length : res.count ?? (res.results || []).length;
+}
+
 export const api = {
   // Authentication
   auth: {
@@ -111,6 +160,8 @@ export const api = {
       const data = await request('/auth/login/', {
         method: 'POST',
         body: JSON.stringify({ username, password }),
+        skipAuth: true,
+        skipAuthRefresh: true,
       });
       if (data.access) {
         setTokens(data.access, data.refresh);
@@ -132,8 +183,13 @@ export const api = {
           await request('/auth/logout/', {
             method: 'POST',
             body: JSON.stringify({ refresh }),
+            skipAuth: true,
+            skipAuthRefresh: true,
           });
         }
+      } catch (err) {
+        // Server-side revocation is best effort; the local session is always cleared.
+        console.warn('Logout request failed:', err);
       } finally {
         clearTokens();
       }
@@ -145,10 +201,8 @@ export const api = {
     gallery: {
       name: 'Gallery',
       endpoint: '/api/gallery/',
-      list: async () => {
-        const res = await request('/gallery/');
-        return Array.isArray(res) ? res : res.results || [];
-      },
+      list: async () => listAll('/gallery/'),
+      count: async () => countAll('/gallery/'),
       create: async (formData) => request('/gallery/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/gallery/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/gallery/${id}/`, { method: 'DELETE' }),
@@ -156,10 +210,8 @@ export const api = {
     startups: {
       name: 'Startups',
       endpoint: '/api/startups/',
-      list: async () => {
-        const res = await request('/startups/');
-        return Array.isArray(res) ? res : res.results || [];
-      },
+      list: async () => listAll('/startups/'),
+      count: async () => countAll('/startups/'),
       create: async (formData) => request('/startups/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/startups/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/startups/${id}/`, { method: 'DELETE' }),
@@ -167,10 +219,8 @@ export const api = {
     news: {
       name: 'News Updates',
       endpoint: '/api/news/',
-      list: async () => {
-        const res = await request('/news/');
-        return Array.isArray(res) ? res : res.results || [];
-      },
+      list: async () => listAll('/news/'),
+      count: async () => countAll('/news/'),
       create: async (formData) => request('/news/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/news/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/news/${id}/`, { method: 'DELETE' }),
@@ -178,11 +228,8 @@ export const api = {
     team: {
       name: 'Team Members',
       endpoint: '/api/team/',
-      list: async (category) => {
-        const url = category ? `/team/?category=${encodeURIComponent(category)}` : '/team/';
-        const res = await request(url);
-        return Array.isArray(res) ? res : res.results || [];
-      },
+      list: async (category) => listAll('/team/', category ? { category } : {}),
+      count: async () => countAll('/team/'),
       create: async (formData) => request('/team/', { method: 'POST', body: formData }),
       update: async (id, formData) => request(`/team/${id}/`, { method: 'PATCH', body: formData }),
       delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),

@@ -1,162 +1,119 @@
-import React from 'react';
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import {
-  Home,
-  Image,
-  Rocket,
-  Newspaper,
-  Users,
-  Video,
-  ChevronRight,
-  Database,
-  Terminal,
-} from 'lucide-react';
-
-export const ROUTES = [
-  {
-    path: '/',
-    id: 'home',
-    name: 'Home',
-    description: 'Overview & Main Logo Canvas',
-    endpoint: null,
-    icon: Home,
-  },
-  {
-    path: '/gallery',
-    id: 'gallery',
-    name: 'Gallery Items',
-    description: 'Image Showcase & Visual Assets',
-    endpoint: '/api/gallery/',
-    icon: Image,
-  },
-  {
-    path: '/startups',
-    id: 'startups',
-    name: 'Startups',
-    description: 'Incubated Ventures & Portfolios',
-    endpoint: '/api/startups/',
-    icon: Rocket,
-  },
-  {
-    path: '/news',
-    id: 'news',
-    name: 'News Updates',
-    description: 'Articles, Press & Announcements',
-    endpoint: '/api/news/',
-    icon: Newspaper,
-  },
-  {
-    path: '/team',
-    id: 'team',
-    name: 'Team Members',
-    description: 'Mentors, AIC Team & Governors',
-    endpoint: '/api/team/',
-    icon: Users,
-  },
-  {
-    path: '/background-video',
-    id: 'background-video',
-    name: 'Background Video',
-    description: 'Mux Video Stream & Upload',
-    endpoint: '/api/backgroundvideo/',
-    icon: Video,
-  },
-];
+import { ExternalLink, LogOut, Moon, Sun, X } from 'lucide-react';
+import { ROUTES, SITE_URL } from '../routes';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const close = () => setIsOpen(false);
+
+  const handleLogout = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logout();
+    } finally {
+      setSigningOut(false);
+    }
+  };
+
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Backdrop for the phone-sized slide-out menu */}
       {isOpen && (
         <div
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-20 md:hidden"
+          onClick={close}
+          aria-hidden="true"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden animate-in fade-in duration-150"
         />
       )}
 
-      {/* Sidebar Container */}
       <aside
-        className={`fixed md:sticky top-16 left-0 z-25 h-[calc(100vh-4rem)] bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex flex-col justify-between overflow-hidden shadow-lg md:shadow-none ${
-          isOpen ? 'w-64 sm:w-72 translate-x-0' : 'w-0 -translate-x-full md:w-0 md:translate-x-0'
+        aria-label="Main menu"
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 md:sticky md:top-0 md:h-dvh md:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-4 space-y-6 overflow-y-auto flex-1">
-          {/* Section Header */}
-          <div className="flex items-center justify-between px-2 pt-1">
-            <div className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-sidebar-foreground/70">
-              <Database className="w-3.5 h-3.5 text-primary" />
-              <span>CMS Endpoints</span>
-            </div>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sidebar-accent text-sidebar-accent-foreground">
-              v1.0
-            </span>
-          </div>
-
-          {/* Navigation Route Rows */}
-          <nav className="space-y-1.5">
-            {ROUTES.map((route) => {
-              const Icon = route.icon;
-
-              return (
-                <NavLink
-                  key={route.path}
-                  to={route.path}
-                  end={route.path === '/'}
-                  className={({ isActive }) =>
-                    `w-full group text-left px-3.5 py-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                      isActive
-                        ? 'bg-primary/15 border-primary/40 text-foreground shadow-xs font-semibold'
-                        : 'border-transparent text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                            isActive
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'bg-sidebar-accent text-sidebar-foreground group-hover:bg-primary/20 group-hover:text-primary'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium truncate">
-                              {route.name}
-                            </span>
-                          </div>
-                          {route.endpoint ? (
-                            <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground group-hover:text-primary/90 transition-colors truncate">
-                              <Terminal className="w-2.5 h-2.5 shrink-0" />
-                              <span className="truncate">{route.endpoint}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[11px] text-muted-foreground truncate block">
-                              Main dashboard
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <ChevronRight
-                        className={`w-4 h-4 shrink-0 transition-transform ${
-                          isActive
-                            ? 'text-primary translate-x-0.5'
-                            : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'
-                        }`}
-                      />
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
+        <div className="flex h-16 shrink-0 items-center justify-between px-5">
+          <img
+            src="/logo1.png"
+            alt="AIC IIITK"
+            className="h-7 w-auto object-contain dark:brightness-0 dark:invert"
+          />
+          <button type="button" onClick={close} aria-label="Close menu" className="icon-btn -mr-2 md:hidden">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          {ROUTES.map((route) => {
+            const Icon = route.icon;
+            return (
+              <NavLink
+                key={route.path}
+                to={route.path}
+                end={route.path === '/'}
+                onClick={close}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`
+                }
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <span>{route.name}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="shrink-0 space-y-1 border-t border-border p-3">
+          {SITE_URL && (
+            <a
+              href={SITE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ExternalLink className="h-[18px] w-[18px]" />
+              <span>View website</span>
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+
+          <div className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold uppercase text-accent-foreground">
+              {(user?.username || '?').charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">{user?.username || 'Signed in'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={signingOut}
+              title="Sign out"
+              aria-label="Sign out"
+              className="icon-btn hover:text-destructive"
+            >
+              <LogOut className="h-[18px] w-[18px]" />
+            </button>
+          </div>
+        </div>
       </aside>
     </>
   );

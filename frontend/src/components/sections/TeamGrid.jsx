@@ -2,9 +2,10 @@ import React from 'react';
 import MemberCarousel from './MemberCarousel';
 import useApi from '../../hooks/useApi';
 import { fetchTeam } from '../../api/content';
+import { cdnImage } from '../../lib/image';
 
 const TeamGrid = () => {
-  const { data: members, loading, error } = useApi(() => fetchTeam('team'));
+  const { data: members, loading, error } = useApi(fetchTeam('team'));
 
   if (loading) {
     return (
@@ -35,7 +36,7 @@ const TeamGrid = () => {
   // Map API fields → shape expected by MemberCarousel/MemberCard
   const mapped = members.map((m) => ({
     ...m,
-    img: m.photo || null,
+    img: m.photo ? cdnImage(m.photo, 600) : null,
   }));
 
   return <MemberCarousel members={mapped} title="AIC-IIITKottayam Team" />;

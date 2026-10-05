@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import './HomeStartups.css';
 import useApi from '../../hooks/useApi';
 import { fetchAllStartups } from '../../api/content';
+import { cdnImage } from '../../lib/image';
 
 const HomeStartups = () => {
   const { data: startups, loading, error } = useApi(fetchAllStartups);
@@ -50,7 +51,7 @@ const HomeStartups = () => {
                 onClick={() => handleTileClick(item.name, rowIndex)}
                 title={item.name}
               >
-                <img src={item.logo_or_image} alt={item.name} loading="lazy" />
+                <img src={cdnImage(item.logo_or_image, 440)} alt={item.name} loading="lazy" decoding="async" />
               </div>
             );
           })}

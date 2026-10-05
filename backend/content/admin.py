@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import GalleryItem, Startup, NewsUpdate, TeamMember
+from .models import GalleryItem, Startup, NewsUpdate, TeamMember, BackgroundVideo
 
 @admin.register(GalleryItem)
 class GalleryItemAdmin(admin.ModelAdmin):
@@ -81,3 +81,8 @@ class TeamMemberAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="max-width: 250px; max-height: 250px; object-fit: cover; border-radius: 8px;" />', obj.photo.url)
         return "No photo uploaded yet"
     photo_preview_large.short_description = "Current Photo Preview"
+
+@admin.register(BackgroundVideo)
+class BackgroundVideoAdmin(admin.ModelAdmin):
+    list_display = ('video_name', 'mux_playback_id', 'updated_at')
+    readonly_fields = ('video_url', 'thumbnail_url', 'mux_asset_id', 'mux_playback_id', 'created_at', 'updated_at')
