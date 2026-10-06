@@ -100,3 +100,16 @@ export function fetchTeam(category) {
  * Returns: { id, video_name, video_url, thumbnail_url, mux_playback_id, updated_at }
  */
 export const fetchBackgroundVideo = cached('background-video', () => getJson('/backgroundvideo/'));
+
+const newsItemFetchers = {};
+
+/**
+ * Fetch a single news update by id.
+ * Returns: { id, title, subtitle, content, thumbnail, published_date }
+ */
+export function fetchNewsItem(id) {
+  if (!newsItemFetchers[id]) {
+    newsItemFetchers[id] = cached(`news:${id}`, () => getJson(`/news/${encodeURIComponent(id)}/`));
+  }
+  return newsItemFetchers[id];
+}

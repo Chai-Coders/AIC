@@ -1,82 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
+import AsyncState, { EmptyState, SkeletonGrid } from '../common/AsyncState';
+import Lightbox from '../common/Lightbox';
 import useApi from '../../hooks/useApi';
 import { fetchAllGallery } from '../../api/content';
-import { cdnImage, cdnImageProps } from '../../lib/image';
+import { cdnImageProps } from '../../lib/image';
 
-const GalleryGrid = () => {
-  const { data: galleryItems, loading, error } = useApi(fetchAllGallery);
+/**
+ * Responsive photo grid with a lightbox. `limit` shows only the first N items
+ * (the lightbox still only covers what's shown).
+ */
+const GalleryGrid = ({ limit }) => {
+  const gallery = useApi(fetchAllGallery);
+  const [active, setActive] = useState(null);
 
   return (
-    <div id="contact" className="section md-padding">
-      <div className="container-fluid">
-        <div className="section-header text-center">
-          <h2 className="title">Gallery</h2>
-        </div>
-
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#888' }}>
-            <i className="fa fa-spinner fa-spin fa-2x" />
-            <p style={{ marginTop: '16px' }}>Loading gallery…</p>
-          </div>
-        )}
-
-        {error && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#c0392b' }}>
-            <i className="fa fa-exclamation-circle fa-2x" />
-            <p style={{ marginTop: '12px' }}>Could not load gallery. Please try again later.</p>
-          </div>
-        )}
-
-        {!loading && !error && galleryItems.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#aaa' }}>
-            <p>No gallery items available yet.</p>
-          </div>
-        )}
-
-        {!loading && !error && galleryItems.length > 0 && (
-          <div className="row" style={{ display: 'flex', flexWrap: 'wrap' }}>
-            {galleryItems.map((item) => (
-              <div key={item.id} className="col-sm-4" style={{ marginBottom: '20px' }}>
-                <div
-                  className="contact"
-                  style={{ overflow: 'hidden', borderRadius: '4px', border: '1px solid #eee' }}
-                >
-                  <a target="_blank" rel="noopener noreferrer" href={cdnImage(item.image, 1920)}>
+    <AsyncState
+      state={gallery}
+      skeleton={<SkeletonGrid count={limit || 9} className="gallery-grid" media={false} />}
+      empty={<EmptyState icon="fa-picture-o" title="No photos yet">Check back soon for photos from our events.</EmptyState>}
+    >
+      {(all) => {
+        const items = limit ? all.slice(0, limit) : all;
+        return (
+          <>
+            <ul className="gallery-grid">
+              {items.map((item, i) => (
+                <li key={item.id}>
+                  <button type="button" className="gallery-tile" onClick={() => setActive(i)}>
                     <img
-                      className="logo"
-                      {...cdnImageProps(item.image, [400, 800, 1200], '(min-width: 768px) 33vw, 100vw')}
+                      {...cdnImageProps(item.image, [400, 800], '(min-width: 1100px) 25vw, (min-width: 640px) 33vw, 50vw')}
+                      alt={item.subtext || `Gallery photo ${i + 1}`}
                       loading="lazy"
                       decoding="async"
-                      alt={item.subtext || `Gallery item ${item.id}`}
-                      style={{
-                        width: '100%',
-                        height: '260px',
-                        objectFit: 'cover',
-                        transition: 'transform 0.3s',
-                      }}
                     />
-                  </a>
-                  {item.subtext && (
-                    <p
-                      style={{
-                        margin: '6px 8px',
-                        fontSize: '13px',
-                        color: '#555',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {item.subtext}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                    {item.subtext && <span className="gallery-tile__caption">{item.subtext}</span>}
+                    <span className="gallery-tile__zoom" aria-hidden="true">
+                      <i className="fa fa-expand" />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <Lightbox items={items} index={active} onChange={setActive} />
+          </>
+        );
+      }}
+    </AsyncState>
   );
 };
 

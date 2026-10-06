@@ -1,23 +1,25 @@
 import React from 'react';
-import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
-import HeaderBanner from '../components/common/HeaderBanner';
-import BoardGrid from '../components/sections/BoardGrid';
+import PageLayout from '../components/common/PageLayout';
+import MemberGrid from '../components/sections/MemberGrid';
+import PeopleNav from '../components/sections/PeopleNav';
 
-const BoardMemberPage = () => {
-  return (
-    <>
-      <Header />
-      <HeaderBanner 
-        title="Board of Governors" 
-        breadcrumbs={[{ label: 'Board of Governors' }]} 
-      />
-      <main>
-        <BoardGrid />
-      </main>
-      <Footer />
-    </>
-  );
-};
+const BoardMemberPage = () => (
+  <PageLayout
+    title="Board of Governors"
+    hero={{
+      eyebrow: 'Leadership',
+      title: 'Board of Governors',
+      description: 'Leading industrialists and academicians who guide the strategy and governance of AIC-IIITKottayam.',
+      breadcrumbs: [{ label: 'About' }, { label: 'Board of Governors' }],
+    }}
+  >
+    <section className="section">
+      <div className="container">
+        <PeopleNav />
+        <MemberGrid category="governor" emptyText="No board members listed yet." />
+      </div>
+    </section>
+  </PageLayout>
+);
 
 export default BoardMemberPage;
