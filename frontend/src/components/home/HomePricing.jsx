@@ -1,67 +1,74 @@
 import React from 'react';
-import SectionHeader from '../common/SectionHeader';
 import { REGISTER_URL } from '../../data/site';
+import './HomePricing.css';
 
 const PLANS = [
   {
-    title: 'Support Contract',
+    title: 'Support Contracts',
+    tone: 'white',
     icon: 'fa-handshake-o',
-    amount: '₹5K',
+    amount: '5K',
     per: '/ month',
-    features: ['Incubation space', 'Knowledge assistance', '6 to 12 months'],
+    features: ['Incubate space', 'Knowledge assistance', '6 to 12 months'],
   },
   {
     title: 'Training Contract',
+    tone: 'yellow',
     icon: 'fa-graduation-cap',
-    amount: '₹1K',
+    amount: '1K',
     per: '/ week',
-    features: ['Incubation space', 'Training support', '1 to 4 weeks'],
-    featured: true,
+    features: ['Incubate space', 'Training support', '1 to 4 weeks'],
   },
   {
-    title: 'Consultancy Contract',
+    title: 'Consultancy Contracts',
+    tone: 'blue',
     icon: 'fa-line-chart',
-    amount: '₹10K',
+    amount: '10K',
     per: '/ day',
-    features: ['On-site support', 'Consultancy support', 'Network support'],
+    features: ['Onsite support', 'Consultancy support', 'Network support'],
   },
 ];
 
 const HomePricing = () => (
-  <section id="pricing" className="section" aria-labelledby="pricing-title">
-    <div className="container">
-      <SectionHeader
-        id="pricing-title"
-        eyebrow="Business model"
-        title="Flexible engagement plans"
-        lead="Choose the level of support that fits your stage, from short training stints to long-term incubation."
-        align="center"
-      />
+  <section id="pricing" className="pricing-section" aria-labelledby="pricing-title">
+    <div className="pricing-inner">
+      <div className="pricing-header">
+        <h2 id="pricing-title" className="pricing-title">Business Model</h2>
+      </div>
 
-      <div className="plans">
+      <div className="plan-grid">
         {PLANS.map((plan) => (
-          <article key={plan.title} className={`plan ${plan.featured ? 'plan--featured' : ''}`}>
-            <span className={`icon-badge ${plan.featured ? 'icon-badge--dark' : ''}`}>
-              <i className={`fa ${plan.icon}`} aria-hidden="true" />
-            </span>
-            <h3 className="plan__title">{plan.title}</h3>
-            <p className="plan__price">
-              <strong>{plan.amount}</strong>
-              <span>{plan.per}</span>
-            </p>
-            <ul className="check-list plan__features">
-              {plan.features.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-            <a
-              href={REGISTER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`btn btn--block ${plan.featured ? 'btn--accent' : 'btn--outline'}`}
-            >
-              Register now <i className="fa fa-arrow-right" aria-hidden="true" />
-            </a>
+          <article key={plan.title} className={`plan-card plan-card--${plan.tone}`}>
+            <div className="plan-card-body">
+              <span className="plan-card-icon">
+                <i className={`fa ${plan.icon}`} aria-hidden="true" />
+              </span>
+              <h3 className="plan-card-title">{plan.title}</h3>
+
+              <div className="plan-card-price">
+                <strong className="plan-card-amount">{plan.amount}</strong>
+                <span className="plan-card-per">{plan.per}</span>
+              </div>
+
+              <p className="plan-card-features">
+                {plan.features.map((feat) => (
+                  <span key={feat} className="plan-card-feature-line">
+                    {feat}
+                  </span>
+                ))}
+              </p>
+            </div>
+
+            <div className="plan-card-tab">
+              <a
+                href={REGISTER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="plan-card-cta"
+              >
+                Register Now <span className="plan-card-cta-arrow" aria-hidden="true">&gt;</span>
+              </a>
+            </div>
           </article>
         ))}
       </div>

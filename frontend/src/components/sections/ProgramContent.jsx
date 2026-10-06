@@ -59,7 +59,7 @@ const ProgramContent = ({ intro, notes = [], cards, footnote, cta, children }) =
         </Callout>
       ))}
       {cards?.length > 0 && (
-        <div className="grid grid--2">
+        <div className="info-grid">
           {cards.map((card) => (
             <InfoCard key={card.title} {...card} />
           ))}

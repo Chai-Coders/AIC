@@ -112,7 +112,7 @@ const CareersPage = () => (
         <Callout icon="fa-clock-o">
           Interns should be available for at least 2 to 3 months, full time (Monday to Friday).
         </Callout>
-        <div className="grid grid--2">
+        <div className="info-grid">
           {INTERNSHIP_CARDS.map((card) => (
             <InfoCard key={card.title} {...card} />
           ))}

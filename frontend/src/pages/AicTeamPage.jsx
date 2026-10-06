@@ -1,6 +1,6 @@
 import React from 'react';
 import PageLayout from '../components/common/PageLayout';
-import MemberGrid from '../components/sections/MemberGrid';
+import PeopleCarousel from '../components/sections/PeopleCarousel';
 import PeopleNav from '../components/sections/PeopleNav';
 
 const AicTeamPage = () => (
@@ -16,9 +16,9 @@ const AicTeamPage = () => (
     <section className="section">
       <div className="container">
         <PeopleNav />
-        <MemberGrid category="team" emptyText="No team members listed yet." />
       </div>
     </section>
+    <PeopleCarousel category="team" title="AIC-IIITKottayam Team" emptyText="No team members listed yet." />
   </PageLayout>
 );
 

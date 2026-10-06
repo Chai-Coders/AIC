@@ -1,0 +1,273 @@
+/* Member carousel (Board of Governors, AIC Team, Mentors). Ported from the main branch. */
+.member-carousel-section {
+  overflow: hidden;
+  padding: 104px 0 112px;
+}
+
+.member-carousel-section--grey {
+  background-color: #fafafa;
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+}
+
+.member-carousel-section .member-carousel-heading {
+  margin-bottom: 54px;
+}
+
+.member-carousel {
+  width: min(100%, 1140px);
+  margin: 0 auto;
+  overflow: hidden;
+  outline: none;
+}
+
+.member-carousel:focus-visible {
+  box-shadow: none;
+}
+
+.member-carousel-track {
+  display: flex;
+  width: max-content;
+}
+
+.member-carousel-track--loop {
+  animation: member-carousel-scroll 48s linear infinite;
+}
+
+.member-carousel-track--static {
+  width: 100%;
+  justify-content: center;
+}
+
+.member-carousel:hover .member-carousel-track--loop,
+.member-carousel:focus .member-carousel-track--loop {
+  animation-play-state: paused;
+}
+
+.member-carousel-card {
+  display: block;
+  width: 268px;
+  min-height: 376px;
+  margin-right: 22px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e7e9ed;
+  color: #10161a;
+  text-align: center;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.member-carousel-section--board .member-carousel-card {
+  border-radius: 22px;
+  border: 0;
+  background: transparent;
+  opacity: 0.52;
+  transform: scale(0.94);
+  filter: saturate(0.75);
+  box-shadow: none;
+  transition: transform 0.8s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.8s ease, box-shadow 0.8s ease, filter 0.8s ease;
+}
+
+.member-carousel-section--board .member-carousel-card--board {
+  width: 260px;
+  min-height: 0;
+}
+
+.member-carousel-section--board .member-carousel-portrait--board {
+  position: relative;
+  height: 500px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.member-carousel-section--board .member-carousel-card--spotlight {
+  opacity: 1;
+  transform: scale(1);
+  filter: saturate(1);
+  box-shadow: none;
+}
+
+.member-carousel-section--board .member-carousel-card:hover {
+  box-shadow: none;
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 22px 18px 16px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(5, 10, 20, 0) 5%, rgba(5, 10, 20, 0.76) 62%, rgba(5, 10, 20, 0.95) 100%);
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy h3 {
+  margin: 0;
+  font-size: clamp(24px, 2.2vw, 34px);
+  line-height: 1.12;
+  font-weight: 700;
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy p {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.member-carousel-section--board .member-carousel-detail-copy {
+  margin: 16px auto 0;
+  max-width: 96%;
+  color: #2f3541;
+  font-size: 18px;
+  line-height: 1.5;
+  font-weight: 500;
+  text-align: center;
+}
+
+.member-carousel-track--static .member-carousel-card:last-child {
+  margin-right: 0;
+}
+
+.member-carousel-card:hover {
+  color: #10161a;
+  opacity: 1;
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(16, 22, 26, 0.12);
+}
+
+.member-carousel-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 238px;
+  background: #dce8f0;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+}
+
+.member-carousel-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-carousel-copy {
+  padding: 24px 18px 20px;
+}
+
+.member-carousel-copy h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.member-carousel-copy p {
+  margin: 0;
+  color: #7b8794;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.member-carousel-copy span {
+  color: #6195ff;
+  overflow-wrap: anywhere;
+}
+
+@keyframes member-carousel-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50%));
+  }
+}
+
+.member-carousel-section--board .member-carousel-track--loop {
+  animation: none;
+  will-change: transform;
+}
+
+.member-carousel-section--board .member-carousel {
+  width: min(100%, 824px);
+}
+
+@media (max-width: 1199px) {
+  .member-carousel-section--board .member-carousel-card--board {
+    width: 250px;
+  }
+
+  .member-carousel-section--board .member-carousel-portrait--board {
+    height: 440px;
+  }
+
+  .member-carousel-section--board .member-carousel-overlay-copy h3 {
+    font-size: 30px;
+  }
+}
+
+@media (max-width: 767px) {
+  .member-carousel-section--board .member-carousel-card--board {
+    width: 248px;
+  }
+
+  .member-carousel-section--board .member-carousel-portrait--board {
+    height: 400px;
+  }
+
+  .member-carousel-section--board .member-carousel-overlay-copy h3 {
+    font-size: 28px;
+  }
+
+  .member-carousel-section--board .member-carousel-overlay-copy p {
+    font-size: 16px;
+  }
+
+  .member-carousel-section--board .member-carousel-detail-copy {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-carousel-track--loop {
+    animation-play-state: paused;
+  }
+}
+
+@media (max-width: 767px) {
+  .member-carousel-section {
+    padding: 76px 0 84px;
+  }
+
+  .member-carousel-section .member-carousel-heading {
+    margin-bottom: 38px;
+  }
+
+  .member-carousel-card {
+    width: 232px;
+    min-height: 350px;
+  }
+
+  .member-carousel-portrait {
+    height: 210px;
+  }
+
+  .member-carousel-track {
+    animation-duration: 38s;
+  }
+}
+
+
+/* The People tabs section already has bottom padding, so don't stack a second gap above the carousel */
+.section + .member-carousel-section {
+  padding-top: 0;
+}
+
+.member-carousel-heading {
+  text-align: center;
+}

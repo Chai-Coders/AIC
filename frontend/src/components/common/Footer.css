@@ -1,0 +1,342 @@
+/* ------------------------------------------------------------------ *
+ * Site footer and back-to-top button
+ * Ported from the main branch so the footer looks identical.
+ * ------------------------------------------------------------------ */
+
+.aic-footer {
+  position: relative;
+  color: #fff;
+  background: #050505;
+  border-bottom: 4px solid #159bd3;
+  font-family: 'Varela Round', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.aic-footer-main {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(380px, 1.25fr) minmax(280px, 1fr);
+  gap: 70px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 56px 40px 48px;
+}
+
+.aic-footer .footer-follow {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 30px;
+  padding: 0;
+  list-style: none;
+}
+
+.aic-footer .footer-follow li {
+  margin: 0;
+}
+
+.aic-footer .footer-follow li a {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  color: #050505;
+  background: #f4f4f4;
+  border-radius: 50%;
+  font-size: 19px;
+  text-decoration: none;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.aic-footer .footer-follow li a:hover,
+.aic-footer .footer-follow li a:focus {
+  color: #fff;
+  transform: translateY(-3px);
+}
+
+.footer-x {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.aic-footer .footer-follow li:nth-child(1) a:hover,
+.aic-footer .footer-follow li:nth-child(1) a:focus {
+  background: #1877f2;
+}
+
+.aic-footer .footer-follow li:nth-child(2) a:hover,
+.aic-footer .footer-follow li:nth-child(2) a:focus {
+  color: #fff;
+  background: #000;
+}
+
+.aic-footer .footer-follow li:nth-child(3) a:hover,
+.aic-footer .footer-follow li:nth-child(3) a:focus {
+  background: #0a66c2;
+}
+
+.aic-footer .footer-follow li:nth-child(4) a:hover,
+.aic-footer .footer-follow li:nth-child(4) a:focus {
+  background: #ff0000;
+}
+
+.aic-footer .footer-follow li:nth-child(5) a:hover,
+.aic-footer .footer-follow li:nth-child(5) a:focus {
+  background: #e4405f;
+}
+
+.aic-footer h2,
+.aic-footer h3 {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: 1.1;
+}
+
+.aic-footer-brand h2 {
+  margin: 0 0 22px;
+  color: #fff;
+  font-size: 34px;
+}
+
+.aic-footer-brand h2 span {
+  color: #f4d313;
+}
+
+.footer-contact-link,
+.aic-footer-links a,
+.aic-footer-contact a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.footer-contact-link:hover,
+.aic-footer-links a:hover,
+.aic-footer-contact a:hover {
+  color: #159bd3;
+}
+
+.aic-footer-links h3 {
+  margin: 8px 0 26px;
+  color: #fff;
+  font-size: 20px;
+}
+
+.footer-link-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 44px;
+}
+
+.footer-link-columns ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer-link-columns li {
+  margin-bottom: 12px;
+}
+
+.aic-footer-contact {
+  padding-top: 10px;
+  font-size: 17px;
+  line-height: 1.9;
+}
+
+.aic-footer-contact .footer-address {
+  margin: 0 0 18px;
+}
+
+.aic-footer-contact .footer-address i {
+  width: 28px;
+  color: #f4d313;
+}
+
+.footer-map {
+  display: block;
+  width: 100%;
+  height: 190px;
+  border: 0;
+  border-radius: 6px;
+  background: #1a1a1a;
+}
+
+.footer-map-link {
+  display: inline-block;
+  margin: 10px 0 26px;
+  font-size: 15px;
+}
+
+.footer-map-link i {
+  color: #f4d313;
+}
+
+.footer-contact-icons {
+  display: flex;
+  gap: 12px;
+}
+
+/* Email and phone: one icon each, the addresses appear in a panel above it */
+.footer-popover {
+  position: relative;
+}
+
+.footer-popover__trigger {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f4f4f4;
+  color: #050505;
+  font-size: 19px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.footer-popover__trigger:hover,
+.footer-popover.is-open .footer-popover__trigger {
+  background: #f4d313;
+}
+
+.footer-popover__trigger:focus-visible {
+  outline: 2px solid #159bd3;
+  outline-offset: 3px;
+}
+
+.footer-popover__panel {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  z-index: 20;
+  /* Invisible bridge between icon and panel so the pointer can move onto the list */
+  padding-bottom: 12px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+}
+
+.footer-popover.is-open .footer-popover__panel,
+.footer-popover__trigger:focus-visible + .footer-popover__panel {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+@media (hover: hover) {
+  .footer-popover:hover .footer-popover__panel {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
+.footer-popover__list {
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  background: #161616;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.footer-popover__list li + li {
+  margin-top: 6px;
+}
+
+.footer-popover__list a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.footer-popover__list a:hover,
+.footer-popover__list a:focus-visible {
+  color: #f4d313;
+}
+
+.aic-footer-bottom {
+  border-top: 1px solid #3a3a3a;
+  padding: 24px 40px 20px;
+  text-align: center;
+}
+
+.aic-footer-bottom p {
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+}
+
+/* Back to top: a blue square that fades in once the page has been scrolled */
+.back-to-top {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+  display: flex;
+  width: 50px;
+  height: 50px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: #6195ff;
+  color: #fff;
+  font-size: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, background-color 0.2s ease, visibility 0.2s ease;
+}
+
+.back-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.back-to-top:hover {
+  background: #6195ff;
+  opacity: 0.8;
+}
+
+@media only screen and (max-width: 767px) {
+  .aic-footer-main {
+    display: block;
+    padding: 42px 25px 30px;
+  }
+
+  .aic-footer-brand,
+  .aic-footer-links,
+  .aic-footer-contact {
+    margin-bottom: 38px;
+  }
+
+  .aic-footer-links h3 {
+    margin-top: 0;
+  }
+
+  .aic-footer-contact {
+    margin-bottom: 0;
+  }
+
+  .aic-footer-bottom {
+    padding: 20px 25px 16px;
+  }
+
+  .aic-footer-bottom p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}

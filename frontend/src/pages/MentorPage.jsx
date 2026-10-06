@@ -1,6 +1,6 @@
 import React from 'react';
 import PageLayout from '../components/common/PageLayout';
-import MemberGrid from '../components/sections/MemberGrid';
+import PeopleCarousel from '../components/sections/PeopleCarousel';
 import PeopleNav from '../components/sections/PeopleNav';
 
 const MentorPage = () => (
@@ -16,9 +16,9 @@ const MentorPage = () => (
     <section className="section">
       <div className="container">
         <PeopleNav />
-        <MemberGrid category="mentor" emptyText="No mentors listed yet." />
       </div>
     </section>
+    <PeopleCarousel category="mentor" title="International Mentors" emptyText="No mentors listed yet." />
   </PageLayout>
 );
 

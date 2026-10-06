@@ -85,7 +85,7 @@ const SummaryPage = () => (
     </section>
 
     <section className="section section--white">
-      <div className="container grid grid--2">
+      <div className="container info-grid">
         <InfoCard icon="fa-compass" title="Vision & mission">
           <p className="info-card__text">
             <strong>Vision:</strong> To develop an international business hub for entrepreneurs by providing strong

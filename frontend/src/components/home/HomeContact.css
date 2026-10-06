@@ -1,0 +1,239 @@
+/* ------------------------------------------------------------------ *
+ * Contact Us section
+ * Ported from the main branch so the section looks identical.
+ * ------------------------------------------------------------------ */
+
+.contact-section {
+  position: relative;
+  overflow: hidden;
+  padding: 68px 0 76px;
+  color: #fff;
+  background: #159bd3;
+  font-family: 'Varela Round', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.contact-section::before,
+.contact-section::after {
+  position: absolute;
+  top: -20px;
+  color: rgba(244, 211, 19, 0.7);
+  font-size: 90px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.contact-section::before {
+  content: '↓↓↓';
+  left: max(10%, calc((100% - 1280px) / 2));
+}
+
+.contact-section::after {
+  content: 'AIC';
+  right: max(7%, calc((100% - 1280px) / 2));
+  color: rgba(5, 5, 5, 0.12);
+  font-size: 150px;
+}
+
+.contact-ornament {
+  position: absolute;
+  top: 0;
+  left: max(10%, calc((100% - 1280px) / 2));
+  z-index: 1;
+  display: flex;
+  gap: 34px;
+}
+
+.contact-ornament span {
+  display: block;
+  width: 4px;
+  height: 82px;
+  background: rgba(5, 5, 5, 0.16);
+  box-shadow: 0 0 0 1px rgba(244, 211, 19, 0.22);
+}
+
+.contact-ornament span::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 58px 0 0 -12px;
+  border-right: 3px solid rgba(5, 5, 5, 0.16);
+  border-bottom: 3px solid rgba(5, 5, 5, 0.16);
+  transform: rotate(45deg);
+}
+
+/* Same content width as the Bootstrap container used on the main branch */
+.contact-inner {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+@media (min-width: 768px) {
+  .contact-inner {
+    width: 750px;
+  }
+}
+
+@media (min-width: 992px) {
+  .contact-inner {
+    width: 970px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .contact-inner {
+    width: 1170px;
+  }
+}
+
+.contact-intro,
+.contact-form-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.contact-intro h2 {
+  margin: 0 0 8px;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: normal;
+}
+
+.contact-form {
+  margin-top: 92px;
+}
+
+.contact-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.78fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.contact-field {
+  position: relative;
+  height: 72px;
+}
+
+.contact-input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 72px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  opacity: 0.5;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.contact-input:focus {
+  border-color: #f4d313;
+  outline: none;
+  opacity: 1;
+}
+
+.contact-input[aria-invalid='true'] {
+  border-bottom-color: #10161a;
+}
+
+.contact-message {
+  margin-top: 24px;
+}
+
+/* Inline-block, like the main branch, so the line box below it matches */
+textarea.contact-input {
+  display: inline-block;
+  height: 98px;
+  min-height: 98px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.contact-submit {
+  position: relative;
+  top: -1px;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 72px;
+  margin: 0;
+  padding: 10px 35px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: #fff;
+  color: #159bd3;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.contact-submit:hover,
+.contact-submit:focus {
+  background: #f4d313;
+  color: #10161a;
+}
+
+.contact-success {
+  margin-bottom: 16px;
+  color: #fff;
+  text-align: center;
+}
+
+.contact-error {
+  display: block;
+  margin: -8px 0 12px;
+  color: #10161a;
+  font-size: 13px;
+  text-align: left;
+}
+
+@media only screen and (max-width: 767px) {
+  .contact-section {
+    padding: 58px 0 64px;
+  }
+
+  .contact-section::before,
+  .contact-section::after,
+  .contact-ornament {
+    display: none;
+  }
+
+  .contact-intro h2 {
+    font-size: 32px;
+    line-height: 1.2;
+  }
+
+  .contact-submit {
+    padding: 8px 22px;
+    font-size: 14px;
+  }
+
+  .contact-form {
+    margin-top: 42px;
+  }
+
+  .contact-form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

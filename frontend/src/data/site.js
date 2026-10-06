@@ -9,16 +9,20 @@ export const SISFS_URL = 'https://seedfund.startupindia.gov.in/';
 export const HOST_INSTITUTE_URL = 'http://www.iiitkottayam.ac.in/';
 
 export const CONTACT = {
-  address: ['Building no. 340', 'Karoor Valavoor P.O.', 'Kottayam, Kerala 686635'],
+  address: ['Building no. 340,', 'Karoor Valavoor P.O.,', 'Kottayam, Kerala 686635.'],
   emails: ['incubate@iiitkottayam.ac.in', 'ceo-aic@iiikottayam.ac.in'],
   phones: ['+91-482-2202156', '+91-482-2202155', '+91-9400063494', '+91-9443543746'],
+  // Google Maps search for the campus: `mapUrl` opens it, `mapEmbedUrl` is shown in the footer.
   mapUrl: 'https://maps.google.com/?q=IIIT+Kottayam+Valavoor',
+  mapEmbedUrl: 'https://maps.google.com/maps?q=IIIT+Kottayam+Valavoor&output=embed',
 };
 
+// `text` is used instead of `icon` where Font Awesome 4.7 has no glyph (X).
 export const SOCIAL = [
   { label: 'Facebook', icon: 'fa-facebook', href: 'https://www.facebook.com/aiciiitkottayam/' },
-  { label: 'X (Twitter)', icon: 'fa-twitter', href: 'https://twitter.com/AICIIITKottayam' },
+  { label: 'X', text: 'X', href: 'https://twitter.com/AICIIITKottayam' },
   { label: 'LinkedIn', icon: 'fa-linkedin', href: 'https://www.linkedin.com/company/aic-iiitkottayam' },
+  { label: 'YouTube', icon: 'fa-youtube-play', href: 'https://www.youtube.com/' },
   { label: 'Instagram', icon: 'fa-instagram', href: 'https://www.instagram.com/aic.iiitkottayam/' },
 ];
 

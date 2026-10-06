@@ -1,6 +1,6 @@
 import React from 'react';
 import PageLayout from '../components/common/PageLayout';
-import MemberGrid from '../components/sections/MemberGrid';
+import PeopleCarousel from '../components/sections/PeopleCarousel';
 import PeopleNav from '../components/sections/PeopleNav';
 
 const BoardMemberPage = () => (
@@ -16,9 +16,14 @@ const BoardMemberPage = () => (
     <section className="section">
       <div className="container">
         <PeopleNav />
-        <MemberGrid category="governor" emptyText="No board members listed yet." />
       </div>
     </section>
+    <PeopleCarousel
+      category="governor"
+      title="AIC-IIITKottayam Board of Governors"
+      variant="board"
+      emptyText="No board members listed yet."
+    />
   </PageLayout>
 );
 
