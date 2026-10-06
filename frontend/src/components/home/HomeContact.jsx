@@ -1,85 +1,144 @@
 import React, { useState } from 'react';
+import SectionHeader from '../common/SectionHeader';
+import { CONTACT, telHref } from '../../data/site';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMPTY = { name: '', email: '', message: '' };
 
 const HomeContact = () => {
-  const [formData, setFormData] = useState({ name: '', email: '', message: '' });
-  const [submitted, setSubmitted] = useState(false);
-  const [emailError, setEmailError] = useState('');
+  const [form, setForm] = useState(EMPTY);
+  const [errors, setErrors] = useState({});
+  const [sent, setSent] = useState(false);
+
+  const update = (field) => (e) => {
+    setForm({ ...form, [field]: e.target.value });
+    if (errors[field]) setErrors({ ...errors, [field]: undefined });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const next = {};
+    if (!form.name.trim()) next.name = 'Please enter your name.';
+    if (!EMAIL_PATTERN.test(form.email)) next.email = 'Please enter a valid email address.';
+    if (!form.message.trim()) next.message = 'Please write a short message.';
+    setErrors(next);
+    if (Object.keys(next).length) return;
 
-    if (!emailPattern.test(formData.email)) {
-      setEmailError('Please enter a valid email address.');
-      return;
-    }
-
-    setEmailError('');
-    const recipients = 'incubate@iiitkottayam.ac.in,ceo-aic@iiikottayam.ac.in';
-    const subject = encodeURIComponent(`Contact message from ${formData.name}`);
-    const body = encodeURIComponent(
-      `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
-    );
-
-    window.location.href = `mailto:${recipients}?subject=${subject}&body=${body}`;
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
-    setFormData({ name: '', email: '', message: '' });
+    // There is no mail API on the backend, so hand the message to the visitor's email app.
+    const subject = encodeURIComponent(`Contact message from ${form.name}`);
+    const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`);
+    window.location.href = `mailto:${CONTACT.emails.join(',')}?subject=${subject}&body=${body}`;
+    setSent(true);
+    setForm(EMPTY);
   };
 
   return (
-    <section id="contact" className="contact-section">
-      <div className="container">
-        <div className="contact-ornament" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div className="contact-intro">
-          <h2>Contact Us</h2>
+    <section id="contact" className="section" aria-labelledby="contact-title">
+      <div className="container contact">
+        <div className="contact__info">
+          <SectionHeader
+            id="contact-title"
+            eyebrow="Get in touch"
+            title="Contact us"
+            lead="Questions about incubation, partnerships or events? Reach out and our team will get back to you."
+          />
+          <ul className="contact__list">
+            <li>
+              <span className="icon-badge">
+                <i className="fa fa-map-marker" aria-hidden="true" />
+              </span>
+              <div>
+                <strong>Visit</strong>
+                <a href={CONTACT.mapUrl} target="_blank" rel="noopener noreferrer">
+                  {CONTACT.address.join(', ')}
+                </a>
+              </div>
+            </li>
+            <li>
+              <span className="icon-badge">
+                <i className="fa fa-envelope-o" aria-hidden="true" />
+              </span>
+              <div>
+                <strong>Email</strong>
+                {CONTACT.emails.map((email) => (
+                  <a key={email} href={`mailto:${email}`}>
+                    {email}
+                  </a>
+                ))}
+              </div>
+            </li>
+            <li>
+              <span className="icon-badge">
+                <i className="fa fa-phone" aria-hidden="true" />
+              </span>
+              <div>
+                <strong>Call</strong>
+                <span className="contact__phones">
+                  {CONTACT.phones.map((phone) => (
+                    <a key={phone} href={telHref(phone)}>
+                      {phone}
+                    </a>
+                  ))}
+                </span>
+              </div>
+            </li>
+          </ul>
         </div>
 
-        <div className="contact-form-wrap">
-          {submitted && (
-            <div className="contact-success" role="status">
-              Thank you. Your message has been sent.
-            </div>
+        <form className="card contact__form" onSubmit={handleSubmit} noValidate>
+          <h3 className="card__title">Send us a message</h3>
+          {sent && (
+            <p className="callout" role="status">
+              <i className="fa fa-check-circle" aria-hidden="true" />
+              Your email app should open with the message ready to send. Thank you for reaching out!
+            </p>
           )}
-          <form className="contact-form" onSubmit={handleSubmit} noValidate>
-            <div className="contact-form-row">
-              <div className="contact-email-field">
-                <input
+          <div className="contact__row">
+            <div className="field">
+              <label htmlFor="contact-name">Name</label>
+              <input
+                id="contact-name"
+                className="input"
+                autoComplete="name"
+                value={form.name}
+                onChange={update('name')}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby={errors.name ? 'contact-name-error' : undefined}
+              />
+              {errors.name && <span id="contact-name-error" className="field-error">{errors.name}</span>}
+            </div>
+            <div className="field">
+              <label htmlFor="contact-email">Email</label>
+              <input
+                id="contact-email"
                 type="email"
                 className="input"
-                placeholder="Email*"
-                required
-                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
-                aria-invalid={Boolean(emailError)}
-                value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  setEmailError('');
-                }}
-                />
-                {emailError && <span className="contact-error" role="alert">{emailError}</span>}
-              </div>
-              <div className="contact-email-field">
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <button type="submit" className="main-btn">Send Mail</button>
+                autoComplete="email"
+                value={form.email}
+                onChange={update('email')}
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'contact-email-error' : undefined}
+              />
+              {errors.email && <span id="contact-email-error" className="field-error">{errors.email}</span>}
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="contact-message">Message</label>
             <textarea
+              id="contact-message"
               className="input"
-              placeholder="Message"
-              required
-              value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-            ></textarea>
-          </form>
-        </div>
+              rows={5}
+              value={form.message}
+              onChange={update('message')}
+              aria-invalid={Boolean(errors.message)}
+              aria-describedby={errors.message ? 'contact-message-error' : undefined}
+            />
+            {errors.message && <span id="contact-message-error" className="field-error">{errors.message}</span>}
+          </div>
+          <button type="submit" className="btn btn--primary">
+            Send message <i className="fa fa-paper-plane" aria-hidden="true" />
+          </button>
+        </form>
       </div>
     </section>
   );

@@ -1,89 +1,173 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { APPLY_URL } from '../../data/site';
+
+const NAV = [
+  { label: 'Home', to: '/' },
+  {
+    label: 'About',
+    id: 'about',
+    items: [
+      { label: 'Who we are', to: '/summary', desc: 'Mission, vision and facilities' },
+      { label: 'Board of Governors', to: '/boardmember', desc: 'Leadership and governance' },
+      { label: 'Our Team', to: '/aicteam', desc: 'The people running AIC' },
+      { label: 'Mentors', to: '/mentor', desc: 'Our international mentor panel' },
+    ],
+  },
+  {
+    label: 'Programs',
+    id: 'programs',
+    items: [
+      { label: 'Pre-Incubation (SIA)', to: '/sia', desc: 'Start-Up-In AIC cohort' },
+      { label: 'Incubation (SISFS)', to: '/sisfs', desc: 'Startup India Seed Fund' },
+      { label: 'Acceleration', to: '/startup', desc: 'Scale-up support for startups' },
+    ],
+  },
+  { label: 'Portfolio', to: '/startup#portfolio' },
+  {
+    label: 'Media',
+    id: 'media',
+    items: [
+      { label: 'News & Updates', to: '/news', desc: 'Announcements and events' },
+      { label: 'Gallery', to: '/gallery', desc: 'Moments from the centre' },
+    ],
+  },
+  { label: 'Careers', to: '/careers' },
+];
 
 const Header = ({ transparent = false }) => {
-  const [navOpen, setNavOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState(null);
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
+  const navRef = useRef(null);
 
-  const navClass = `navbar fixed-nav ${navOpen ? 'open' : ''}`;
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Close menus whenever the route changes.
+  useEffect(() => {
+    setMenuOpen(false);
+    setOpenGroup(null);
+  }, [location.pathname, location.hash]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpenGroup(null);
+        setMenuOpen(false);
+      }
+    };
+    const onClick = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) setOpenGroup(null);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
+  const solid = !transparent || scrolled || menuOpen;
+  const groupActive = (group) => group.items.some((item) => item.to === location.pathname);
 
   return (
-    <header id="home">
-      <nav id="nav" className={navClass}>
-        <div className="container">
-          <div className="navbar-header">
-            {/* Logo */}
-            <div className="navbar-brand">
-              <Link to="/">
-                <img className="logo" src="/img/nlogo.png" alt="logo" />
-                {transparent && <img className="logo-alt" src="/img/nlogo.png" alt="logo" />}
-              </Link>
-            </div>
-            {/* Collapse nav button */}
-            <div 
-              className={`nav-collapse ${navOpen ? 'open' : ''}`}
-              onClick={() => setNavOpen(!navOpen)}
-              style={{ cursor: 'pointer' }}
-            >
-              <span></span>
-            </div>
-          </div>
+    <header className={`site-header ${solid ? 'is-solid' : 'is-transparent'}`}>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <div className="container site-header__inner">
+        <Link to="/" className="site-header__brand" aria-label="AIC-IIITK home">
+          <img
+            src={solid ? '/img/aic-logo.png' : '/img/aic-logo-light.png'}
+            alt="AIC IIITK"
+            width="518"
+            height="70"
+          />
+        </Link>
 
-          {/* Main navigation */}
-          <ul className={`main-nav nav navbar-nav navbar-right ${navOpen ? 'open' : ''}`}>
-            <li>
-              <Link to="/" onClick={() => setNavOpen(false)}>Home</Link>
-            </li>
-
-            <li className={`has-dropdown ${openDropdown === 'about' ? 'open-drop' : ''}`}>
-              <button className="nav-trigger" type="button" aria-haspopup="true" onClick={() => setOpenDropdown(openDropdown === 'about' ? null : 'about')}>About Us</button>
-              <ul className="dropdown">
-                <li><Link to="/summary" onClick={() => setNavOpen(false)}>Who are we?</Link></li>
-                <li><Link to="/boardmember" onClick={() => setNavOpen(false)}>Board of Governors</Link></li>
-                <li><Link to="/aicteam" onClick={() => setNavOpen(false)}>Our Team</Link></li>
-                <li><Link to="/mentor" onClick={() => setNavOpen(false)}>Our Mentors</Link></li>
-              </ul>
-            </li>
-
-            <li className={`has-dropdown ${openDropdown === 'programs' ? 'open-drop' : ''}`}>
-              <button className="nav-trigger" type="button" aria-haspopup="true" onClick={() => setOpenDropdown(openDropdown === 'programs' ? null : 'programs')}>Programs</button>
-              <ul className="dropdown">
-                <li><Link to="/sia" onClick={() => setNavOpen(false)}>Pre-Incubation</Link></li>
-                <li><Link to="/sisfs" onClick={() => setNavOpen(false)}>Incubation</Link></li>
-                <li><Link to="/startup" onClick={() => setNavOpen(false)}>Acceleration</Link></li>
-              </ul>
-            </li>
-
-            <li>
-              <Link to="/startup" onClick={() => setNavOpen(false)}>Portfolio</Link>
-            </li>
-
-            <li className={`has-dropdown ${openDropdown === 'news' ? 'open-drop' : ''}`}>
-              <button className="nav-trigger" type="button" aria-haspopup="true" onClick={() => setOpenDropdown(openDropdown === 'news' ? null : 'news')}>News &amp; Media</button>
-              <ul className="dropdown">
-                <li><Link to="/news" onClick={() => setNavOpen(false)}>News</Link></li>
-                <li><Link to="/gallery" onClick={() => setNavOpen(false)}>Gallery</Link></li>
-                <li><Link to="/sia" onClick={() => setNavOpen(false)}>SIA</Link></li>
-              </ul>
-            </li>
-
-            <li>
-              <Link to="/summary" onClick={() => setNavOpen(false)}>Insights</Link>
-            </li>
-
-            <li className={`has-dropdown ${openDropdown === 'connect' ? 'open-drop' : ''}`}>
-              <button className="nav-trigger" type="button" aria-haspopup="true" onClick={() => setOpenDropdown(openDropdown === 'connect' ? null : 'connect')}>Connect</button>
-              <ul className="dropdown">
-                <li><Link to="/#contact" onClick={() => setNavOpen(false)}>Contact</Link></li>
-                <li><Link to="/mentor" onClick={() => setNavOpen(false)}>Mentors</Link></li>
-                <li><Link to="/careers" onClick={() => setNavOpen(false)}>Careers</Link></li>
-              </ul>
-            </li>
-
+        <nav
+          ref={navRef}
+          id="primary-nav"
+          className={`site-nav ${menuOpen ? 'is-open' : ''}`}
+          aria-label="Primary"
+        >
+          <ul className="site-nav__list">
+            {NAV.map((entry) =>
+              entry.items ? (
+                <li
+                  key={entry.id}
+                  className={`site-nav__item has-menu ${openGroup === entry.id ? 'is-open' : ''}`}
+                >
+                  <button
+                    type="button"
+                    className={`site-nav__link ${groupActive(entry) ? 'is-active' : ''}`}
+                    aria-expanded={openGroup === entry.id}
+                    aria-controls={`menu-${entry.id}`}
+                    onClick={() => setOpenGroup(openGroup === entry.id ? null : entry.id)}
+                  >
+                    {entry.label}
+                    <i className="fa fa-angle-down" aria-hidden="true" />
+                  </button>
+                  <ul id={`menu-${entry.id}`} className="site-nav__menu">
+                    {entry.items.map((item) => (
+                      <li key={item.to}>
+                        <NavLink to={item.to} className="site-nav__menu-link" end>
+                          <span className="site-nav__menu-label">{item.label}</span>
+                          <span className="site-nav__menu-desc">{item.desc}</span>
+                        </NavLink>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ) : (
+                <li key={entry.to} className="site-nav__item">
+                  <NavLink
+                    to={entry.to}
+                    end
+                    className={({ isActive }) =>
+                      `site-nav__link ${isActive && !entry.to.includes('#') ? 'is-active' : ''}`
+                    }
+                  >
+                    {entry.label}
+                  </NavLink>
+                </li>
+              )
+            )}
           </ul>
-        </div>
-      </nav>
-      <div className="nav-offset" aria-hidden="true"></div>
+          <div className="site-nav__actions">
+            <Link to="/#contact" className="btn btn--outline btn--sm site-nav__contact">
+              Contact
+            </Link>
+            <a className="btn btn--primary btn--sm" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+              Apply now
+            </a>
+          </div>
+        </nav>
+
+        <button
+          type="button"
+          className={`site-header__toggle ${menuOpen ? 'is-open' : ''}`}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="primary-nav"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
     </header>
   );
 };
