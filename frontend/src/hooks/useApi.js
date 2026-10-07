@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { readCache } from '../api/cache';
 
 /**
@@ -10,7 +10,7 @@ import { readCache } from '../api/cache';
  *
  * @param {() => Promise<any>} fetcher - An async function from src/api/content.js
  * @param {any} [emptyValue=[]] - Value used before any data is available
- * @returns {{ data: any, loading: boolean, error: string|null }}
+ * @returns {{ data: any, loading: boolean, error: string|null, retry: () => void }}
  *
  * @example
  *   const { data: gallery, loading, error } = useApi(fetchAllGallery);
@@ -24,6 +24,7 @@ function useApi(fetcher, emptyValue = []) {
     }
     return { data: emptyValue, loading: true, error: null };
   });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,9 +46,14 @@ function useApi(fetcher, emptyValue = []) {
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+    setAttempt((n) => n + 1);
   }, []);
 
-  return state;
+  return { ...state, retry };
 }
 
 export default useApi;

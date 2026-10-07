@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import './MemberCarousel.css';
+
+// Carousel presentation of people (team, mentors, board of governors), ported from the main branch.
 
 const initialsFor = (name) => name
   .replace(/^(Prof\. Dr\.|Prof\.|Dr\.|Mrs\.|Ms\.|Mr\.|Shri\.)\s*/i, '')
@@ -12,7 +15,9 @@ const initialsFor = (name) => name
 const boardDescriptionFor = (member) => {
   const primary = member.org || member.designation || member.role || '';
   const secondary = member.designation && member.org ? member.designation : '';
-  return [primary, secondary].filter(Boolean).join(' - ');
+  const detail = [primary, secondary].filter(Boolean).join(' - ');
+  // The overlay already shows the role, so don't repeat it underneath the portrait.
+  return detail === (member.role || member.designation || '') ? '' : detail;
 };
 
 const MemberCard = ({ member, className = '', boardLayout = false }) => {
@@ -101,8 +106,6 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
 
       if (window.innerWidth < 768) {
         setHighlightOffset(0);
-      } else if (window.innerWidth < 1200) {
-        setHighlightOffset(1);
       } else {
         setHighlightOffset(1);
       }
@@ -117,14 +120,14 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
   }, [isBoardLooping]);
 
   useEffect(() => {
-    if (!isBoardLooping) {
+    if (!isBoardLooping || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       return undefined;
     }
 
     const autoplayId = window.setInterval(() => {
       setTransitionEnabled(true);
       setBoardIndex((prev) => prev + 1);
-    }, 1500);
+    }, 3500);
 
     return () => {
       window.clearInterval(autoplayId);
@@ -164,9 +167,9 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
   return (
     <section className={`member-carousel-section ${tone === 'grey' ? 'member-carousel-section--grey' : ''} ${variantClass}`.trim()}>
       <div className="container">
-        <div className="section-header text-center">
-          <h2 className="title">{title}</h2>
-        </div>
+        <header className="member-carousel-heading">
+          <h2 className="section-title">{title}</h2>
+        </header>
       </div>
       <div className={`member-carousel ${shouldLoop ? 'member-carousel--loop' : 'member-carousel--static'}`} tabIndex="0" aria-label={`${title} carousel`}>
         <div

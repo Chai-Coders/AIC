@@ -1,23 +1,23 @@
 import React from 'react';
-import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
-import HeaderBanner from '../components/common/HeaderBanner';
+import PageLayout from '../components/common/PageLayout';
 import GalleryGrid from '../components/sections/GalleryGrid';
 
-const GalleryPage = () => {
-  return (
-    <>
-      <Header />
-      <HeaderBanner 
-        title="AIC Incubation Centre Gallery" 
-        breadcrumbs={[{ label: 'Gallery' }]} 
-      />
-      <main>
+const GalleryPage = () => (
+  <PageLayout
+    title="Gallery"
+    hero={{
+      eyebrow: 'Gallery',
+      title: 'Moments from the centre',
+      description: 'Workshops, hackathons, demo days and everyday life at AIC-IIITKottayam.',
+      breadcrumbs: [{ label: 'Gallery' }],
+    }}
+  >
+    <section className="section">
+      <div className="container">
         <GalleryGrid />
-      </main>
-      <Footer />
-    </>
-  );
-};
+      </div>
+    </section>
+  </PageLayout>
+);
 
 export default GalleryPage;

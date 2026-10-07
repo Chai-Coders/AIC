@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '';
+// Same-origin /api by default: Vite proxies it to Django in dev (see vite.config.js).
+// Set VITE_API_BASE to the full backend URL for a build hosted elsewhere.
+const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '');
 
 /**
  * Core fetch wrapper.

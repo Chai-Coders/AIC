@@ -1,69 +1,150 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { APPLY_URL, CONTACT, HOST_INSTITUTE_URL, SOCIAL, telHref } from '../../data/site';
 
-const Footer = () => {
+const LINK_GROUPS = [
+  {
+    title: 'The centre',
+    links: [
+      { label: 'Who we are', to: '/summary' },
+      { label: 'Board of Governors', to: '/boardmember' },
+      { label: 'Our team', to: '/aicteam' },
+      { label: 'Mentors', to: '/mentor' },
+      { label: 'Careers', to: '/careers' },
+    ],
+  },
+  {
+    title: 'Programmes',
+    links: [
+      { label: 'Pre-incubation (SIA)', to: '/sia' },
+      { label: 'Seed Fund (SISFS)', to: '/sisfs' },
+      { label: 'Acceleration', to: '/startup' },
+      { label: 'Portfolio', to: '/startup#portfolio' },
+      { label: 'News & gallery', to: '/news' },
+    ],
+  },
+];
+
+const BackToTop = () => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <>
-      <footer id="footer" className="aic-footer">
-        <div className="aic-footer-main">
-          <div className="aic-footer-brand">
-            <ul className="footer-follow" aria-label="Social media links">
-              <li><a href="https://www.facebook.com/aiciiitkottayam/" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><i className="fa fa-facebook"></i></a></li>
-              <li><a href="https://twitter.com/AICIIITKottayam" target="_blank" rel="noopener noreferrer" aria-label="X"><span className="footer-x" aria-hidden="true">X</span></a></li>
-              <li><a href="https://www.linkedin.com/company/aic-iiitkottayam" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><i className="fa fa-linkedin"></i></a></li>
-              <li><a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube"><i className="fa fa-youtube-play"></i></a></li>
-              <li><a href="https://www.instagram.com/aic.iiitkottayam/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i className="fa fa-instagram"></i></a></li>
-            </ul>
-            <h2>Get in <span>Touch</span></h2>
-            <Link className="footer-contact-link" to="/#contact">Contact Us</Link>
-          </div>
-
-          <div className="aic-footer-links">
-            <h3>Quick Links</h3>
-            <div className="footer-link-columns">
-              <ul>
-                <li><Link to="/">Home</Link></li>
-                <li><Link to="/summary">AIC IIITK at a Glance</Link></li>
-                <li><Link to="/aicteam">People &amp; Culture</Link></li>
-                <li><Link to="/sia">Programs</Link></li>
-                <li><Link to="/startup">Portfolio</Link></li>
-              </ul>
-              <ul>
-                <li><Link to="/news">News &amp; Media</Link></li>
-                <li><Link to="/sia">Insights</Link></li>
-                <li><Link to="/mentor">Mentors</Link></li>
-                <li><Link to="/careers">Careers</Link></li>
-                <li><Link to="/gallery">Gallery</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="aic-footer-contact">
-            <p><i className="fa fa-map-marker"></i>Building no. 340,<br />Karoor Valavoor P.O.,<br />Kottayam, Kerala 686635.</p>
-            <a href="mailto:incubate@iiitkottayam.ac.in"><i className="fa fa-envelope"></i>incubate@iiitkottayam.ac.in</a>
-            <a href="mailto:ceo-aic@iiikottayam.ac.in"><i className="fa fa-envelope"></i>ceo-aic@iiikottayam.ac.in</a>
-            <a href="tel:+914822202156"><i className="fa fa-phone"></i>+91-482-2202156</a>
-            <a href="tel:+914822202155"><i className="fa fa-phone"></i>+91-482-2202155</a>
-            <a href="tel:+919400063494"><i className="fa fa-phone"></i>+91-9400063494</a>
-            <a href="tel:+919443543746"><i className="fa fa-phone"></i>+91-9443543746</a>
-          </div>
-        </div>
-
-        <div className="aic-footer-bottom">
-          <p>Copyright &copy; 2026 AIC-IIIT Kottayam. All Rights Reserved.</p>
-        </div>
-      </footer>
-
-      <button
-        id="back-to-top"
-        type="button"
-        aria-label="Back to top"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      >
-        <i className="fa fa-angle-up"></i>
-      </button>
-    </>
+    <button
+      type="button"
+      className={`back-to-top ${visible ? 'is-visible' : ''}`}
+      aria-label="Back to top"
+      tabIndex={visible ? 0 : -1}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    >
+      <i className="fa fa-angle-up" aria-hidden="true" />
+    </button>
   );
 };
+
+const Footer = () => (
+  <>
+    <footer id="footer" className="site-footer">
+      <div className="container site-footer__cta">
+        <h2>
+          Building something that matters? <em>Build it with us.</em>
+        </h2>
+        <div className="btn-row">
+          <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+            Apply for incubation <i className="fa fa-arrow-right" aria-hidden="true" />
+          </a>
+          <Link className="btn btn--ghost-light" to="/#contact">
+            Talk to us
+          </Link>
+        </div>
+      </div>
+
+      <div className="container site-footer__main">
+        <div>
+          <Link to="/" aria-label="AIC-IIITK home">
+            <img className="site-footer__logo" src="/img/aic-logo-light.png" alt="AIC IIITK" width="518" height="70" loading="lazy" />
+          </Link>
+          <p className="site-footer__about">
+            Atal Incubation Centre at the Indian Institute of Information Technology Kottayam. Supported by the Atal
+            Innovation Mission, NITI Aayog.
+          </p>
+          <ul className="site-footer__social" aria-label="Social media">
+            {SOCIAL.map((s) => (
+              <li key={s.label}>
+                <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+                  {s.text ? (
+                    <span className="site-footer__x" aria-hidden="true">{s.text}</span>
+                  ) : (
+                    <i className={`fa ${s.icon}`} aria-hidden="true" />
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {LINK_GROUPS.map((group) => (
+          <nav key={group.title} aria-label={group.title}>
+            <h3>{group.title}</h3>
+            <ul className="site-footer__links">
+              {group.links.map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+
+        <div>
+          <h3>Visit &amp; contact</h3>
+          <address className="site-footer__contact">
+            <p>
+              {CONTACT.address.map((line) => (
+                <React.Fragment key={line}>
+                  {line}
+                  <br />
+                </React.Fragment>
+              ))}
+              <a href={CONTACT.mapUrl} target="_blank" rel="noopener noreferrer">
+                Get directions <i className="fa fa-external-link" aria-hidden="true" />
+              </a>
+            </p>
+            <ul aria-label="Email addresses">
+              {CONTACT.emails.map((email) => (
+                <li key={email}>
+                  <a href={`mailto:${email}`}>{email}</a>
+                </li>
+              ))}
+            </ul>
+            <ul aria-label="Phone numbers">
+              {CONTACT.phones.slice(0, 2).map((phone) => (
+                <li key={phone}>
+                  <a href={telHref(phone)}>{phone}</a>
+                </li>
+              ))}
+            </ul>
+          </address>
+        </div>
+      </div>
+
+      <div className="container site-footer__bottom">
+        <p>&copy; {new Date().getFullYear()} AIC IIIT Kottayam Foundation. All rights reserved.</p>
+        <p>
+          Hosted by{' '}
+          <a href={HOST_INSTITUTE_URL} target="_blank" rel="noopener noreferrer">
+            IIIT Kottayam
+          </a>
+        </p>
+      </div>
+    </footer>
+    <BackToTop />
+  </>
+);
 
 export default Footer;

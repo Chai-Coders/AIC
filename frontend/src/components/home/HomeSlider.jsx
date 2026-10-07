@@ -1,33 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import useApi from '../../hooks/useApi';
 import { fetchBackgroundVideo } from '../../api/content';
+import { APPLY_URL } from '../../data/site';
 
-const slides = [
-  {
-    image: '/img/slider/slider1.jpg',
-    direction: 'slider-one',
-    title1: 'AIC-IIITKOTTAYAM',
-    title2: 'An Incubation Centre',
-    description: 'of the Indian Institute of Information Technology Kottayam (IIITKottayam) on IoT Cloud Societal projects.\nAcknowledges: AIM-NITI scheme of Government of India.',
-    align: 'left'
-  },
-  {
-    image: '/img/slider/slider2.jpg',
-    direction: 'slider-two',
-    title1: 'AIC-IIITKOTTAYAM',
-    title2: 'An Incubation Centre',
-    description: 'of the Indian Institute of Information Technology Kottayam (IIITKottayam) on IoT Cloud Societal projects.\nAcknowledges: AIM-NITI scheme of Government of India.',
-    align: 'center'
-  },
-  {
-    image: '/img/slider/slider3.jpg',
-    direction: 'slider-two',
-    title1: 'AIC-IIITKOTTAYAM',
-    title2: 'An Incubation Centre',
-    description: 'of the Indian Institute of Information Technology Kottayam (IIITKottayam) on IoT Cloud Societal projects.\nAcknowledges: AIM-NITI scheme of Government of India.',
-    align: 'left'
-  }
+// Each slide has a full-size and a phone-size copy (see public/img/site).
+const SLIDES = [
+  { name: 'campus', width: 1500, caption: 'IIIT Kottayam campus, Valavoor' },
+  { name: 'hero-1', width: 2000, caption: 'The incubation floor at AIC' },
+  { name: 'pitch', width: 2000, caption: 'A startup review session' },
+];
+
+const STATS = [
+  { value: '₹50L', label: 'Seed funding per startup, via SISFS' },
+  { value: '42', label: 'Startups supported' },
+  { value: '141', label: 'Jobs created' },
+  { value: '11', label: 'IPs generated' },
 ];
 
 // Background video is a nice-to-have: skip it for visitors who asked for less
@@ -107,7 +94,7 @@ const HeroVideo = ({ playbackId }) => {
   return (
     <video
       ref={videoRef}
-      className="home-hero-video"
+      className={`home-hero__video ${playing ? 'is-playing' : ''}`}
       muted
       loop
       playsInline
@@ -115,7 +102,6 @@ const HeroVideo = ({ playbackId }) => {
       preload="none"
       aria-hidden="true"
       onPlaying={() => setPlaying(true)}
-      style={{ position: 'absolute', inset: 0, opacity: playing ? 1 : 0 }}
     />
   );
 };
@@ -124,143 +110,84 @@ const HomeSlider = () => {
   const { data: video } = useApi(fetchBackgroundVideo, null);
   const [allowVideo] = useState(canAutoplayBackgroundVideo);
   const playbackId = allowVideo ? video?.mux_playback_id : null;
+  const [current, setCurrent] = useState(0);
+  const shown = playbackId ? 0 : current;
 
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const isAutoScrolling = useRef(false);
-  const scrollIntentDelta = useRef(0);
-  const resetDeltaTimer = useRef(null);
-
-  // Rotate slide images only when there is no background video to show.
+  // Rotate slide images only when there is no background video to show. The
+  // timer restarts on every change, so a clicked slide also gets its full time
+  // (the progress dash under the active dot runs for the same 7s).
   useEffect(() => {
-    if (playbackId) return undefined;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [playbackId]);
-
-  useEffect(() => {
-    const handleWheel = (event) => {
-      if (event.deltaY <= 0 || isAutoScrolling.current) {
-        return;
-      }
-
-      const hero = document.querySelector('.home-hero');
-      const aboutSection = document.getElementById('about');
-
-      if (!hero || !aboutSection) {
-        return;
-      }
-
-      const heroRect = hero.getBoundingClientRect();
-      const heroDominantView = heroRect.top <= 0 && heroRect.bottom > window.innerHeight * 0.55;
-
-      if (!heroDominantView) {
-        scrollIntentDelta.current = 0;
-        return;
-      }
-
-      scrollIntentDelta.current += event.deltaY;
-
-      if (resetDeltaTimer.current) {
-        window.clearTimeout(resetDeltaTimer.current);
-      }
-
-      resetDeltaTimer.current = window.setTimeout(() => {
-        scrollIntentDelta.current = 0;
-      }, 180);
-
-      if (scrollIntentDelta.current < 170) {
-        return;
-      }
-
-      event.preventDefault();
-      isAutoScrolling.current = true;
-      scrollIntentDelta.current = 0;
-
-      const nav = document.getElementById('nav');
-      const navOffset = nav ? nav.offsetHeight + 14 : 90;
-      const targetTop = aboutSection.getBoundingClientRect().top + window.scrollY - navOffset;
-
-      window.scrollTo({
-        top: Math.max(targetTop, 0),
-        behavior: 'smooth',
-      });
-
-      window.setTimeout(() => {
-        isAutoScrolling.current = false;
-      }, 1000);
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      if (resetDeltaTimer.current) {
-        window.clearTimeout(resetDeltaTimer.current);
-      }
-      window.removeEventListener('wheel', handleWheel);
-    };
-  }, []);
-
-  const slide = slides[playbackId ? 0 : currentSlide];
+    if (playbackId || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const timer = setTimeout(() => setCurrent((prev) => (prev + 1) % SLIDES.length), 7000);
+    return () => clearTimeout(timer);
+  }, [playbackId, current]);
 
   return (
-    <div id="home" className="slider-area home-hero">
-      <div className="home wrapper home-hero-wrapper">
-        <div className="bend niceties preview-2">
-          <div id="ensign-nivoslider" className="slides home-hero-media">
-            <img
-              src={slide.image}
-              alt="Slide"
-              className="home-hero-image"
-              fetchPriority="high"
-            />
-            {playbackId && <HeroVideo playbackId={playbackId} />}
-          </div>
+    <section className="home-hero" aria-labelledby="home-hero-title">
+      <div className="home-hero__media" aria-hidden="true">
+        {SLIDES.map((slide, i) => (
+          <img
+            key={slide.name}
+            src={`/img/site/${slide.name}.jpg`}
+            srcSet={`/img/site/${slide.name}-1000.jpg 1000w, /img/site/${slide.name}.jpg ${slide.width}w`}
+            sizes="100vw"
+            alt=""
+            className={`home-hero__image ${i === shown ? 'is-active' : ''}`}
+            fetchPriority={i === 0 ? 'high' : 'low'}
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        ))}
+        {playbackId && <HeroVideo playbackId={playbackId} />}
+      </div>
 
-          <div className={`slider-direction ${slide.direction} home-hero-overlay`}>
-            <div className="container">
-              <div className="row">
-                <div className="col-md-12 col-sm-12 col-xs-12">
-                  <div className="slider-content home-hero-content text-center">
-                    <div className="layer-1-1">
-                      <h2 className="title1 home-hero-title1">{slide.title1}</h2>
-                    </div>
-                    <div className="layer-1-2">
-                      <h1 className="title2 home-hero-title2">{slide.title2}</h1>
-                      <p className="home-hero-description">
-                        {slide.description}
-                      </p>
-                    </div>
-                    <div className="layer-1-3 home-hero-actions">
-                      <a className="ready-btn right-btn page-scroll" href="https://forms.gle/2c4NgmXp4B16zGet6" target="_blank" rel="noopener noreferrer">
-                        Apply for Incubation
-                      </a>
-                      <Link className="ready-btn page-scroll" to="/summary">
-                        Learn More
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div className="container home-hero__content">
+        <p className="home-hero__eyebrow">Atal Incubation Centre &middot; IIIT Kottayam</p>
+        <h1 id="home-hero-title" className="home-hero__title">
+          From first prototype to a <em>funded company.</em>
+        </h1>
+        <p className="home-hero__desc">
+          We back early-stage founders in IoT, cloud, AI and societal technology with mentors, labs and seed
+          capital, from inside an Institute of National Importance.
+        </p>
+        <div className="btn-row">
+          <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+            Apply for incubation <i className="fa fa-arrow-right" aria-hidden="true" />
+          </a>
+          <a className="btn btn--ghost-light" href="#programmes">
+            Explore programmes
+          </a>
+        </div>
 
-          {/* Slider controls */}
-          {!playbackId && (
-            <div className="home-hero-dots">
-              {slides.map((_, idx) => (
-                <span
-                  key={idx}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`home-hero-dot ${currentSlide === idx ? 'active' : ''}`}
+        {!playbackId && (
+          <div className="home-hero__slides">
+            <div className="home-hero__dots" role="group" aria-label="Background image">
+              {SLIDES.map((slide, i) => (
+                <button
+                  key={slide.name}
+                  type="button"
+                  className={i === current ? 'is-active' : ''}
+                  aria-label={`Show image ${i + 1}: ${slide.caption}`}
+                  aria-pressed={i === current}
+                  onClick={() => setCurrent(i)}
                 />
               ))}
             </div>
-          )}
-        </div>
+            <p className="home-hero__caption" aria-hidden="true">{SLIDES[current].caption}</p>
+          </div>
+        )}
       </div>
-    </div>
+
+      <div className="home-hero__facts">
+        <dl className="container home-hero__stats">
+          {STATS.map((stat, i) => (
+            <div key={stat.label} className="home-hero__stat" style={{ '--i': i }}>
+              <dt>{stat.label}</dt>
+              <dd>{stat.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
   );
 };
 
