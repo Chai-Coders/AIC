@@ -7,6 +7,8 @@ const SERVICES = [
     title: 'Training & mentorship',
     desc: 'Practical and theoretical frameworks that upskill technical teams for product excellence.',
     chips: ['1-on-1 mentors', 'Tech labs'],
+    variant: 'feature',
+    photo: '/img/site/mentoring.jpg',
   },
   {
     tag: 'Protection',
@@ -25,18 +27,22 @@ const SERVICES = [
     title: 'Marketing & go-to-market',
     desc: 'Sales strategy, PR and digital outreach to win early users and real market adoption.',
     chips: ['GTM strategy', 'Product launch'],
+    variant: 'dark',
   },
   {
     tag: 'Credibility',
     title: 'Institutional backing',
     desc: 'The academic rigour and network of IIIT Kottayam, so investors and customers take you seriously.',
     chips: ['IIITK network', 'AIM, NITI Aayog'],
+    variant: 'tint',
   },
   {
     tag: 'Network',
     title: 'Investor & global access',
     desc: 'Introductions to venture capitalists, angel networks and international trade bodies when you are ready to scale.',
     chips: ['Investor pitch days', 'Demo days'],
+    variant: 'wide',
+    photo: '/img/site/jury.jpg',
   },
 ];
 
@@ -50,16 +56,20 @@ const HomeService = () => (
         lead="Mentorship, rapid IP commercialisation and a trusted ecosystem for early-stage founders."
       />
 
-      <ul className="services">
+      {/* Bento layout: one large photo tile, four squares and a wide strip (see .bento in home.css) */}
+      <ul className="bento">
         {SERVICES.map((s, i) => (
-          <li key={s.title} className="service">
-            <p className="service__tag">
-              <span>{String(i + 1).padStart(2, '0')}</span>
-              {s.tag}
-            </p>
-            <h3 className="service__title">{s.title}</h3>
-            <p className="service__text">{s.desc}</p>
-            <p className="service__chips">{s.chips.join(' · ')}</p>
+          <li key={s.title} className={`bento__item ${s.variant ? `bento__item--${s.variant}` : ''}`}>
+            {s.photo && <img className="bento__photo" src={s.photo} alt="" width="1600" height="1067" loading="lazy" />}
+            <div className="bento__body">
+              <p className="bento__tag">
+                <span>{String(i + 1).padStart(2, '0')}</span>
+                {s.tag}
+              </p>
+              <h3 className="bento__title">{s.title}</h3>
+              <p className="bento__text">{s.desc}</p>
+              <p className="bento__chips">{s.chips.join(' · ')}</p>
+            </div>
           </li>
         ))}
       </ul>

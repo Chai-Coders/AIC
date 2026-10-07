@@ -43,7 +43,7 @@ const HomePricing = () => (
               <strong>{plan.amount}</strong>
               <span>{plan.per}</span>
             </p>
-            <ul className="check-list plan__features">
+            <ul className="plan__features">
               {plan.features.map((feat) => (
                 <li key={feat}>{feat}</li>
               ))}

@@ -17,7 +17,7 @@ const HomeGallery = () => (
           </Link>
         }
       />
-      <GalleryGrid limit={8} />
+      <GalleryGrid limit={9} featured />
     </div>
   </section>
 );

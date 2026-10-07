@@ -28,7 +28,7 @@ const HomeNews = () => {
         />
         <AsyncState state={news} skeleton={<SkeletonGrid count={3} />}>
           {(items) => (
-            <div className="grid grid--3">
+            <div className="news-split">
               {items.slice(0, 3).map((item) => (
                 <NewsCard key={item.id} item={item} />
               ))}

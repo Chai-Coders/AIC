@@ -24,11 +24,13 @@ const STEPS = [
   },
 ];
 
+// Each photo has its own shape in the mosaic (see .mosaic in home.css).
 const PHOTOS = [
-  { img: '/img/site/mentoring.jpg', alt: 'Mentors in conversation with founders at the incubation centre', caption: 'Mentorship' },
-  { img: '/img/site/visit.jpg', alt: 'Visiting dignitaries meeting student innovators', caption: 'Industry & government' },
-  { img: '/img/site/session.jpg', alt: 'A training session in the AIC lab', caption: 'Training' },
-  { img: '/img/site/cohort.jpg', alt: 'A cohort of student innovators at an AIC programme', caption: 'Cohorts' },
+  { img: '/img/site/mentoring.jpg', alt: 'Mentors in conversation with founders at the incubation centre', caption: 'Mentorship', shape: 'arch' },
+  { img: '/img/site/visit.jpg', alt: 'Visiting dignitaries meeting student innovators', caption: 'Industry & government', shape: 'wide' },
+  { img: '/img/site/demo.jpg', alt: 'Student founders demonstrating their product to visitors', caption: 'Demo days', shape: 'circle' },
+  { img: '/img/site/session.jpg', alt: 'A training session in the AIC lab', caption: 'Training', shape: 'rect' },
+  { img: '/img/site/cohort.jpg', alt: 'A cohort of student innovators at an AIC programme', caption: 'Cohorts', shape: 'pill' },
 ];
 
 const HomeFeatures = () => (
@@ -59,10 +61,12 @@ const HomeFeatures = () => (
         </ol>
       </div>
 
-      <div className="photo-strip">
+      <div className="mosaic">
         {PHOTOS.map((p) => (
-          <figure key={p.img} className="photo-card">
-            <img src={p.img} alt={p.alt} loading="lazy" decoding="async" width="2000" height="1333" />
+          <figure key={p.img} className={`mosaic__item mosaic__item--${p.shape}`}>
+            <div className="mosaic__frame">
+              <img src={p.img} alt={p.alt} loading="lazy" decoding="async" width="2000" height="1333" />
+            </div>
             <figcaption>{p.caption}</figcaption>
           </figure>
         ))}

@@ -7,9 +7,10 @@ import { cdnImageProps } from '../../lib/image';
 
 /**
  * Responsive photo grid with a lightbox. `limit` shows only the first N items
- * (the lightbox still only covers what's shown).
+ * (the lightbox still only covers what's shown). `featured` makes the first
+ * photo a 2x2 tile; with 9 photos that fills the grid at every breakpoint.
  */
-const GalleryGrid = ({ limit }) => {
+const GalleryGrid = ({ limit, featured = false }) => {
   const gallery = useApi(fetchAllGallery);
   const [active, setActive] = useState(null);
 
@@ -23,12 +24,14 @@ const GalleryGrid = ({ limit }) => {
         const items = limit ? all.slice(0, limit) : all;
         return (
           <>
-            <ul className="gallery-grid">
+            <ul className={`gallery-grid ${featured ? 'gallery-grid--featured' : ''}`}>
               {items.map((item, i) => (
                 <li key={item.id}>
                   <button type="button" className="gallery-tile" onClick={() => setActive(i)}>
                     <img
-                      {...cdnImageProps(item.image, [400, 800], '(min-width: 1100px) 25vw, (min-width: 640px) 33vw, 50vw')}
+                      {...(featured && i === 0
+                        ? cdnImageProps(item.image, [800, 1200, 1600], '(min-width: 1100px) 50vw, (min-width: 640px) 66vw, 100vw')
+                        : cdnImageProps(item.image, [400, 800], '(min-width: 1100px) 25vw, (min-width: 640px) 33vw, 50vw'))}
                       alt={item.subtext || `Gallery photo ${i + 1}`}
                       loading="lazy"
                       decoding="async"

@@ -113,12 +113,14 @@ const HomeSlider = () => {
   const [current, setCurrent] = useState(0);
   const shown = playbackId ? 0 : current;
 
-  // Rotate slide images only when there is no background video to show.
+  // Rotate slide images only when there is no background video to show. The
+  // timer restarts on every change, so a clicked slide also gets its full time
+  // (the progress dash under the active dot runs for the same 7s).
   useEffect(() => {
     if (playbackId || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
-    const timer = setInterval(() => setCurrent((prev) => (prev + 1) % SLIDES.length), 7000);
-    return () => clearInterval(timer);
-  }, [playbackId]);
+    const timer = setTimeout(() => setCurrent((prev) => (prev + 1) % SLIDES.length), 7000);
+    return () => clearTimeout(timer);
+  }, [playbackId, current]);
 
   return (
     <section className="home-hero" aria-labelledby="home-hero-title">
@@ -177,8 +179,8 @@ const HomeSlider = () => {
 
       <div className="home-hero__facts">
         <dl className="container home-hero__stats">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="home-hero__stat">
+          {STATS.map((stat, i) => (
+            <div key={stat.label} className="home-hero__stat" style={{ '--i': i }}>
               <dt>{stat.label}</dt>
               <dd>{stat.value}</dd>
             </div>

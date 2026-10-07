@@ -458,6 +458,16 @@ img.is-contain {
   }
 }
 
+.gallery-grid--featured > li:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.gallery-grid--featured > li:first-child .gallery-tile {
+  height: 100%;
+  border-radius: 24px 4px 24px 4px;
+}
+
 .gallery-grid > .skeleton-card {
   aspect-ratio: 1;
   border: 0;
