@@ -120,14 +120,14 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
   }, [isBoardLooping]);
 
   useEffect(() => {
-    if (!isBoardLooping) {
+    if (!isBoardLooping || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       return undefined;
     }
 
     const autoplayId = window.setInterval(() => {
       setTransitionEnabled(true);
       setBoardIndex((prev) => prev + 1);
-    }, 1500);
+    }, 3500);
 
     return () => {
       window.clearInterval(autoplayId);

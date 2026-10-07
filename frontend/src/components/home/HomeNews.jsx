@@ -13,7 +13,7 @@ const HomeNews = () => {
   if (!news.loading && !news.error && news.data.length === 0) return null;
 
   return (
-    <section id="latest-news" className="section section--white" aria-labelledby="latest-news-title">
+    <section id="latest-news" className="section" aria-labelledby="latest-news-title">
       <div className="container">
         <SectionHeader
           id="latest-news-title"

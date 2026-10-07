@@ -4,6 +4,7 @@ import Footer from '../components/common/Footer';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import HomeSlider from '../components/home/HomeSlider';
 import HomeAbout from '../components/home/HomeAbout';
+import HomePrograms from '../components/home/HomePrograms';
 import HomeService from '../components/home/HomeService';
 import HomeFeatures from '../components/home/HomeFeatures';
 import HomeStartups from '../components/home/HomeStartups';
@@ -21,11 +22,12 @@ const HomePage = () => {
       <main id="main-content">
         <HomeSlider />
         <HomeAbout />
+        <HomePrograms />
         <HomeService />
-        <HomeFeatures />
         <HomeStartups />
-        <HomeNews />
+        <HomeFeatures />
         <HomePricing />
+        <HomeNews />
         <HomeGallery />
         <HomeContact />
       </main>

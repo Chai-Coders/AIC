@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CONTACT } from '../../data/site';
-import './HomeContact.css';
+import { CONTACT, telHref } from '../../data/site';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMPTY = { name: '', email: '', message: '' };
@@ -13,7 +12,7 @@ const HomeContact = () => {
   // Hide the success note again after a few seconds.
   useEffect(() => {
     if (!sent) return undefined;
-    const timer = setTimeout(() => setSent(false), 5000);
+    const timer = setTimeout(() => setSent(false), 6000);
     return () => clearTimeout(timer);
   }, [sent]);
 
@@ -39,80 +38,98 @@ const HomeContact = () => {
     setForm(EMPTY);
   };
 
-  return (
-    <section id="contact" className="contact-section" aria-labelledby="contact-title">
-      <div className="contact-ornament" aria-hidden="true"><span></span><span></span><span></span></div>
+  const field = (name, label, { as: Tag = 'input', ...rest } = {}) => {
+    return (
+      <div className="field">
+        <label htmlFor={`contact-${name}`}>{label}</label>
+        <Tag
+          id={`contact-${name}`}
+          className="input"
+          value={form[name]}
+          onChange={update(name)}
+          aria-invalid={Boolean(errors[name])}
+          aria-describedby={errors[name] ? `contact-${name}-error` : undefined}
+          {...rest}
+        />
+        {errors[name] && (
+          <span id={`contact-${name}-error`} className="field-error" role="alert">
+            {errors[name]}
+          </span>
+        )}
+      </div>
+    );
+  };
 
-      <div className="contact-inner">
-        <div className="contact-intro">
-          <h2 id="contact-title">Contact Us</h2>
+  return (
+    <section id="contact" className="section section--white" aria-labelledby="contact-title">
+      <div className="container contact">
+        <div className="contact__info">
+          <p className="eyebrow">Contact</p>
+          <h2 id="contact-title" className="section-title">
+            Talk to the team
+          </h2>
+          <p className="section-lead">
+            Questions about a programme, eligibility or a partnership? Write to us, call, or visit the centre on the IIIT
+            Kottayam campus.
+          </p>
+
+          <dl className="contact__details">
+            <div>
+              <dt>Address</dt>
+              <dd>
+                {CONTACT.address.join(' ')}{' '}
+                <a href={CONTACT.mapUrl} target="_blank" rel="noopener noreferrer" className="text-link">
+                  Directions <i className="fa fa-external-link" aria-hidden="true" />
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>
+                {CONTACT.emails.map((email) => (
+                  <a key={email} href={`mailto:${email}`}>
+                    {email}
+                  </a>
+                ))}
+              </dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>
+                {CONTACT.phones.map((phone) => (
+                  <a key={phone} href={telHref(phone)}>
+                    {phone}
+                  </a>
+                ))}
+              </dd>
+            </div>
+          </dl>
+
+          <iframe
+            className="contact__map"
+            src={CONTACT.mapEmbedUrl}
+            title="AIC-IIITK location on Google Maps"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
         </div>
 
-        <div className="contact-form-wrap">
+        <form className="contact__form" onSubmit={handleSubmit} noValidate>
+          <h3 className="contact__form-title">Send us a message</h3>
+          <div className="contact__row">
+            {field('name', 'Your name', { type: 'text', autoComplete: 'name' })}
+            {field('email', 'Email address', { type: 'email', autoComplete: 'email' })}
+          </div>
+          {field('message', 'Message', { as: 'textarea', rows: 6 })}
+          <button type="submit" className="btn btn--primary">
+            Send message <i className="fa fa-arrow-right" aria-hidden="true" />
+          </button>
           {sent && (
-            <p className="contact-success" role="status">
-              Your email app should open with the message ready to send. Thank you for reaching out!
+            <p className="contact__success" role="status">
+              Your email app should open with the message ready to send. Thank you for reaching out.
             </p>
           )}
-
-          <form className="contact-form" onSubmit={handleSubmit} noValidate>
-            <div className="contact-form-row">
-              <div className="contact-field">
-                <input
-                  id="contact-email"
-                  type="email"
-                  className="contact-input"
-                  placeholder="Email*"
-                  aria-label="Email"
-                  autoComplete="email"
-                  value={form.email}
-                  onChange={update('email')}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'contact-email-error' : undefined}
-                />
-                {errors.email && (
-                  <span id="contact-email-error" className="contact-error" role="alert">{errors.email}</span>
-                )}
-              </div>
-
-              <div className="contact-field">
-                <input
-                  id="contact-name"
-                  type="text"
-                  className="contact-input"
-                  placeholder="Name"
-                  aria-label="Name"
-                  autoComplete="name"
-                  value={form.name}
-                  onChange={update('name')}
-                  aria-invalid={Boolean(errors.name)}
-                  aria-describedby={errors.name ? 'contact-name-error' : undefined}
-                />
-                {errors.name && (
-                  <span id="contact-name-error" className="contact-error" role="alert">{errors.name}</span>
-                )}
-              </div>
-
-              <button type="submit" className="contact-submit">Send Mail</button>
-            </div>
-
-            <div className="contact-message">
-              <textarea
-                id="contact-message"
-                className="contact-input"
-                placeholder="Message"
-                aria-label="Message"
-                value={form.message}
-                onChange={update('message')}
-                aria-invalid={Boolean(errors.message)}
-                aria-describedby={errors.message ? 'contact-message-error' : undefined}
-              />
-              {errors.message && (
-                <span id="contact-message-error" className="contact-error" role="alert">{errors.message}</span>
-              )}
-            </div>
-          </form>
-        </div>
+        </form>
       </div>
     </section>
   );

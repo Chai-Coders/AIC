@@ -2,11 +2,9 @@ import React from 'react';
 
 /** Icon + heading + bullet list card used on programme pages. */
 export const InfoCard = ({ icon, title, items, ordered = false, accent = false, children }) => (
-  <article className="card info-card">
+  <article className={`card info-card ${accent ? 'info-card--accent' : ''}`}>
     <div className="info-card__head">
-      <span className={`icon-badge ${accent ? 'icon-badge--accent' : ''}`}>
-        <i className={`fa ${icon}`} aria-hidden="true" />
-      </span>
+      {icon && <i className={`fa ${icon}`} aria-hidden="true" />}
       <h3>{title}</h3>
     </div>
     {children}

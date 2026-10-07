@@ -72,7 +72,7 @@ const StartupPage = () => (
           <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
             Apply for acceleration <i className="fa fa-external-link" aria-hidden="true" />
           </a>
-          <a className="btn btn--ghost-light" href="#portfolio">
+          <a className="btn btn--outline" href="#portfolio">
             Browse portfolio
           </a>
         </>

@@ -4,7 +4,7 @@ import SectionHeader from '../common/SectionHeader';
 import GalleryGrid from '../sections/GalleryGrid';
 
 const HomeGallery = () => (
-  <section id="gallery-preview" className="section section--white" aria-labelledby="gallery-preview-title">
+  <section id="gallery-preview" className="section section--rule" aria-labelledby="gallery-preview-title">
     <div className="container">
       <SectionHeader
         id="gallery-preview-title"

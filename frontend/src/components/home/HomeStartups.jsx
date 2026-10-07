@@ -29,7 +29,7 @@ const HomeStartups = () => {
   }, [startups]);
 
   return (
-    <section id="startups-building" className="section" aria-labelledby="startups-title">
+    <section id="startups-building" className="section section--white section--rule" aria-labelledby="startups-title">
       <div className="container">
         <SectionHeader
           id="startups-title"

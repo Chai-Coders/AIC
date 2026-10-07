@@ -15,7 +15,7 @@ const NotFoundPage = () => (
           <Link className="btn btn--accent" to="/">
             Go to home page
           </Link>
-          <Link className="btn btn--ghost-light" to="/#contact">
+          <Link className="btn btn--outline" to="/#contact">
             Contact us
           </Link>
         </>

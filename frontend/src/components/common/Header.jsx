@@ -149,7 +149,12 @@ const Header = ({ transparent = false }) => {
             <Link to="/#contact" className="btn btn--outline btn--sm site-nav__contact">
               Contact
             </Link>
-            <a className="btn btn--primary btn--sm" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+            <a
+              className={`btn btn--sm ${solid ? 'btn--primary' : 'btn--accent'}`}
+              href={APPLY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Apply now
             </a>
           </div>

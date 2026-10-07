@@ -22,8 +22,9 @@ body {
   color: var(--color-text-body);
   font-family: var(--font-body);
   font-size: var(--text-base);
-  line-height: 1.65;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
@@ -47,13 +48,16 @@ h6 {
   margin: 0;
   color: var(--color-text);
   font-family: var(--font-display);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  font-optical-sizing: auto;
+  font-weight: 550;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
 }
 
 p {
   margin: 0;
+  text-wrap: pretty;
 }
 
 a {
@@ -96,13 +100,13 @@ ol {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
 }
 
 ::selection {
-  background: var(--blue-100);
-  color: var(--navy-900);
+  background: var(--yellow-100);
+  color: var(--ink);
 }
 
 .sr-only {
@@ -124,7 +128,7 @@ ol {
   z-index: 1000;
   padding: 10px 16px;
   border-radius: var(--radius-sm);
-  background: var(--color-primary);
+  background: var(--ink);
   color: var(--white);
   font-weight: 600;
   transform: translateY(-150%);

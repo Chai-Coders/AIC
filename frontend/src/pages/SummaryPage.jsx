@@ -6,10 +6,10 @@ import { CtaBanner, InfoCard } from '../components/sections/ProgramContent';
 import { APPLY_URL, HOST_INSTITUTE_URL } from '../data/site';
 
 const PILLARS = [
-  { icon: 'fa-cube', title: 'Rapid prototyping', text: '3D printing and hardware realisation labs to turn designs into working products.' },
-  { icon: 'fa-server', title: 'Advanced computing', text: 'Computing facilities and IoT cloud platforms for building and testing at scale.' },
-  { icon: 'fa-users', title: 'Mentorship', text: 'One-on-one guidance from domain experts, faculty and a global mentor panel.' },
-  { icon: 'fa-line-chart', title: 'Go-to-market', text: 'Commercialisation and go-to-market advisory to reach customers sooner.' },
+  { title: 'Rapid prototyping', text: '3D printing and hardware realisation labs to turn designs into working products.' },
+  { title: 'Advanced computing', text: 'Computing facilities and IoT cloud platforms for building and testing at scale.' },
+  { title: 'Mentorship', text: 'One-on-one guidance from domain experts, faculty and a global mentor panel.' },
+  { title: 'Go-to-market', text: 'Commercialisation and go-to-market advisory to reach customers sooner.' },
 ];
 
 const WORKBENCH = [
@@ -62,25 +62,23 @@ const SummaryPage = () => (
           </div>
         </div>
         <div className="split__media media-frame">
-          <img src="/img/about2.jpg" alt="Founders working at AIC-IIITKottayam" loading="lazy" />
+          <img src="/img/site/hero-1.jpg" alt="The incubation floor at AIC-IIITKottayam" loading="lazy" width="2000" height="1333" />
         </div>
       </div>
     </section>
 
     <section className="section">
       <div className="container">
-        <SectionHeader eyebrow="What incubatees get" title="Everything you need to build" align="center" />
-        <div className="grid grid--4">
+        <SectionHeader eyebrow="What incubatees get" title="Everything you need to build" />
+        <ol className="pillars">
           {PILLARS.map((p, i) => (
-            <article key={p.title} className="card">
-              <span className={`icon-badge ${i % 2 ? 'icon-badge--accent' : ''}`}>
-                <i className={`fa ${p.icon}`} aria-hidden="true" />
-              </span>
-              <h3 className="card__title feature-card__title">{p.title}</h3>
-              <p className="card__text">{p.text}</p>
-            </article>
+            <li key={p.title} className="pillar">
+              <span className="pillar__num">{String(i + 1).padStart(2, '0')}</span>
+              <h3>{p.title}</h3>
+              <p>{p.text}</p>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
 

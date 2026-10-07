@@ -13,11 +13,9 @@ const AicTeamPage = () => (
       breadcrumbs: [{ label: 'About' }, { label: 'Our Team' }],
     }}
   >
-    <section className="section">
-      <div className="container">
-        <PeopleNav />
-      </div>
-    </section>
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
     <PeopleCarousel category="team" title="AIC-IIITKottayam Team" emptyText="No team members listed yet." />
   </PageLayout>
 );

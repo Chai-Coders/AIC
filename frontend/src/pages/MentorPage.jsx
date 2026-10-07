@@ -13,11 +13,9 @@ const MentorPage = () => (
       breadcrumbs: [{ label: 'About' }, { label: 'Mentors' }],
     }}
   >
-    <section className="section">
-      <div className="container">
-        <PeopleNav />
-      </div>
-    </section>
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
     <PeopleCarousel category="mentor" title="International Mentors" emptyText="No mentors listed yet." />
   </PageLayout>
 );

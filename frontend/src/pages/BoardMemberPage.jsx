@@ -13,11 +13,9 @@ const BoardMemberPage = () => (
       breadcrumbs: [{ label: 'About' }, { label: 'Board of Governors' }],
     }}
   >
-    <section className="section">
-      <div className="container">
-        <PeopleNav />
-      </div>
-    </section>
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
     <PeopleCarousel
       category="governor"
       title="AIC-IIITKottayam Board of Governors"

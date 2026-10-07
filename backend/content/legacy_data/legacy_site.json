@@ -27,111 +27,438 @@
     }
   ],
   "governor": [
-    { "name": "Prof. Prasad Krishna", "role": "Chairman, Director-IIIT Kottayam" },
-    { "name": "Dr. M. Radhakrishnan", "role": "Member, Registrar-IIITKottayam, Director-AIC" },
-    { "name": "R. Ramanan", "role": "Member, First-Mission Director (AIM)" },
-    { "name": "Dr. Shajulin Benedict", "role": "Member, PI - AIC & Faculty, IIITKottayam, Director-AIC", "bio": "http://www.sbenedictglobal.com" },
-    { "name": "Dr. Ebin Deni Raj", "role": "Member, Associate Dean-IIITKottayam" },
-    { "name": "Ms. Preethi M", "role": "Member, TBI-NIT-Calicut" },
-    { "name": "Mr. Anil Sharma", "role": "Member, Global Data Plc, Hyderabad" },
-    { "name": "Mr. Amirtharaj C.", "role": "Member, IBM Singapore" },
-    { "name": "Shri. T. Velayutham", "role": "Member, BEL-Bangalore" }
+    {
+      "name": "Prof. Prasad Krishna",
+      "role": "Chairman, Director-IIIT Kottayam"
+    },
+    {
+      "name": "Dr. M. Radhakrishnan",
+      "role": "Member, Registrar-IIITKottayam, Director-AIC"
+    },
+    {
+      "name": "R. Ramanan",
+      "role": "Member, First-Mission Director (AIM)"
+    },
+    {
+      "name": "Dr. Shajulin Benedict",
+      "role": "Member, PI - AIC & Faculty, IIITKottayam, Director-AIC",
+      "bio": "http://www.sbenedictglobal.com"
+    },
+    {
+      "name": "Dr. Ebin Deni Raj",
+      "role": "Member, Associate Dean-IIITKottayam"
+    },
+    {
+      "name": "Ms. Preethi M",
+      "role": "Member, TBI-NIT-Calicut"
+    },
+    {
+      "name": "Mr. Anil Sharma",
+      "role": "Member, Global Data Plc, Hyderabad"
+    },
+    {
+      "name": "Mr. Amirtharaj C.",
+      "role": "Member, IBM Singapore"
+    },
+    {
+      "name": "Shri. T. Velayutham",
+      "role": "Member, BEL-Bangalore"
+    }
   ],
   "mentor": [
-    { "group": "International Mentors - Industry", "name": "Dr. Ventsislav Petkov", "role": "Data Analyst Engineer, Telefonica Germany GmbH, Germany" },
-    { "group": "International Mentors - Industry", "name": "Dr. Jorge Cardoso", "role": "Chief Architect for Cloud Operations and Analytics, Huawei Technologies Duesseldorf GmbH, Germany" },
-    { "group": "International Mentors - Academic", "name": "Prof. Dr. Michael Gerndt", "role": "TUM-Germany (Mentor/Trainer)" },
-    { "group": "International Mentors - Academic", "name": "Prof. Dr. Thomas Fahringer", "role": "University of Innsbruck, Austria" },
-    { "group": "International Mentors - Academic", "name": "Prof. Dr. David Kaeli", "role": "Northeastern University, USA" },
-    { "group": "India Mentors - Industry", "name": "Shri. V. Vijayakumar", "role": "Chief Operating Officer, Symmetrix Technologies Pvt. Ltd. (Mentor/Sales contact)" },
-    { "group": "India Mentors - Industry", "name": "Shri. M. Thangachanr", "role": "M.D., Torvin Technologies Pvt. Ltd. (Mentor/Consultant)" },
-    { "group": "India Mentors - Industry", "name": "Ms. Preethi M.", "role": "TBI, NIT Calicut (Mentor/Member)" },
-    { "group": "India Mentors - Industry", "name": "Mr. Rahul Dhir", "role": "Bharat Electronics India Pvt. Ltd. (Proposed Mentor)" },
-    { "group": "India Mentors - Industry", "name": "Mr. Aaron Joseph George", "role": "Director, ICTI: International Centre for Technological Innovations" },
-    { "group": "India Mentors - Industry", "name": "Dr. Pallikonda Rajasekhar", "role": "Raj Bioelectronics & Intelligent (P) Ltd." },
-    { "group": "India Mentors - Industry", "name": "Dr. Girinath G. Pillai", "role": "Chief Scientific Officer, Zastra Innovations Pvt. Ltd." },
-    { "group": "India Mentors - Industry", "name": "Mr. Prem Sankar", "role": "Co-founder, Waggle Lab (Research-oriented Academic Startup)" },
-    { "group": "India Mentors - Industry", "name": "Mrs. Manjula Nair", "role": "Founder & CEO, REAL Buzzone; Corporate & Campus Trainer, Marketing & Business" },
-    { "group": "India Mentors - Industry", "name": "Mrs. Diksha Singh", "role": "Regional Director / Head India Business Development, advance.ai" },
-    { "group": "India Mentors - Industry", "name": "Mr. Sandeep Sawant", "role": "Director: Product Development, BMC Software India Pvt. Ltd." },
-    { "group": "India Mentors - Industry", "name": "Mr. Pallav Jagoori", "role": "VP of Products, GirnarSoft" },
-    { "group": "India Mentors - Industry", "name": "Mr. Raghunath C Nair", "role": "Deputy General Manager, Nissan Motor Corporation" },
-    { "group": "India Mentors - Industry", "name": "Mrs. Latika Manaktala", "role": "Founder, Mistletoe; Corporate & Campus Trainer, Digital Marketing (Online Growth Mentor)" },
-    { "group": "India Mentors - Industry", "name": "Dr. Abhiram Singamsetti", "role": "CEO and Chief Consultant, StartupWize" },
-    { "group": "India Mentors - Industry", "name": "Mr. Nagaprasad Sathyanarayana", "role": "Software Engineering Leader, Altimetrik India Pvt. Ltd." },
-    { "group": "India Mentors - Industry", "name": "Dr. K C Chandrasekharan Nair", "role": "Chief Executive Officer, Trivandrum Technolodge @ TRINITY College of Engineering" },
-    { "group": "India Mentors - Industry", "name": "Mr. Ashish Khare", "role": "Co-founder, COO & Board Member, IOT World Labs Inc. (USA); MD & CEO, IOT World Labs India (APAC); Founder & CEO, DGguru Learning Solutions" },
-    { "group": "India Mentors - Industry", "name": "Mr. Darshan Kasaravalli", "role": "CEO, Valida Testing Solutions" },
-    { "group": "India Mentors - Industry", "name": "Mr. Rajesh Kumar", "role": "General Manager (F&A), SAIL, BSP" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Giridhar G", "role": "Dy. Director, SRRA, NIWE, Chennai" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Hema Somanathan", "role": "IISER Trivandrum" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Yogesh Simmhan", "role": "Assoc. Professor, IISc, Bangalore" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Amey Karkare", "role": "Asst. Professor, IIT Kanpur" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Brintha N.C.", "role": "KIT Srivilliputhur" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. V. Vasudevan", "role": "Dean, KLU Srivilliputhur" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Rajkamal", "role": "IoT Specialist, Former Vice-Chancellor, Devi Ahilya, Indore" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Sengottuvelu", "role": "Professor, Acharya Bangalore B-School (ABBS), Bengaluru" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Albert Raj", "role": "Principal, DMI Engineering College" },
-    { "group": "Indian Mentors - Academic", "name": "Mr. Santhi", "role": "Professor, Kalasalingam Institute of Technology" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Ranjit Abraham", "role": "Adhoc Faculty & Consultant, IIITKottayam" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. N.C. Brintha", "role": "Asst. Professor, Kalasalingam Institute of Technology" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Shobha", "role": "Professor, Karunya Institute of Technology and Science" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. Kannan", "role": "Asst. Professor, Amrita College of Engineering and Technology" },
-    { "group": "Indian Mentors - Academic", "name": "Mr. Ceira Sara Cherian", "role": "Asst. Professor, TecH Institute of Science and Technology" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. P. Nagarajan", "role": "Vice Principal, DMI Engineering College" },
-    { "group": "Indian Mentors - Academic", "name": "Dr. K. Deeba", "role": "Professor, Kalasalingam Institute of Technology" }
+    {
+      "group": "International Mentors - Industry",
+      "name": "Dr. Ventsislav Petkov",
+      "role": "Data Analyst Engineer, Telefonica Germany GmbH, Germany"
+    },
+    {
+      "group": "International Mentors - Industry",
+      "name": "Dr. Jorge Cardoso",
+      "role": "Chief Architect for Cloud Operations and Analytics, Huawei Technologies Duesseldorf GmbH, Germany"
+    },
+    {
+      "group": "International Mentors - Academic",
+      "name": "Prof. Dr. Michael Gerndt",
+      "role": "TUM-Germany (Mentor/Trainer)"
+    },
+    {
+      "group": "International Mentors - Academic",
+      "name": "Prof. Dr. Thomas Fahringer",
+      "role": "University of Innsbruck, Austria"
+    },
+    {
+      "group": "International Mentors - Academic",
+      "name": "Prof. Dr. David Kaeli",
+      "role": "Northeastern University, USA"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Shri. V. Vijayakumar",
+      "role": "Chief Operating Officer, Symmetrix Technologies Pvt. Ltd. (Mentor/Sales contact)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Shri. M. Thangachanr",
+      "role": "M.D., Torvin Technologies Pvt. Ltd. (Mentor/Consultant)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Ms. Preethi M.",
+      "role": "TBI, NIT Calicut (Mentor/Member)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Rahul Dhir",
+      "role": "Bharat Electronics India Pvt. Ltd. (Proposed Mentor)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Aaron Joseph George",
+      "role": "Director, ICTI: International Centre for Technological Innovations"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Dr. Pallikonda Rajasekhar",
+      "role": "Raj Bioelectronics & Intelligent (P) Ltd."
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Dr. Girinath G. Pillai",
+      "role": "Chief Scientific Officer, Zastra Innovations Pvt. Ltd."
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Prem Sankar",
+      "role": "Co-founder, Waggle Lab (Research-oriented Academic Startup)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mrs. Manjula Nair",
+      "role": "Founder & CEO, REAL Buzzone; Corporate & Campus Trainer, Marketing & Business"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mrs. Diksha Singh",
+      "role": "Regional Director / Head India Business Development, advance.ai"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Sandeep Sawant",
+      "role": "Director: Product Development, BMC Software India Pvt. Ltd."
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Pallav Jagoori",
+      "role": "VP of Products, GirnarSoft"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Raghunath C Nair",
+      "role": "Deputy General Manager, Nissan Motor Corporation"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mrs. Latika Manaktala",
+      "role": "Founder, Mistletoe; Corporate & Campus Trainer, Digital Marketing (Online Growth Mentor)"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Dr. Abhiram Singamsetti",
+      "role": "CEO and Chief Consultant, StartupWize"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Nagaprasad Sathyanarayana",
+      "role": "Software Engineering Leader, Altimetrik India Pvt. Ltd."
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Dr. K C Chandrasekharan Nair",
+      "role": "Chief Executive Officer, Trivandrum Technolodge @ TRINITY College of Engineering"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Ashish Khare",
+      "role": "Co-founder, COO & Board Member, IOT World Labs Inc. (USA); MD & CEO, IOT World Labs India (APAC); Founder & CEO, DGguru Learning Solutions"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Darshan Kasaravalli",
+      "role": "CEO, Valida Testing Solutions"
+    },
+    {
+      "group": "India Mentors - Industry",
+      "name": "Mr. Rajesh Kumar",
+      "role": "General Manager (F&A), SAIL, BSP"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Giridhar G",
+      "role": "Dy. Director, SRRA, NIWE, Chennai"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Hema Somanathan",
+      "role": "IISER Trivandrum"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Yogesh Simmhan",
+      "role": "Assoc. Professor, IISc, Bangalore"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Amey Karkare",
+      "role": "Asst. Professor, IIT Kanpur"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Brintha N.C.",
+      "role": "KIT Srivilliputhur"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. V. Vasudevan",
+      "role": "Dean, KLU Srivilliputhur"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Rajkamal",
+      "role": "IoT Specialist, Former Vice-Chancellor, Devi Ahilya, Indore"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Sengottuvelu",
+      "role": "Professor, Acharya Bangalore B-School (ABBS), Bengaluru"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Albert Raj",
+      "role": "Principal, DMI Engineering College"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Mr. Santhi",
+      "role": "Professor, Kalasalingam Institute of Technology"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Ranjit Abraham",
+      "role": "Adhoc Faculty & Consultant, IIITKottayam"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. N.C. Brintha",
+      "role": "Asst. Professor, Kalasalingam Institute of Technology"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Shobha",
+      "role": "Professor, Karunya Institute of Technology and Science"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. Kannan",
+      "role": "Asst. Professor, Amrita College of Engineering and Technology"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Mr. Ceira Sara Cherian",
+      "role": "Asst. Professor, TecH Institute of Science and Technology"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. P. Nagarajan",
+      "role": "Vice Principal, DMI Engineering College"
+    },
+    {
+      "group": "Indian Mentors - Academic",
+      "name": "Dr. K. Deeba",
+      "role": "Professor, Kalasalingam Institute of Technology"
+    }
   ],
   "startups": [
-    { "name": "INFUSORY FUTURE TECH LABS PVT LTD", "logo": "img/logo/Infusory.png" },
-    { "name": "RRR GIG JOBS & SERVICES PRIVATE LIMITED", "logo": "img/logo/RRR GIG JOBS _ SERVICES PRIVATE LIMITED.png" },
-    { "name": "PROCIS BRAINLABS PRIVATE LIMITED", "logo": "img/logo/Procis.png" },
-    { "name": "DEEPQAI BUSINESS SOLUTIONS PRIVATE LIMITED", "logo": "img/logo/DEEPQAI BUSINESS SOLUTIONS PRIVATE LIMITED.jpeg" },
-    { "name": "DML INDUSTRIES PRIVATE LIMITED", "logo": "img/logo/dml.jpg" },
-    { "name": "PEOPLE REACHER PRIVATE LIMITED", "logo": "img/logo/People Reacher.jpg" },
-    { "name": "UPMARKET FINTECH SOLUTIONS INDIA PRIVATE LIMITED", "logo": "img/logo/UPMARKET FINTECH SOLUTIONS INDIA PRIVATE LIMITED.png" },
-    { "name": "WATER N SPICES FOODSZ PRIVATE LIMITED", "logo": "img/logo/WATER N SPICES FOODSZ PRIVATE LIMITED.png" },
-    { "name": "ETHNOGRAPHIC ART PRIVATE LIMITED", "logo": "img/logo/Ethnographic Art.png" },
-    { "name": "KIZHAKEDATHU TOURS AND TRAVELS PRIVATE LIMITED", "logo": "img/logo/Kizhakedathu.png" },
-    { "name": "AIGON MECHATRONICS PRIVATE LIMITED", "logo": "img/logo/Aigon.png" },
-    { "name": "BALUTEDAAR (OPC) PRIVATE LIMITED", "logo": "img/logo/Balutedaar logo.png" },
-    { "name": "BITTRON LABS PRIVATE LIMITED", "logo": "img/logo/Bittron.png" },
-    { "name": "BROWKU PRIVATE LIMITED", "logo": "img/logo/browku new logo.jpeg" },
-    { "name": "AMERALD CARE PRIVATE LIMITED", "logo": "img/logo/AMERALD logo.png" },
-    { "name": "ANSPRUCH TECHSOFT PRIVATE LIMITED", "logo": "img/logo/Ansprunch logo.png" },
-    { "name": "ECO BUGS INDIA PRIVATE LIMITED", "logo": "img/logo/ecobugs.jpeg" },
-    { "name": "UNVOICED MEDIA AND ENTERTAINMENT PVT LTD", "logo": "img/logo/UME.jpg" },
-    { "name": "FLUXFED TECHNOLOGIES PRIVATE LIMITED", "logo": "img/logo/fluxfed_logo.jpeg" },
-    { "name": "CUTTLFISH FITNESS (OPC) PRIVATE LIMITED", "logo": "img/logo/Cuttlfish_logo.png" },
-    { "name": "RUDRA DIGITAL MARKETING PRIVATE LIMITED", "logo": "img/logo/RDM_Logo.png" },
-    { "name": "TEAMSTARBASE PRIVATE LIMITED", "logo": "img/logo/TeamStarBase.jpeg" },
-    { "name": "FISCEAN TECHNOLOGIES PRIVATE LIMITED", "logo": "img/logo/Fiscean.jpg" },
-    { "name": "TROPHIC BIOSYSTEMS PRIVATE LIMITED", "logo": "img/logo/tropic.png" },
-    { "name": "KARDLE INDUSTRIES PRIVATE LIMITED", "logo": "img/logo/kardle_logo.jpg" },
-    { "name": "ASQUIRE GLOBAL FINANCIAL SOLUTIONS PRIVATE LIMITED", "logo": "img/logo/Agfi- Logo.png" },
-    { "name": "EDUHEX TECHNOLOGIES PRIVATE LIMITED", "logo": "img/logo/eduhex.jpeg" },
-    { "name": "CATALOG TECHNOLOGIES PRIVATE LIMITED", "logo": "img/logo/catalog.jpeg" },
-    { "name": "TECHNOACE CONSULTANCY SERVICES PRIVATE LIMITED", "logo": "img/logo/technoace.jpeg" },
-    { "name": "NEXPRESSION PRIVATE LIMITED", "logo": "img/logo/nexpression logo.png" },
-    { "name": "VAYANA MOBILITY PRIVATE LIMITED", "logo": "img/logo/vayana.jpeg" },
-    { "name": "PRINCE MANU BABY", "logo": "img/logo/prince.jpeg" },
-    { "name": "LUKA HEALTHCARE", "logo": "img/logo/luka.jpeg" },
-    { "name": "WINQQR", "logo": "img/logo/winqqer.jpeg" },
-    { "name": "NEXTGEN SM", "logo": "img/logo/nextgen.jpeg" }
+    {
+      "name": "INFUSORY FUTURE TECH LABS PVT LTD",
+      "logo": "img/logo/Infusory.png"
+    },
+    {
+      "name": "RRR GIG JOBS & SERVICES PRIVATE LIMITED",
+      "logo": "img/logo/RRR GIG JOBS _ SERVICES PRIVATE LIMITED.png"
+    },
+    {
+      "name": "PROCIS BRAINLABS PRIVATE LIMITED",
+      "logo": "img/logo/Procis.png"
+    },
+    {
+      "name": "DEEPQAI BUSINESS SOLUTIONS PRIVATE LIMITED",
+      "logo": "img/logo/DEEPQAI BUSINESS SOLUTIONS PRIVATE LIMITED.jpeg"
+    },
+    {
+      "name": "DML INDUSTRIES PRIVATE LIMITED",
+      "logo": "img/logo/dml.jpg"
+    },
+    {
+      "name": "PEOPLE REACHER PRIVATE LIMITED",
+      "logo": "img/logo/People Reacher.jpg"
+    },
+    {
+      "name": "UPMARKET FINTECH SOLUTIONS INDIA PRIVATE LIMITED",
+      "logo": "img/logo/UPMARKET FINTECH SOLUTIONS INDIA PRIVATE LIMITED.png"
+    },
+    {
+      "name": "WATER N SPICES FOODSZ PRIVATE LIMITED",
+      "logo": "img/logo/WATER N SPICES FOODSZ PRIVATE LIMITED.png"
+    },
+    {
+      "name": "ETHNOGRAPHIC ART PRIVATE LIMITED",
+      "logo": "img/logo/Ethnographic Art.png"
+    },
+    {
+      "name": "KIZHAKEDATHU TOURS AND TRAVELS PRIVATE LIMITED",
+      "logo": "img/logo/Kizhakedathu.png"
+    },
+    {
+      "name": "AIGON MECHATRONICS PRIVATE LIMITED",
+      "logo": "img/logo/Aigon.png"
+    },
+    {
+      "name": "BALUTEDAAR (OPC) PRIVATE LIMITED",
+      "logo": "img/logo/Balutedaar logo.png"
+    },
+    {
+      "name": "BITTRON LABS PRIVATE LIMITED",
+      "logo": "img/logo/Bittron.png"
+    },
+    {
+      "name": "BROWKU PRIVATE LIMITED",
+      "logo": "img/logo/browku new logo.jpeg"
+    },
+    {
+      "name": "AMERALD CARE PRIVATE LIMITED",
+      "logo": "img/logo/AMERALD logo.png"
+    },
+    {
+      "name": "ANSPRUCH TECHSOFT PRIVATE LIMITED",
+      "logo": "img/logo/Ansprunch logo.png"
+    },
+    {
+      "name": "ECO BUGS INDIA PRIVATE LIMITED",
+      "logo": "img/logo/ecobugs.jpeg"
+    },
+    {
+      "name": "UNVOICED MEDIA AND ENTERTAINMENT PVT LTD",
+      "logo": "img/logo/UME.jpg"
+    },
+    {
+      "name": "FLUXFED TECHNOLOGIES PRIVATE LIMITED",
+      "logo": "img/logo/fluxfed_logo.jpeg"
+    },
+    {
+      "name": "CUTTLFISH FITNESS (OPC) PRIVATE LIMITED",
+      "logo": "img/logo/Cuttlfish_logo.png"
+    },
+    {
+      "name": "RUDRA DIGITAL MARKETING PRIVATE LIMITED",
+      "logo": "img/logo/RDM_Logo.png"
+    },
+    {
+      "name": "TEAMSTARBASE PRIVATE LIMITED",
+      "logo": "img/logo/TeamStarBase.jpeg"
+    },
+    {
+      "name": "FISCEAN TECHNOLOGIES PRIVATE LIMITED",
+      "logo": "img/logo/Fiscean.jpg"
+    },
+    {
+      "name": "TROPHIC BIOSYSTEMS PRIVATE LIMITED",
+      "logo": "img/logo/tropic.png"
+    },
+    {
+      "name": "KARDLE INDUSTRIES PRIVATE LIMITED",
+      "logo": "img/logo/kardle_logo.jpg"
+    },
+    {
+      "name": "ASQUIRE GLOBAL FINANCIAL SOLUTIONS PRIVATE LIMITED",
+      "logo": "img/logo/Agfi- Logo.png"
+    },
+    {
+      "name": "EDUHEX TECHNOLOGIES PRIVATE LIMITED",
+      "logo": "img/logo/eduhex.jpeg"
+    },
+    {
+      "name": "CATALOG TECHNOLOGIES PRIVATE LIMITED",
+      "logo": "img/logo/catalog.jpeg"
+    },
+    {
+      "name": "TECHNOACE CONSULTANCY SERVICES PRIVATE LIMITED",
+      "logo": "img/logo/technoace.jpeg"
+    },
+    {
+      "name": "NEXPRESSION PRIVATE LIMITED",
+      "logo": "img/logo/nexpression logo.png"
+    },
+    {
+      "name": "VAYANA MOBILITY PRIVATE LIMITED",
+      "logo": "img/logo/vayana.jpeg"
+    },
+    {
+      "name": "PRINCE MANU BABY",
+      "logo": "img/logo/prince.jpeg"
+    },
+    {
+      "name": "LUKA HEALTHCARE",
+      "logo": "img/logo/luka.jpeg"
+    },
+    {
+      "name": "WINQQR",
+      "logo": "img/logo/winqqer.jpeg"
+    },
+    {
+      "name": "NEXTGEN SM",
+      "logo": "img/logo/nextgen.jpeg"
+    }
   ],
   "gallery": [
-    "img/gal/2update/11.JPG", "img/gal/2update/12.JPG", "img/gal/2update/13.JPG",
-    "img/gal/2update/5.jpg", "img/gal/2update/6.jpg", "img/gal/2update/7.jpg",
-    "img/gal/2update/8.jpg", "img/gal/2update/9.jpg", "img/gal/2update/10.jpg",
-    "img/gal/2update/1.jpg", "img/gal/2update/2.jpg", "img/gal/2update/4.png",
-    "img/gal/update/10.jpg", "img/gal/update/9.jpg", "img/gal/update/11.jpg",
-    "img/gal/update/5.jpg", "img/gal/update/6.jpg", "img/gal/update/7.jpg",
-    "img/gal/update/1.jpg", "img/gal/update/2.jpg", "img/gal/update/4.jpg",
-    "img/gal/0Q1A5050.jpg", "img/gal/0Q1A5064.jpg", "img/gal/0Q1A5075.jpg",
-    "img/gal/0Q1A5081.jpg", "img/gal/0Q1A5088.jpg", "img/gal/0Q1A5090.jpg",
-    "img/gal/kiddo1.jpg", "img/gal/kiddo2.jpg", "img/gal/kiddo4.JPG",
-    "img/gal/women.jpg", "img/gal/img1.jpg", "img/gal/img2.jpg",
-    "img/gal/img3.JPG", "img/gal/img4.JPG", "img/gal/img5.JPG",
-    "img/gal/img19.jpg", "img/gal/img7.jpg", "img/gal/img8.jpg"
+    "img/gal/2update/11.JPG",
+    "img/gal/2update/12.JPG",
+    "img/gal/2update/13.JPG",
+    "img/gal/2update/5.jpg",
+    "img/gal/2update/6.jpg",
+    "img/gal/2update/7.jpg",
+    "img/gal/2update/8.jpg",
+    "img/gal/2update/9.jpg",
+    "img/gal/2update/10.jpg",
+    "img/gal/2update/1.jpg",
+    "img/gal/2update/2.jpg",
+    "img/gal/2update/4.png",
+    "img/gal/update/10.jpg",
+    "img/gal/update/9.jpg",
+    "img/gal/update/11.jpg",
+    "img/gal/update/5.jpg",
+    "img/gal/update/6.jpg",
+    "img/gal/update/7.jpg",
+    "img/gal/update/1.jpg",
+    "img/gal/update/2.jpg",
+    "img/gal/update/4.jpg",
+    "img/gal/0Q1A5050.jpg",
+    "img/gal/0Q1A5064.jpg",
+    "img/gal/0Q1A5075.jpg",
+    "img/gal/0Q1A5081.jpg",
+    "img/gal/0Q1A5088.jpg",
+    "img/gal/0Q1A5090.jpg",
+    "img/gal/kiddo1.jpg",
+    "img/gal/kiddo2.jpg",
+    "img/gal/kiddo4.JPG",
+    "img/gal/women.jpg",
+    "img/gal/img1.jpg",
+    "img/gal/img2.jpg",
+    "img/gal/img3.JPG",
+    "img/gal/img4.JPG",
+    "img/gal/img5.JPG",
+    "img/gal/img19.jpg",
+    "img/gal/img7.jpg",
+    "img/gal/img8.jpg"
   ],
   "news": [
     {
