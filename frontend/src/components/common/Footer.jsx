@@ -76,7 +76,7 @@ const Footer = () => (
           <ul className="site-footer__social" aria-label="Social media">
             {SOCIAL.map((s) => (
               <li key={s.label}>
-                <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+                <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} data-brand={s.brand}>
                   {s.text ? (
                     <span className="site-footer__x" aria-hidden="true">{s.text}</span>
                   ) : (
