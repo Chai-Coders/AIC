@@ -1,8 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db import connection, DatabaseError
 from django.utils import timezone
 from .models import GalleryItem, Startup, NewsUpdate, TeamMember, BackgroundVideo
 from .serializers import (
@@ -15,6 +16,33 @@ from .serializers import (
 from .mux_service import upload_video_to_mux, delete_mux_asset, MuxConfigurationError
 
 VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm', '.mkv', '.m4v', '.avi')
+
+
+class HealthView(APIView):
+    """
+    Endpoint: /api/health/
+    Pinged by an external cron job so the Render instance doesn't spin down.
+    Runs a trivial query so the Neon compute is woken too. Returns 503 if the
+    database can't be reached, so the cron job reports it as a failure.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute('SELECT 1')
+                cursor.fetchone()
+        except DatabaseError:
+            return Response(
+                {"status": "error", "database": "unreachable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Cache-Control": "no-store"},
+            )
+        return Response(
+            {"status": "ok", "database": "ok"},
+            headers={"Cache-Control": "no-store"},
+        )
 
 class GalleryViewSet(viewsets.ModelViewSet):
     queryset = GalleryItem.objects.all()

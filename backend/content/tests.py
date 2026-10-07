@@ -447,3 +447,23 @@ class PaginationPageSizeTests(APITestCase):
     def test_page_size_param_smaller_pages(self):
         res = self.client.get('/api/news/?page_size=5')
         self.assertEqual(len(res.data['results']), 5)
+
+
+class HealthEndpointTests(APITestCase):
+    def test_health_returns_ok(self):
+        for url in ('/api/health/', '/api/health'):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data, {"status": "ok", "database": "ok"})
+            self.assertEqual(response['Cache-Control'], 'no-store')
+
+    def test_health_ignores_invalid_auth_header(self):
+        response = self.client.get('/api/health/', HTTP_AUTHORIZATION='Bearer not-a-token')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_health_returns_503_when_database_unreachable(self):
+        from django.db import DatabaseError
+        with mock.patch('content.views.connection.cursor', side_effect=DatabaseError('down')):
+            response = self.client.get('/api/health/')
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(response.data["database"], "unreachable")
