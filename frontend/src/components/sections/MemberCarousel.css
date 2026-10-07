@@ -39,7 +39,7 @@
 }
 
 .member-carousel-track--loop {
-  animation: member-carousel-scroll 60s linear infinite;
+  will-change: transform;
 }
 
 .member-carousel-track--static {
@@ -47,11 +47,6 @@
   flex-wrap: wrap;
   justify-content: flex-start;
   row-gap: var(--space-10);
-}
-
-.member-carousel:hover .member-carousel-track--loop,
-.member-carousel:focus .member-carousel-track--loop {
-  animation-play-state: paused;
 }
 
 /* ----- Standard card ----- */
@@ -125,22 +120,7 @@ a.member-carousel-card:hover .member-carousel-copy h3 {
   overflow-wrap: anywhere;
 }
 
-@keyframes member-carousel-scroll {
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 /* ----- Board of Governors: stepped carousel with a spotlight card ----- */
-.member-carousel-section--board .member-carousel {
-  width: min(100%, 860px);
-}
-
-.member-carousel-section--board .member-carousel-track--loop {
-  animation: none;
-  will-change: transform;
-}
-
 .member-carousel-section--board .member-carousel-card {
   opacity: 0.5;
   filter: saturate(0.5);
@@ -214,15 +194,5 @@ a.member-carousel-card:hover .member-carousel-copy h3 {
 
   .member-carousel-section--board .member-carousel-portrait--board {
     height: 380px;
-  }
-
-  .member-carousel-track--loop {
-    animation-duration: 45s;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .member-carousel-track--loop {
-    animation-play-state: paused;
   }
 }

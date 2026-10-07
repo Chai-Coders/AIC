@@ -1,0 +1,242 @@
+/* First-visit splash: liquid rises through the AIC logo while the page loads. */
+.splash {
+  position: fixed;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  inset: 0;
+  background:
+    radial-gradient(90% 60% at 50% 45%, var(--white), transparent 70%),
+    var(--paper);
+  transition:
+    opacity 700ms var(--ease),
+    transform 700ms var(--ease);
+}
+
+.splash--leaving {
+  transform: scale(1.03);
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.is-splash-open {
+  overflow: hidden;
+}
+
+.splash__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  padding-inline: var(--gutter);
+}
+
+/* ----- The logo doubles as the vessel ----- */
+.splash__logo {
+  --splash-w: min(520px, 78vw);
+  --splash-h: calc(var(--splash-w) / 7.4);
+  --splash-mask: url('/img/aic-logo.png') center / contain no-repeat;
+
+  position: relative;
+  width: var(--splash-w);
+  height: var(--splash-h);
+}
+
+.splash__ghost {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: grayscale(1);
+  opacity: 0.16;
+}
+
+.splash__fluid {
+  position: absolute;
+  overflow: hidden;
+  inset: 0;
+  -webkit-mask: var(--splash-mask);
+  mask: var(--splash-mask);
+}
+
+.splash__liquid {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 0;
+  /* Fixed-length stops keep the bright meniscus the same depth as the level rises. */
+  background: linear-gradient(180deg, var(--brand-yellow) 0 6px, var(--brand-blue) 18px, var(--blue-700) 100%);
+  animation: splash-fill 2.1s cubic-bezier(0.45, 0.05, 0.3, 1) forwards;
+}
+
+@keyframes splash-fill {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: 100%;
+  }
+}
+
+/* Once the logo is full, the liquid settles into the real brand mark. */
+.splash__real {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  animation: splash-settle 700ms var(--ease) 1.9s forwards;
+}
+
+@keyframes splash-settle {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Crest riding on the surface, drifting by exactly one tile so it loops seamlessly. */
+.splash__wave {
+  --wave-tile: 86px;
+
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 200%;
+  height: calc(var(--splash-h) * 0.18);
+  margin-bottom: -1px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 20' preserveAspectRatio='none'%3E%3Cpath d='M0 10 Q 40 2 80 10 T 160 10 V20 H0 Z' fill='%23ebd222'/%3E%3C/svg%3E")
+    repeat-x;
+  background-size: var(--wave-tile) 100%;
+  animation: splash-drift 3.2s linear infinite;
+}
+
+.splash__wave--back {
+  --wave-tile: 124px;
+
+  height: calc(var(--splash-h) * 0.13);
+  opacity: 0.5;
+  animation-duration: 5s;
+  animation-direction: reverse;
+}
+
+@keyframes splash-drift {
+  to {
+    transform: translateX(calc(var(--wave-tile) * -1));
+  }
+}
+
+.splash__bubble {
+  position: absolute;
+  bottom: 0;
+  left: var(--bubble-x);
+  width: var(--bubble-size);
+  height: var(--bubble-size);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  animation: splash-rise var(--bubble-duration) ease-in var(--bubble-delay) infinite;
+}
+
+@keyframes splash-rise {
+  0% {
+    transform: translateY(0) scale(0.5);
+    opacity: 0;
+  }
+
+  25% {
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: translateY(calc(var(--splash-h) * -1.15)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* Glass glint once the logo is mostly full. */
+.splash__shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.75) 48%, transparent 58%);
+  background-position: 180% 0;
+  background-size: 260% 100%;
+  -webkit-mask: var(--splash-mask);
+  mask: var(--splash-mask);
+  animation: splash-shine 2.8s ease-in-out 1.7s infinite;
+}
+
+@keyframes splash-shine {
+  to {
+    background-position: -90% 0;
+  }
+}
+
+/* ----- Caption and progress ----- */
+.splash__caption {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: splash-rise-in 900ms var(--ease) 700ms forwards;
+}
+
+@keyframes splash-rise-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.splash__bar {
+  overflow: hidden;
+  width: 180px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--stone-200);
+}
+
+.splash__bar span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--brand-yellow), var(--brand-blue));
+  animation: splash-track 1.5s var(--ease) infinite;
+}
+
+@keyframes splash-track {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash__liquid,
+  .splash__wave,
+  .splash__bubble,
+  .splash__shine,
+  .splash__caption,
+  .splash__bar span {
+    animation: none;
+  }
+
+  .splash__liquid {
+    height: 100%;
+  }
+
+  .splash__caption {
+    opacity: 1;
+  }
+}

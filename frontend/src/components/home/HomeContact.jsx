@@ -116,10 +116,8 @@ const HomeContact = () => {
 
         <form className="contact__form" onSubmit={handleSubmit} noValidate>
           <h3 className="contact__form-title">Send us a message</h3>
-          <div className="contact__row">
-            {field('name', 'Your name', { type: 'text', autoComplete: 'name' })}
-            {field('email', 'Email address', { type: 'email', autoComplete: 'email' })}
-          </div>
+          {field('name', 'Your name', { type: 'text', autoComplete: 'name' })}
+          {field('email', 'Email address', { type: 'email', autoComplete: 'email' })}
           {field('message', 'Message', { as: 'textarea', rows: 6 })}
           <button type="submit" className="btn btn--primary">
             Send message <i className="fa fa-arrow-right" aria-hidden="true" />
