@@ -1,23 +1,23 @@
 import React from 'react';
-import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
-import HeaderBanner from '../components/common/HeaderBanner';
-import MentorGrid from '../components/sections/MentorGrid';
+import PageLayout from '../components/common/PageLayout';
+import PeopleCarousel from '../components/sections/PeopleCarousel';
+import PeopleNav from '../components/sections/PeopleNav';
 
-const MentorPage = () => {
-  return (
-    <>
-      <Header />
-      <HeaderBanner 
-        title="Our Mentors" 
-        breadcrumbs={[{ label: 'Our Mentors' }]} 
-      />
-      <main>
-        <MentorGrid />
-      </main>
-      <Footer />
-    </>
-  );
-};
+const MentorPage = () => (
+  <PageLayout
+    title="Mentors"
+    hero={{
+      eyebrow: 'Mentor network',
+      title: 'International mentors',
+      description: 'Domain experts and seasoned founders from around the world who coach our startups.',
+      breadcrumbs: [{ label: 'About' }, { label: 'Mentors' }],
+    }}
+  >
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
+    <PeopleCarousel category="mentor" title="International Mentors" emptyText="No mentors listed yet." />
+  </PageLayout>
+);
 
 export default MentorPage;

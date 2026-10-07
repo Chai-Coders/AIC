@@ -36,3 +36,12 @@ export function cdnImageProps(url, widths, sizes) {
     sizes,
   };
 }
+
+/**
+ * onLoad handler: very wide images (logos, banners) are shown whole instead of
+ * cropped by object-fit: cover.
+ */
+export function fitWideImage(event) {
+  const img = event.currentTarget;
+  if (img.naturalHeight && img.naturalWidth / img.naturalHeight > 2) img.classList.add('is-contain');
+}

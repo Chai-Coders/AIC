@@ -1,0 +1,104 @@
+/* Design tokens. Every colour, size and radius used by the site comes from here.
+   Palette is taken from the AIC-IIITK logo (blue #1494CE, yellow #EBD222, charcoal #3A3A3C),
+   set on warm paper with a deep navy for dark bands. */
+:root {
+  /* Brand (exact logo values, for marks and dark backgrounds) */
+  --brand-blue: #1494ce;
+  --brand-yellow: #ebd222;
+  --brand-charcoal: #3a3a3c;
+
+  /* Ink & navy */
+  --navy-950: #08141f;
+  --navy-900: #0d1f2f;
+  --navy-800: #142c42;
+  --navy-700: #1f3d58;
+
+  /* Blue scale (darker steps keep text accessible on light backgrounds) */
+  --blue-800: #0a4f74;
+  --blue-700: #0d6391;
+  --blue-600: #1078ac;
+  --blue-100: #dcecf5;
+  --blue-50: #eef6fa;
+
+  /* Yellow scale */
+  --yellow-500: #ebd222;
+  --yellow-400: #f1de55;
+  --yellow-100: #f8f0c2;
+  --gold-700: #7a6200;
+
+  /* Warm neutrals */
+  --ink: #131c26;
+  --ink-soft: #37424e;
+  --stone-500: #69717b;
+  --stone-400: #959ba2;
+  --stone-300: #cfcac0;
+  --stone-200: #e5e0d6;
+  --stone-100: #efebe3;
+  --paper: #faf8f4;
+  --white: #ffffff;
+  --red-700: #b42318;
+
+  /* Semantic roles */
+  --color-bg: var(--paper);
+  --color-surface: var(--white);
+  --color-surface-alt: var(--stone-100);
+  --color-text: var(--ink);
+  --color-text-body: var(--ink-soft);
+  --color-text-muted: var(--stone-500);
+  --color-border: var(--stone-200);
+  --color-border-strong: var(--stone-300);
+  --color-primary: var(--blue-700);
+  --color-primary-hover: var(--blue-800);
+  --color-primary-soft: var(--blue-50);
+  --color-accent: var(--brand-yellow);
+  --color-dark: var(--navy-900);
+  --color-on-dark: #f4f1ea;
+  --color-on-dark-muted: #a8b4c0;
+  --color-on-dark-line: rgba(255, 255, 255, 0.12);
+  --color-focus: var(--brand-blue);
+
+  /* Type */
+  --font-body: 'Manrope Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.3rem;
+  --text-2xl: 1.6rem;
+  --text-3xl: clamp(1.8rem, 1.45rem + 1.4vw, 2.4rem);
+  --text-4xl: clamp(2.1rem, 1.55rem + 2.3vw, 3.25rem);
+  --text-5xl: clamp(2.6rem, 1.7rem + 3.8vw, 4.5rem);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --section-y: clamp(4rem, 2.8rem + 5vw, 7.5rem);
+  --gutter: clamp(1.25rem, 0.6rem + 2.4vw, 2.5rem);
+
+  /* Shape & depth: restrained on purpose */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(19, 28, 38, 0.05);
+  --shadow-md: 0 8px 24px -12px rgba(19, 28, 38, 0.18);
+  --shadow-lg: 0 24px 48px -24px rgba(19, 28, 38, 0.28);
+
+  /* Layout */
+  --container: 1240px;
+  --container-narrow: 760px;
+  --header-h: 76px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --duration: 180ms;
+}

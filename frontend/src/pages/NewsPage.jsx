@@ -1,23 +1,23 @@
 import React from 'react';
-import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
-import HeaderBanner from '../components/common/HeaderBanner';
+import PageLayout from '../components/common/PageLayout';
 import NewsList from '../components/sections/NewsList';
 
-const NewsPage = () => {
-  return (
-    <>
-      <Header />
-      <HeaderBanner 
-        title="News and Updates - AIC-IIITKottayam" 
-        breadcrumbs={[{ label: 'News' }]} 
-      />
-      <main>
+const NewsPage = () => (
+  <PageLayout
+    title="News & Updates"
+    hero={{
+      eyebrow: 'Newsroom',
+      title: 'News & updates',
+      description: 'Announcements, events and milestones from AIC-IIITKottayam and our startups.',
+      breadcrumbs: [{ label: 'News' }],
+    }}
+  >
+    <section className="section">
+      <div className="container">
         <NewsList />
-      </main>
-      <Footer />
-    </>
-  );
-};
+      </div>
+    </section>
+  </PageLayout>
+);
 
 export default NewsPage;

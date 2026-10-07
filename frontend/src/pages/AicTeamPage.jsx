@@ -1,23 +1,23 @@
 import React from 'react';
-import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
-import HeaderBanner from '../components/common/HeaderBanner';
-import TeamGrid from '../components/sections/TeamGrid';
+import PageLayout from '../components/common/PageLayout';
+import PeopleCarousel from '../components/sections/PeopleCarousel';
+import PeopleNav from '../components/sections/PeopleNav';
 
-const AicTeamPage = () => {
-  return (
-    <>
-      <Header />
-      <HeaderBanner 
-        title="Our Team" 
-        breadcrumbs={[{ label: 'Our Team' }]} 
-      />
-      <main>
-        <TeamGrid />
-      </main>
-      <Footer />
-    </>
-  );
-};
+const AicTeamPage = () => (
+  <PageLayout
+    title="Our Team"
+    hero={{
+      eyebrow: 'People & culture',
+      title: 'The AIC-IIITKottayam team',
+      description: 'The people who run the centre day to day and work alongside our startups.',
+      breadcrumbs: [{ label: 'About' }, { label: 'Our Team' }],
+    }}
+  >
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
+    <PeopleCarousel category="team" title="AIC-IIITKottayam Team" emptyText="No team members listed yet." />
+  </PageLayout>
+);
 
 export default AicTeamPage;

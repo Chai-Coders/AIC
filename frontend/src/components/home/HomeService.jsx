@@ -1,332 +1,80 @@
-import React, { useState, useEffect, useRef } from 'react';
-import SpotlightCard from '../common/SpotlightCard';
+import React from 'react';
+import SectionHeader from '../common/SectionHeader';
 
-const AnimatedCounter = ({ target, duration = 2000 }) => {
-  const [count, setCount] = useState(0);
-  const ref = useRef(null);
-  const hasStarted = useRef(false);
+const SERVICES = [
+  {
+    tag: 'Capability',
+    title: 'Training & mentorship',
+    desc: 'Practical and theoretical frameworks that upskill technical teams for product excellence.',
+    chips: ['1-on-1 mentors', 'Tech labs'],
+    variant: 'feature',
+    photo: '/img/site/mentoring.jpg',
+  },
+  {
+    tag: 'Protection',
+    title: 'Patent & IP support',
+    desc: 'Fast-track intellectual property guidance and filing with expert legal advisors and faculty.',
+    chips: ['IP guidance', 'Prior-art search'],
+  },
+  {
+    tag: 'Innovation',
+    title: 'Idea generation hub',
+    desc: 'Turning early concepts into market-ready prototypes through hackathons and ideation sprints.',
+    chips: ['Hackathons', 'Prototyping'],
+  },
+  {
+    tag: 'Growth',
+    title: 'Marketing & go-to-market',
+    desc: 'Sales strategy, PR and digital outreach to win early users and real market adoption.',
+    chips: ['GTM strategy', 'Product launch'],
+    variant: 'dark',
+  },
+  {
+    tag: 'Credibility',
+    title: 'Institutional backing',
+    desc: 'The academic rigour and network of IIIT Kottayam, so investors and customers take you seriously.',
+    chips: ['IIITK network', 'AIM, NITI Aayog'],
+    variant: 'tint',
+  },
+  {
+    tag: 'Network',
+    title: 'Investor & global access',
+    desc: 'Introductions to venture capitalists, angel networks and international trade bodies when you are ready to scale.',
+    chips: ['Investor pitch days', 'Demo days'],
+    variant: 'wide',
+    photo: '/img/site/jury.jpg',
+  },
+];
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+const HomeService = () => (
+  <section id="service" className="section section--white" aria-labelledby="service-title">
+    <div className="container">
+      <SectionHeader
+        id="service-title"
+        eyebrow="What you get"
+        title="Everything a young company needs, under one roof"
+        lead="Mentorship, rapid IP commercialisation and a trusted ecosystem for early-stage founders."
+      />
 
-    const startAnimation = () => {
-      if (hasStarted.current) return;
-      hasStarted.current = true;
-
-      const targetNum = parseInt(target, 10);
-      if (isNaN(targetNum)) return;
-
-      let startTime = null;
-      const animate = (currentTime) => {
-        if (!startTime) startTime = currentTime;
-        const elapsedTime = currentTime - startTime;
-        const progress = Math.min(elapsedTime / duration, 1);
-        
-        // Smooth ease-out cubic
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        setCount(Math.floor(easeOut * targetNum));
-
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          setCount(targetNum);
-        }
-      };
-
-      requestAnimationFrame(animate);
-    };
-
-    const checkVisibility = () => {
-      if (hasStarted.current) return;
-      const rect = el.getBoundingClientRect();
-      const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-      if (rect.top <= windowHeight * 0.95 && rect.bottom >= 0) {
-        startAnimation();
-      }
-    };
-
-    let observer;
-    if (typeof IntersectionObserver !== 'undefined') {
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              startAnimation();
-            }
-          });
-        },
-        { threshold: 0.1, rootMargin: '0px 0px -20px 0px' }
-      );
-      observer.observe(el);
-    }
-
-    checkVisibility();
-    window.addEventListener('scroll', checkVisibility, { passive: true });
-    window.addEventListener('resize', checkVisibility, { passive: true });
-
-    return () => {
-      if (observer && el) {
-        observer.unobserve(el);
-      }
-      window.removeEventListener('scroll', checkVisibility);
-      window.removeEventListener('resize', checkVisibility);
-    };
-  }, [target, duration]);
-
-  return (
-    <span ref={ref} className="bento-counter-num">
-      {count}
-    </span>
-  );
-};
-
-const HomeService = () => {
-  const stats = [
-    {
-      icon: 'fa-users',
-      count: 42,
-      label: 'Number of Startup',
-      type: 'gold'
-    },
-    {
-      icon: 'fa-trophy',
-      count: 141,
-      label: 'Jobs Created',
-      type: 'green'
-    },
-    {
-      icon: 'fa-coffee',
-      count: 12,
-      label: 'Submissions',
-      type: 'purple'
-    },
-    {
-      icon: 'fa-file-text-o',
-      count: 11,
-      label: 'IP generated',
-      type: 'cyan'
-    }
-  ];
-
-  const wrapperRef = useRef(null);
-
-  const handleWrapperMouseMove = (e) => {
-    if (!wrapperRef.current) return;
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    wrapperRef.current.style.setProperty('--mouse-x', `${x}px`);
-    wrapperRef.current.style.setProperty('--mouse-y', `${y}px`);
-  };
-
-  return (
-    <section id="service" className="bento-section">
-      <div className="container">
-        {/* Section Header */}
-        <div className="bento-header">
-          
-          <h2 className="bento-header-title">
-            AIC-IIITKottayam <span className="gradient-blue">Value Proposition</span> & <span className="gradient-yellow">Impact</span>
-          </h2>
-          <p className="bento-header-desc">
-            Empowering early-stage founders with comprehensive mentorship, rapid IP commercialization, and verified ecosystem milestones.
-          </p>
-        </div>
-
-        {/* Outline Container Wrapper with Interactive Background Glow */}
-        <div 
-          ref={wrapperRef}
-          onMouseMove={handleWrapperMouseMove}
-          className="bento-outline-wrapper"
-        >
-          {/* Master Bento Grid */}
-          <div className="bento-grid">
-            
-            {/* Row 1 - Card 1: Training & Mentorship (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-graduation-cap"></i>
-                      </div>
-                      <span className="bento-tag">Capability</span>
-                    </div>
-                    <h3 className="bento-card-title">Training & Mentorship</h3>
-                    <p className="bento-card-desc">
-                      Curated practical and theoretical frameworks to upskill technical teams for product excellence.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> 1-on-1 Mentors</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Tech Labs</span>
-                  </div>
-                </div>
-              </SpotlightCard>
+      {/* Bento layout: one large photo tile, four squares and a wide strip (see .bento in home.css) */}
+      <ul className="bento">
+        {SERVICES.map((s, i) => (
+          <li key={s.title} className={`bento__item ${s.variant ? `bento__item--${s.variant}` : ''}`}>
+            {s.photo && <img className="bento__photo" src={s.photo} alt="" width="1600" height="1067" loading="lazy" />}
+            <div className="bento__body">
+              <p className="bento__tag">
+                <span>{String(i + 1).padStart(2, '0')}</span>
+                {s.tag}
+              </p>
+              <h3 className="bento__title">{s.title}</h3>
+              <p className="bento__text">{s.desc}</p>
+              <p className="bento__chips">{s.chips.join(' · ')}</p>
             </div>
-
-            {/* Row 1 - Card 2: Patent & IP Support (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-certificate"></i>
-                      </div>
-                      <span className="bento-tag">Protection</span>
-                    </div>
-                    <h3 className="bento-card-title">Patent & IP Support</h3>
-                    <p className="bento-card-desc">
-                      Fast-track intellectual property guidance and filing with expert legal advisors and faculty.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> IP Guidance</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Prior-Art Search</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-            {/* Row 1 - Card 3: Idea Generation Hub (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-lightbulb-o"></i>
-                      </div>
-                      <span className="bento-tag">Innovation</span>
-                    </div>
-                    <h3 className="bento-card-title">Idea Generation Hub</h3>
-                    <p className="bento-card-desc">
-                      Transforming nascent concepts into market-ready prototypes via hackathons and ideation sprints.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Hackathons</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Prototyping</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-            {/* Row 2 - Card 4: Marketing & GTM (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-line-chart"></i>
-                      </div>
-                      <span className="bento-tag">Growth</span>
-                    </div>
-                    <h3 className="bento-card-title">Marketing & GTM</h3>
-                    <p className="bento-card-desc">
-                      Strategic sales, PR, and digital outreach to ensure wide user adoption and market penetration.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> GTM Strategy</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Product Launch</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-            {/* Row 2 - Card 5: Institutional Prestige & Credibility (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-yellow" spotlightColor="rgba(2, 132, 199, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-university"></i>
-                      </div>
-                      <span className="bento-tag">Prestige</span>
-                    </div>
-                    <h3 className="bento-card-title">Institutional Prestige</h3>
-                    <p className="bento-card-desc">
-                      Leveraging the academic rigor and network trust of IIIT Kottayam to build founder credibility with investors.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> IIITK Heritage</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> NITI Aayog Recognized</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-            {/* Row 2 - Card 6: Global Visibility & Investor Network (4 Cols) */}
-            <div className="bento-col" style={{ gridColumn: 'span 4' }}>
-              <SpotlightCard className="theme-blue" spotlightColor="rgba(234, 179, 8, 0.4)">
-                <div className="bento-card-content">
-                  <div>
-                    <div className="bento-top-bar">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-globe"></i>
-                      </div>
-                      <span className="bento-tag">Network</span>
-                    </div>
-                    <h3 className="bento-card-title">Global Visibility</h3>
-                    <p className="bento-card-desc">
-                      Direct invitations to venture capitalists, angel networks, and international trade bodies to elevate startup scale.
-                    </p>
-                  </div>
-                  <div className="bento-chips-list">
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Investor Pitch Days</span>
-                    <span className="bento-chip"><i className="fa fa-circle bento-chip-dot"></i> Global Demo Days</span>
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-            {/* Row 3 (Bottom Row) - Achievements Section (12 Cols Full Width) */}
-            <div className="bento-col bento-col-achievements" style={{ gridColumn: 'span 12' }}>
-              <SpotlightCard className="theme-achievements" spotlightColor="rgba(0, 134, 230, 0.4)">
-                <div className="bento-stats-content">
-                  <div className="bento-stats-hub-header">
-                    <div className="bento-stats-hub-title-group">
-                      <div className="bento-icon-box">
-                        <i className="fa fa-line-chart"></i>
-                      </div>
-                      <h3 className="bento-stats-hub-title">Key Ecosystem Achievements</h3>
-                    </div>
-                    <span className="bento-tag">Impact</span>
-                  </div>
-
-                  <div className="bento-stats-matrix">
-                    {stats.map((stat, idx) => (
-                      <div key={idx} className={`bento-stat-box stat-${stat.type}`}>
-                        <div className="bento-stat-icon-mini">
-                          <i className={`fa ${stat.icon}`}></i>
-                        </div>
-                        <div className="bento-stat-number">
-                          <AnimatedCounter target={stat.count} duration={2200} />
-                        </div>
-                        <span className="bento-stat-name">{stat.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </SpotlightCard>
-            </div>
-
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+);
 
 export default HomeService;
-
-
-
-

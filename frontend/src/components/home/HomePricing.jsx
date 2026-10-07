@@ -1,82 +1,66 @@
 import React from 'react';
-import './HomePricing.css';
+import SectionHeader from '../common/SectionHeader';
+import { REGISTER_URL } from '../../data/site';
 
-const REGISTER_URL = 'https://goo.gl/forms/bYQ16uftJgLtssgr2';
-
-const plans = [
+const PLANS = [
   {
-    title: 'Support Contracts',
-    tone: 'white',
-    icon: 'fa-handshake-o',
-    amount: '5K',
-    per: '/ month',
-    features: ['Incubate space', 'Knowledge assistance', '6 to 12 months']
+    title: 'Support contract',
+    amount: '₹5K',
+    per: 'per month',
+    features: ['Incubation space', 'Knowledge assistance', '6 to 12 months'],
   },
   {
-    title: 'Training Contract',
-    tone: 'yellow',
-    icon: 'fa-graduation-cap',
-    amount: '1K',
-    per: '/ week',
-    features: ['Incubate space', 'Training support', '1 to 4 weeks']
+    title: 'Training contract',
+    amount: '₹1K',
+    per: 'per week',
+    features: ['Incubation space', 'Training support', '1 to 4 weeks'],
+    featured: true,
   },
   {
-    title: 'Consultancy Contracts',
-    tone: 'blue',
-    icon: 'fa-line-chart',
-    amount: '10K',
-    per: '/ day',
-    features: ['Onsite support', 'Consultancy support', 'Network support']
-  }
+    title: 'Consultancy contract',
+    amount: '₹10K',
+    per: 'per day',
+    features: ['Onsite support', 'Consultancy support', 'Network support'],
+  },
 ];
 
-const HomePricing = () => {
-  return (
-    <div id="pricing" className="section md-padding pricing-section">
-      <div className="container">
-        <div className="section-header text-center">
-          <h2 className="title">Business Model</h2>
-        </div>
+const HomePricing = () => (
+  <section id="pricing" className="section section--alt" aria-labelledby="pricing-title">
+    <div className="container">
+      <SectionHeader
+        id="pricing-title"
+        eyebrow="Business model"
+        title="Simple terms, no surprises"
+        lead="Three ways to work with the centre, depending on how much space, training or hands-on support you need."
+        align="center"
+      />
 
-        <div className="plan-grid">
-          {plans.map((plan) => (
-            <article key={plan.title} className={`plan-card plan-card--${plan.tone}`}>
-              <div className="plan-card-body">
-                <span className="plan-card-icon">
-                  <i className={`fa ${plan.icon}`} aria-hidden="true"></i>
-                </span>
-                <h3 className="plan-card-title">{plan.title}</h3>
-
-                <div className="plan-card-price">
-                  <strong className="plan-card-amount">{plan.amount}</strong>
-                  <span className="plan-card-per">{plan.per}</span>
-                </div>
-
-                <p className="plan-card-features">
-                  {plan.features.map((feat) => (
-                    <span key={feat} className="plan-card-feature-line">
-                      {feat}
-                    </span>
-                  ))}
-                </p>
-              </div>
-
-              <div className="plan-card-tab">
-                <a
-                  href={REGISTER_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="plan-card-cta"
-                >
-                  Register Now <span className="plan-card-cta-arrow" aria-hidden="true">&gt;</span>
-                </a>
-              </div>
-            </article>
-          ))}
-        </div>
+      <div className="plans">
+        {PLANS.map((plan) => (
+          <article key={plan.title} className={`plan ${plan.featured ? 'plan--featured' : ''}`}>
+            <h3 className="plan__title">{plan.title}</h3>
+            <p className="plan__price">
+              <strong>{plan.amount}</strong>
+              <span>{plan.per}</span>
+            </p>
+            <ul className="plan__features">
+              {plan.features.map((feat) => (
+                <li key={feat}>{feat}</li>
+              ))}
+            </ul>
+            <a
+              href={REGISTER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`btn btn--block ${plan.featured ? 'btn--accent' : 'btn--outline'}`}
+            >
+              Register now<span className="sr-only"> for the {plan.title.toLowerCase()}</span>
+            </a>
+          </article>
+        ))}
       </div>
     </div>
-  );
-};
+  </section>
+);
 
 export default HomePricing;

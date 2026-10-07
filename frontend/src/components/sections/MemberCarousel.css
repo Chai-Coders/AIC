@@ -1,0 +1,228 @@
+/* Member carousel (Board of Governors, AIC Team, Mentors). */
+.member-carousel-section {
+  overflow: hidden;
+  padding-block: var(--space-16) var(--section-y);
+}
+
+.member-carousel-section--grey {
+  background: var(--color-surface-alt);
+}
+
+.member-carousel-heading {
+  margin-bottom: var(--space-12);
+}
+
+.member-carousel-heading .section-title {
+  font-size: var(--text-3xl);
+}
+
+.member-carousel {
+  width: min(100% - var(--gutter) * 2, var(--container));
+  margin: 0 auto;
+  overflow: hidden;
+  outline: none;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+.member-carousel--static {
+  mask-image: none;
+}
+
+.member-carousel:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+}
+
+.member-carousel-track {
+  display: flex;
+  width: max-content;
+}
+
+.member-carousel-track--loop {
+  animation: member-carousel-scroll 60s linear infinite;
+}
+
+.member-carousel-track--static {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  row-gap: var(--space-10);
+}
+
+.member-carousel:hover .member-carousel-track--loop,
+.member-carousel:focus .member-carousel-track--loop {
+  animation-play-state: paused;
+}
+
+/* ----- Standard card ----- */
+.member-carousel-card {
+  display: block;
+  width: 260px;
+  margin-right: var(--space-6);
+  color: var(--color-text);
+  text-align: left;
+}
+
+.member-carousel-card:hover {
+  color: var(--color-text);
+}
+
+.member-carousel-track--static .member-carousel-card:last-child {
+  margin-right: 0;
+}
+
+.member-carousel-portrait {
+  display: grid;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--navy-800);
+  color: var(--color-on-dark);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 400;
+}
+
+.member-carousel-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.15);
+  transition:
+    transform 0.6s var(--ease),
+    filter 0.6s var(--ease);
+}
+
+.member-carousel-card:hover .member-carousel-portrait img {
+  filter: none;
+  transform: scale(1.03);
+}
+
+.member-carousel-copy {
+  padding-top: var(--space-5);
+}
+
+.member-carousel-copy h3 {
+  font-size: var(--text-xl);
+  font-weight: 550;
+  line-height: 1.25;
+}
+
+a.member-carousel-card:hover .member-carousel-copy h3 {
+  color: var(--color-primary);
+}
+
+.member-carousel-copy p {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.member-carousel-copy span {
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+}
+
+@keyframes member-carousel-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ----- Board of Governors: stepped carousel with a spotlight card ----- */
+.member-carousel-section--board .member-carousel {
+  width: min(100%, 860px);
+}
+
+.member-carousel-section--board .member-carousel-track--loop {
+  animation: none;
+  will-change: transform;
+}
+
+.member-carousel-section--board .member-carousel-card {
+  opacity: 0.5;
+  filter: saturate(0.5);
+  transform: scale(0.94);
+  transition:
+    transform 0.8s var(--ease),
+    opacity 0.8s ease,
+    filter 0.8s ease;
+}
+
+.member-carousel-section--board .member-carousel-track--static .member-carousel-card {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+.member-carousel-section--board .member-carousel-card--board {
+  width: 260px;
+}
+
+.member-carousel-section--board .member-carousel-card--spotlight {
+  opacity: 1;
+  filter: none;
+  transform: scale(1);
+}
+
+.member-carousel-section--board .member-carousel-portrait--board {
+  position: relative;
+  height: 440px;
+  aspect-ratio: auto;
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: var(--space-12) var(--space-5) var(--space-5);
+  background: linear-gradient(180deg, transparent, rgba(8, 20, 31, 0.92) 70%);
+  color: var(--white);
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy h3 {
+  color: var(--white);
+  font-size: var(--text-xl);
+  font-weight: 550;
+  line-height: 1.2;
+}
+
+.member-carousel-section--board .member-carousel-overlay-copy p {
+  margin-top: var(--space-1);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.member-carousel-section--board .member-carousel-detail-copy {
+  margin-top: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+@media (max-width: 767px) {
+  .member-carousel-card,
+  .member-carousel-section--board .member-carousel-card--board {
+    width: 230px;
+  }
+
+  .member-carousel-section--board .member-carousel-portrait--board {
+    height: 380px;
+  }
+
+  .member-carousel-track--loop {
+    animation-duration: 45s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-carousel-track--loop {
+    animation-play-state: paused;
+  }
+}
