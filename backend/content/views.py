@@ -14,6 +14,8 @@ from .serializers import (
     BackgroundVideoSerializer,
 )
 from .mux_service import upload_video_to_mux, delete_mux_asset, MuxConfigurationError
+from . import cache
+from .cache import CachedReadMixin, cached_response
 
 VIDEO_EXTENSIONS = ('.mp4', '.mov', '.webm', '.mkv', '.m4v', '.avi')
 
@@ -22,8 +24,10 @@ class HealthView(APIView):
     """
     Endpoint: /api/health/
     Pinged by an external cron job so the Render instance doesn't spin down.
-    Runs a trivial query so the Neon compute is woken too. Returns 503 if the
-    database can't be reached, so the cron job reports it as a failure.
+    Runs a trivial query so the Neon compute is woken too, then rebuilds the
+    site content cache if it was empty (e.g. after a deploy) so visitors don't
+    pay for it. Returns 503 if the database can't be reached, so the cron job
+    reports it as a failure.
     """
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -39,12 +43,15 @@ class HealthView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 headers={"Cache-Control": "no-store"},
             )
+        site_content_response(request)
         return Response(
             {"status": "ok", "database": "ok"},
             headers={"Cache-Control": "no-store"},
         )
 
-class GalleryViewSet(viewsets.ModelViewSet):
+
+class GalleryViewSet(CachedReadMixin, viewsets.ModelViewSet):
+    cache_resource = cache.GALLERY
     queryset = GalleryItem.objects.all()
     serializer_class = GallerySerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -53,7 +60,8 @@ class GalleryViewSet(viewsets.ModelViewSet):
         serializer.save(created_at=timezone.now())
 
 
-class StartupViewSet(viewsets.ModelViewSet):
+class StartupViewSet(CachedReadMixin, viewsets.ModelViewSet):
+    cache_resource = cache.STARTUPS
     queryset = Startup.objects.all()
     serializer_class = StartupSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -62,7 +70,8 @@ class StartupViewSet(viewsets.ModelViewSet):
         serializer.save(created_at=timezone.now())
 
 
-class NewsUpdateViewSet(viewsets.ModelViewSet):
+class NewsUpdateViewSet(CachedReadMixin, viewsets.ModelViewSet):
+    cache_resource = cache.NEWS
     queryset = NewsUpdate.objects.all()
     serializer_class = NewsUpdateSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -71,7 +80,8 @@ class NewsUpdateViewSet(viewsets.ModelViewSet):
         serializer.save(published_date=timezone.now().date())
 
 
-class TeamMemberViewSet(viewsets.ModelViewSet):
+class TeamMemberViewSet(CachedReadMixin, viewsets.ModelViewSet):
+    cache_resource = cache.TEAM
     queryset = TeamMember.objects.all()
     serializer_class = TeamMemberSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -98,6 +108,9 @@ class BackgroundVideoView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
+        return cached_response(request, (cache.BACKGROUND_VIDEO,), self._current_video)
+
+    def _current_video(self):
         video = BackgroundVideo.objects.first()
         if not video:
             return Response({
@@ -178,3 +191,30 @@ class BackgroundVideoView(APIView):
 
         serializer = BackgroundVideoSerializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def site_content_response(request):
+    def build():
+        context = {'request': request}
+        video = BackgroundVideo.objects.first()
+        return Response({
+            'gallery': GallerySerializer(GalleryItem.objects.all(), many=True, context=context).data,
+            'startups': StartupSerializer(Startup.objects.all(), many=True, context=context).data,
+            'news': NewsUpdateSerializer(NewsUpdate.objects.all(), many=True, context=context).data,
+            'team': TeamMemberSerializer(TeamMember.objects.all(), many=True, context=context).data,
+            'background_video': BackgroundVideoSerializer(video).data if video else None,
+        })
+
+    return cached_response(request, cache.ALL_RESOURCES, build, name='site-content')
+
+
+class SiteContentView(APIView):
+    """
+    Endpoint: /api/site-content/
+    GET: Everything the public site shows (all gallery items, startups, news,
+         team members and the background video) in one cached response.
+    """
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        return site_content_response(request)

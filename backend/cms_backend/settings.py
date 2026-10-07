@@ -68,6 +68,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Adds ETags and answers If-None-Match with 304 (no body) when nothing changed.
+    'django.middleware.http.ConditionalGetMiddleware',
+    'content.middleware.ApiCacheHeadersMiddleware',
 ]
 
 ROOT_URLCONF = 'cms_backend.urls'
@@ -123,6 +126,23 @@ else:
                 'NAME': BASE_DIR / 'db.sqlite3',
             }
         }
+
+
+# Cache
+# Process-local memory: fast and free, but each gunicorn worker gets its own
+# copy, so the Dockerfile runs a single (threaded) worker. See content/cache.py.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'aic-api',
+        'OPTIONS': {'MAX_ENTRIES': 1000},
+    }
+}
+# How long the server keeps a response. Edits made through the API or admin
+# clear it immediately; this only bounds edits made outside the web process.
+API_CACHE_TTL = int(os.environ.get('API_CACHE_TTL', 60 * 60))
+# How long browsers may reuse a public API response before revalidating.
+API_BROWSER_MAX_AGE = int(os.environ.get('API_BROWSER_MAX_AGE', 60))
 
 
 # Password validation

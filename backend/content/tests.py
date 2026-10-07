@@ -8,12 +8,21 @@ from django.contrib.auth import get_user_model
 from django.contrib import admin
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from rest_framework.test import APITestCase
+from django.core.cache import cache
+from rest_framework.test import APITestCase as DRFAPITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 
 from .models import GalleryItem, Startup, NewsUpdate, TeamMember, BackgroundVideo
 
 User = get_user_model()
+
+
+class APITestCase(DRFAPITestCase):
+    def setUp(self):
+        super().setUp()
+        # The in-memory API cache outlives each test's database rollback.
+        cache.clear()
 
 
 def generate_test_image(name='test.png'):
@@ -69,6 +78,7 @@ class ModelTests(TestCase):
 
 class APITests(APITestCase):
     def setUp(self):
+        super().setUp()
         self.user = User.objects.create_user(
             username='staff_user',
             password='secretpassword123',
@@ -173,6 +183,7 @@ class APITests(APITestCase):
 
 class JWTAuthenticationTests(APITestCase):
     def setUp(self):
+        super().setUp()
         self.admin_user = User.objects.create_superuser(
             username='super_admin',
             email='admin@aic.org',
@@ -336,6 +347,7 @@ class JWTAuthenticationTests(APITestCase):
 
 class BackgroundVideoAPITests(APITestCase):
     def setUp(self):
+        super().setUp()
         self.admin = User.objects.create_superuser(username='video_admin', password='VideoPass123!', email='v@aic.org')
 
     def test_get_without_video_returns_placeholder(self):
@@ -467,3 +479,104 @@ class HealthEndpointTests(APITestCase):
             response = self.client.get('/api/health/')
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         self.assertEqual(response.data["database"], "unreachable")
+
+
+class APICacheTests(APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.item = GalleryItem.objects.create(image=generate_test_image('c1.png'), subtext='First')
+
+    def test_list_is_served_from_cache_until_a_record_changes(self):
+        first = self.client.get('/api/gallery/')
+        second = self.client.get('/api/gallery/')
+        self.assertEqual(first['X-Cache'], 'MISS')
+        self.assertEqual(second['X-Cache'], 'HIT')
+        self.assertEqual(second.json(), first.json())
+
+        GalleryItem.objects.create(image=generate_test_image('c2.png'), subtext='Second')
+        after_create = self.client.get('/api/gallery/')
+        self.assertEqual(after_create['X-Cache'], 'MISS')
+        self.assertEqual(after_create.json()['count'], 2)
+
+        self.item.subtext = 'Renamed'
+        self.item.save()
+        after_update = self.client.get(f'/api/gallery/{self.item.pk}/')
+        self.assertEqual(after_update.json()['subtext'], 'Renamed')
+
+        self.item.delete()
+        self.assertEqual(self.client.get('/api/gallery/').json()['count'], 1)
+
+    def test_query_strings_are_cached_separately(self):
+        TeamMember.objects.create(name='M', role='r', category='mentor', photo=generate_test_image('m.png'))
+        TeamMember.objects.create(name='T', role='r', category='team', photo=generate_test_image('t.png'))
+        self.assertEqual(self.client.get('/api/team/').json()['count'], 2)
+        self.assertEqual(self.client.get('/api/team/?category=mentor').json()['count'], 1)
+
+    def test_changes_to_one_resource_keep_others_cached(self):
+        self.client.get('/api/gallery/')
+        Startup.objects.create(name='S', description='d', logo_or_image=generate_test_image('s.png'))
+        self.assertEqual(self.client.get('/api/gallery/')['X-Cache'], 'HIT')
+
+    def test_public_reads_are_browser_cacheable_with_etag(self):
+        response = self.client.get('/api/gallery/')
+        self.assertIn('public', response['Cache-Control'])
+        self.assertIn('max-age=60', response['Cache-Control'])
+        self.assertIn('Authorization', response['Vary'])
+        self.assertTrue(response.has_header('ETag'))
+
+        not_modified = self.client.get('/api/gallery/', HTTP_IF_NONE_MATCH=response['ETag'])
+        self.assertEqual(not_modified.status_code, status.HTTP_304_NOT_MODIFIED)
+        self.assertEqual(not_modified.content, b'')
+
+    def test_authenticated_reads_bypass_cache_and_are_not_stored(self):
+        self.client.get('/api/gallery/')
+        user = User.objects.create_user(username='editor', password='x', is_staff=True)
+        token = RefreshToken.for_user(user).access_token
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        response = self.client.get('/api/gallery/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.has_header('X-Cache'))
+        self.assertEqual(response['Cache-Control'], 'private, no-store')
+
+    def test_errors_are_not_cached(self):
+        response = self.client.get('/api/gallery/999999/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response['Cache-Control'], 'private, no-store')
+        self.assertNotEqual(self.client.get('/api/gallery/999999/').get('X-Cache'), 'HIT')
+
+    def test_background_video_is_cached_and_invalidated(self):
+        self.assertIsNone(self.client.get('/api/backgroundvideo/').json()['id'])
+        self.assertEqual(self.client.get('/api/backgroundvideo/')['X-Cache'], 'HIT')
+        BackgroundVideo.objects.create(video_name='Hero', video_url='https://stream.example.com/a.m3u8')
+        self.assertEqual(self.client.get('/api/backgroundvideo/').json()['video_name'], 'Hero')
+
+
+class SiteContentTests(APITestCase):
+    def test_returns_every_public_section(self):
+        GalleryItem.objects.create(image=generate_test_image('g.png'), subtext='G')
+        Startup.objects.create(name='S', description='d', logo_or_image=generate_test_image('s.png'))
+        NewsUpdate.objects.create(title='N', content='c', thumbnail=generate_test_image('n.png'))
+        TeamMember.objects.create(name='T', role='r', category='team', photo=generate_test_image('t.png'))
+        BackgroundVideo.objects.create(video_name='Hero', video_url='https://stream.example.com/a.m3u8')
+
+        data = self.client.get('/api/site-content/').json()
+        self.assertEqual([len(data[k]) for k in ('gallery', 'startups', 'news', 'team')], [1, 1, 1, 1])
+        self.assertEqual(data['team'][0]['category_display'], 'AIC Team')
+        self.assertEqual(data['background_video']['video_name'], 'Hero')
+
+    def test_empty_site_has_null_background_video(self):
+        data = self.client.get('/api/site-content/').json()
+        self.assertEqual(data['gallery'], [])
+        self.assertIsNone(data['background_video'])
+
+    def test_any_change_invalidates_the_bundle(self):
+        self.client.get('/api/site-content/')
+        self.assertEqual(self.client.get('/api/site-content/')['X-Cache'], 'HIT')
+        TeamMember.objects.create(name='T', role='r', category='team', photo=generate_test_image('t.png'))
+        response = self.client.get('/api/site-content/')
+        self.assertEqual(response['X-Cache'], 'MISS')
+        self.assertEqual(len(response.json()['team']), 1)
+
+    def test_health_check_warms_the_bundle(self):
+        self.client.get('/api/health/')
+        self.assertEqual(self.client.get('/api/site-content/')['X-Cache'], 'HIT')
