@@ -8,6 +8,7 @@ from .views import (
     NewsUpdateViewSet,
     TeamMemberViewSet,
     BackgroundVideoView,
+    HealthView,
 )
 from .auth_views import CustomTokenObtainPairView, CurrentUserView, LogoutView
 
@@ -27,6 +28,8 @@ auth_urlpatterns = [
 
 urlpatterns = [
     path('auth/', include(auth_urlpatterns)),
+    path('health/', HealthView.as_view(), name='health'),
+    path('health', HealthView.as_view(), name='health_noslash'),
     # Background Video Endpoints (both naming styles)
     path('backgroundvideo/', BackgroundVideoView.as_view(), name='background_video_compact'),
     path('backgroundvideo', BackgroundVideoView.as_view(), name='background_video_compact_noslash'),
