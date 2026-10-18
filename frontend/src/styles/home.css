@@ -776,7 +776,7 @@
 .bento__item--feature {
   min-height: 420px;
   border: 0;
-  border-radius: 28px;
+  border-radius: 20px;
   color: rgba(255, 255, 255, 0.82);
 }
 
@@ -1433,7 +1433,7 @@
   align-self: start;
   padding: clamp(1.5rem, 1.2rem + 1.5vw, 2.75rem);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: 20px;
   background: var(--paper);
 }
 
@@ -1450,19 +1450,13 @@
   font-weight: 500;
 }
 
-.contact__row {
-  display: grid;
-  gap: var(--space-5);
-}
-
-@media (min-width: 600px) {
-  .contact__row {
-    grid-template-columns: 1fr 1fr;
-  }
+.contact__form .input {
+  border-radius: 20px;
 }
 
 .contact__form .btn {
   justify-self: start;
+  border-radius: 20px;
 }
 
 .contact__success {

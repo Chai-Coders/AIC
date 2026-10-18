@@ -78,7 +78,11 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
   const shouldLoop = members.length > 4;
   const displayMembers = shouldLoop ? [...members, ...members] : members;
   const variantClass = variant ? `member-carousel-section--${variant}` : '';
-  const isBoardLooping = variant === 'board' && shouldLoop;
+  // Every carousel (team, mentors, board) steps through at the same pace as
+  // the board carousel; only the board variant gets the spotlight card treatment,
+  // and only while it's actually looping/stepping.
+  const isSteppedLooping = shouldLoop;
+  const boardLayout = variant === 'board' && isSteppedLooping;
   const [boardIndex, setBoardIndex] = useState(0);
   const [stepWidth, setStepWidth] = useState(290);
   const [transitionEnabled, setTransitionEnabled] = useState(true);
@@ -86,7 +90,7 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
   const trackRef = useRef(null);
 
   useEffect(() => {
-    if (!isBoardLooping) {
+    if (!isSteppedLooping) {
       return undefined;
     }
 
@@ -117,10 +121,10 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
     return () => {
       window.removeEventListener('resize', recalcStep);
     };
-  }, [isBoardLooping]);
+  }, [isSteppedLooping]);
 
   useEffect(() => {
-    if (!isBoardLooping || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (!isSteppedLooping || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       return undefined;
     }
 
@@ -132,10 +136,10 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
     return () => {
       window.clearInterval(autoplayId);
     };
-  }, [isBoardLooping]);
+  }, [isSteppedLooping]);
 
   useEffect(() => {
-    if (!isBoardLooping || boardIndex < members.length) {
+    if (!isSteppedLooping || boardIndex < members.length) {
       return undefined;
     }
 
@@ -153,9 +157,9 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
     return () => {
       window.clearTimeout(resetId);
     };
-  }, [boardIndex, isBoardLooping, members.length]);
+  }, [boardIndex, isSteppedLooping, members.length]);
 
-  const boardTrackStyle = isBoardLooping
+  const stepTrackStyle = isSteppedLooping
     ? {
         transform: `translate3d(-${boardIndex * stepWidth}px, 0, 0)`,
         transition: transitionEnabled ? 'transform 1250ms cubic-bezier(0.22, 0.61, 0.36, 1)' : 'none',
@@ -175,14 +179,14 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
         <div
           ref={trackRef}
           className={`member-carousel-track ${shouldLoop ? 'member-carousel-track--loop' : 'member-carousel-track--static'}`}
-          style={boardTrackStyle}
+          style={stepTrackStyle}
         >
           {displayMembers.map((member, index) => (
             <MemberCard
               key={`${member.name}-${index}`}
               member={member}
-              boardLayout={isBoardLooping}
-              className={isBoardLooping && (index % members.length) === spotlightIndex ? 'member-carousel-card--spotlight' : ''}
+              boardLayout={boardLayout}
+              className={boardLayout && (index % members.length) === spotlightIndex ? 'member-carousel-card--spotlight' : ''}
             />
           ))}
         </div>

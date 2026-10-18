@@ -572,6 +572,42 @@ main:has(.cta-banner) + .site-footer .site-footer__cta {
   color: var(--ink);
 }
 
+/* Each icon lights up in its own platform's brand colour on hover/focus. */
+.site-footer__social a[data-brand='facebook']:hover,
+.site-footer__social a[data-brand='facebook']:focus-visible {
+  border-color: #1877f2;
+  background: #1877f2;
+  color: var(--white);
+}
+
+.site-footer__social a[data-brand='x']:hover,
+.site-footer__social a[data-brand='x']:focus-visible {
+  border-color: #000;
+  background: #000;
+  color: var(--white);
+}
+
+.site-footer__social a[data-brand='linkedin']:hover,
+.site-footer__social a[data-brand='linkedin']:focus-visible {
+  border-color: #0a66c2;
+  background: #0a66c2;
+  color: var(--white);
+}
+
+.site-footer__social a[data-brand='youtube']:hover,
+.site-footer__social a[data-brand='youtube']:focus-visible {
+  border-color: #ff0000;
+  background: #ff0000;
+  color: var(--white);
+}
+
+.site-footer__social a[data-brand='instagram']:hover,
+.site-footer__social a[data-brand='instagram']:focus-visible {
+  border-color: transparent;
+  background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+  color: var(--white);
+}
+
 .site-footer__x {
   font-size: 0.9rem;
   font-weight: 800;

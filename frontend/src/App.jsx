@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import HomePage from './pages/HomePage';
+import SplashScreen from './components/common/SplashScreen';
 import useScrollReveal from './hooks/useScrollReveal';
 
 const BoardMemberPage = lazy(() => import('./pages/BoardMemberPage'));
@@ -64,6 +65,7 @@ function App() {
 
   return (
     <>
+      <SplashScreen />
       <ScrollToTop />
       <Suspense fallback={<PageFallback />}>
         <Routes>
