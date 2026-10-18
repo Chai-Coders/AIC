@@ -1,12 +1,19 @@
 import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 
+// Which group a person is listed under on the website. Mentors are split into
+// the four groups the mentors page shows as tabs.
 export const teamCategory = v.union(
   v.literal("team"),
-  v.literal("mentor"),
   v.literal("governor"),
+  v.literal("mentor_intl_industry"),
+  v.literal("mentor_intl_academic"),
+  v.literal("mentor_india_industry"),
+  v.literal("mentor_india_academic"),
 );
+
+export type TeamCategory = Infer<typeof teamCategory>;
 
 export default defineSchema({
   // users, authAccounts, authSessions, ... Every user is a CMS admin: there is

@@ -87,6 +87,28 @@ async function importImage(sourceUrl) {
 
 const ms = (iso) => (iso ? Date.parse(iso) : Date.now());
 
+// Django has a single "mentor" category; the old site kept the mentor's group
+// in the bio instead. Convex has one category per group (see schema.ts).
+const MENTOR_GROUPS = {
+  'international mentors - industry': 'mentor_intl_industry',
+  'international mentors - academic': 'mentor_intl_academic',
+  'india mentors - industry': 'mentor_india_industry',
+  'india mentors - academic': 'mentor_india_academic',
+  'indian mentors - academic': 'mentor_india_academic',
+};
+
+/** Convex category and bio for a Django team member. */
+function teamCategory(r) {
+  if (r.category !== 'mentor') return { category: r.category, bio: r.bio ?? '' };
+  const bio = (r.bio ?? '').trim();
+  const category = MENTOR_GROUPS[bio.toLowerCase()];
+  if (!category) {
+    throw new Error(`can't tell which mentor group "${r.name}" belongs to (bio: "${bio}")`);
+  }
+  // The bio only named the group, which the category now records.
+  return { category, bio: '' };
+}
+
 // How each Django record becomes a Convex row: [table, image field, fields].
 const SECTIONS = {
   gallery: {
@@ -126,9 +148,8 @@ const SECTIONS = {
     doc: (r, photoId) => ({
       name: r.name,
       role: r.role,
-      category: r.category,
+      ...teamCategory(r),
       ...(photoId ? { photoId } : {}),
-      bio: r.bio ?? '',
       createdAt: ms(r.created_at),
     }),
   },

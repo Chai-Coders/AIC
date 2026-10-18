@@ -2,16 +2,20 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { imageUrl } from "./images";
+import type { TeamCategory } from "./schema";
 
 // Public read API. Records are returned in the same JSON shape the Django REST
 // API used (snake_case fields, image URLs, ISO dates), so the website and the
 // CMS components did not need to change.
 
-const CATEGORY_LABELS = {
+const CATEGORY_LABELS: Record<TeamCategory, string> = {
   team: "AIC Team",
-  mentor: "International Mentor",
   governor: "Board of Governors",
-} as const;
+  mentor_intl_industry: "International Mentors - Industry",
+  mentor_intl_academic: "International Mentors - Academic",
+  mentor_india_industry: "India Mentors - Industry",
+  mentor_india_academic: "India Mentors - Academic",
+};
 
 const iso = (ms: number) => new Date(ms).toISOString();
 

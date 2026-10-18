@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
-import { teamCategory } from "./schema";
+import { teamCategory, type TeamCategory } from "./schema";
 import { requireAdmin } from "./lib/access";
 import { text } from "./lib/validate";
 import { deleteImage, requireImage } from "./images";
@@ -12,7 +12,7 @@ const fieldArgs = {
   bio: v.optional(v.string()),
 };
 
-const fields = (args: { name: string; role: string; category: "team" | "mentor" | "governor"; bio?: string }) => ({
+const fields = (args: { name: string; role: string; category: TeamCategory; bio?: string }) => ({
   name: text(args.name, "Full name", { required: true, max: 150 }),
   role: text(args.role, "Job title", { required: true, max: 150 }),
   category: args.category,

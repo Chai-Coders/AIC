@@ -69,7 +69,7 @@ const teamFetchers = {};
 
 /**
  * Fetch team members filtered by category.
- * @param {'team'|'mentor'|'governor'} category
+ * @param {'team'|'governor'|'mentor_intl_industry'|'mentor_intl_academic'|'mentor_india_industry'|'mentor_india_academic'} category
  * Returns: Array<{ id, name, role, category, category_display, photo, bio }>
  */
 export function fetchTeam(category) {
