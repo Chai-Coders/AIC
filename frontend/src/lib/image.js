@@ -1,11 +1,12 @@
-// Pictures are served by the Convex backend at /img/<id> (a Convex document
-// id), which stores a few resized WebP copies of each upload (480, 960 and
-// 1920 px wide). Adding ?w=<width> returns the smallest copy at least that
-// wide, so pages never download a bigger file than they display. Other URLs
-// are returned unchanged.
+// Cloudinary serves the original upload (often several MB) unless the URL asks
+// for a transformation. These helpers request a resized, auto-compressed copy
+// in the best format the browser supports (AVIF/WebP), which is typically
+// 50-200x smaller. Non-Cloudinary URLs are returned unchanged.
 
-function isResizable(url) {
-  return typeof url === 'string' && /\/img\/[a-z0-9]{16,}$/.test(url);
+const UPLOAD_SEGMENT = '/image/upload/';
+
+function isCloudinary(url) {
+  return typeof url === 'string' && url.includes('res.cloudinary.com') && url.includes(UPLOAD_SEGMENT);
 }
 
 /**
@@ -14,8 +15,9 @@ function isResizable(url) {
  * @returns {string}
  */
 export function cdnImage(url, width) {
-  if (!isResizable(url)) return url;
-  return `${url}?w=${width}`;
+  if (!isCloudinary(url)) return url;
+  // c_limit only ever shrinks, so small originals are never upscaled.
+  return url.replace(UPLOAD_SEGMENT, `${UPLOAD_SEGMENT}f_auto,q_auto,c_limit,w_${width}/`);
 }
 
 /**
@@ -27,7 +29,7 @@ export function cdnImage(url, width) {
  * @param {string} sizes - Standard `sizes` attribute describing the display width
  */
 export function cdnImageProps(url, widths, sizes) {
-  if (!isResizable(url)) return { src: url };
+  if (!isCloudinary(url)) return { src: url };
   return {
     src: cdnImage(url, widths[widths.length - 1]),
     srcSet: widths.map((w) => `${cdnImage(url, w)} ${w}w`).join(', '),
