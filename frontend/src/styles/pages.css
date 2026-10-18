@@ -140,6 +140,10 @@
   padding-top: var(--space-10);
 }
 
+.mentor-tabs-section {
+  padding-top: var(--space-10);
+}
+
 /* ================= Startups ================= */
 .toolbar {
   display: flex;

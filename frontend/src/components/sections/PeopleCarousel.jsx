@@ -7,7 +7,7 @@ import { cdnImage } from '../../lib/image';
 
 /**
  * People from the /team/ API for one category, shown with the carousel design.
- * @param {{ category: 'team'|'governor'|'mentor_intl_industry'|'mentor_intl_academic'|'mentor_india_industry'|'mentor_india_academic', title: string, variant?: string, emptyText?: string }} props
+ * @param {{ category: 'team'|'mentor'|'governor', title: string, variant?: string, emptyText?: string }} props
  */
 const PeopleCarousel = ({ category, title, variant = '', emptyText = 'No members listed yet.' }) => {
   const members = useApi(fetchTeam(category));

@@ -8,7 +8,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -24,8 +24,8 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+    if (!username.trim() || !password) {
+      setError('Please enter your username and password.');
       return;
     }
 
@@ -33,14 +33,14 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await login(email.trim(), password);
+      await login(username.trim(), password);
       navigate(fromPath, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
       setError(
-        navigator.onLine === false
-          ? 'You seem to be offline. Check your internet connection and try again.'
-          : 'That email or password isn’t right. Please try again.'
+        err.status === 401 || err.status === 400
+          ? 'That username or password isn’t right. Please try again.'
+          : err.message || 'Could not sign in. Please try again.'
       );
     } finally {
       setLoading(false);
@@ -67,14 +67,14 @@ export default function LoginPage() {
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="email" className="block text-sm font-medium text-foreground">
-              Email
+            <label htmlFor="username" className="block text-sm font-medium text-foreground">
+              Username
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               autoFocus
               className="field"

@@ -9,33 +9,30 @@ import { writeFile } from 'node:fs/promises';
 import { loadEnv } from 'vite';
 
 const OUTPUT = new URL('../src/data/snapshot.json', import.meta.url);
-const TIMEOUT_MS = 30_000;
+// A sleeping Render instance can take close to a minute to answer.
+const TIMEOUT_MS = 90_000;
 
 const env = loadEnv('production', process.cwd(), '');
-const base = (env.VITE_CONVEX_URL || '').replace(/\/+$/, '');
+const base = (env.SNAPSHOT_API_BASE || env.VITE_API_BASE || '').replace(/\/+$/, '');
 
 async function main() {
   if (!/^https?:\/\//.test(base)) {
-    console.warn('[snapshot] Skipped: set VITE_CONVEX_URL to the Convex backend URL.');
+    console.warn('[snapshot] Skipped: set VITE_API_BASE (or SNAPSHOT_API_BASE) to the full backend URL.');
     return;
   }
 
   try {
-    const res = await fetch(`${base}/api/query`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: 'content:siteContent', args: {}, format: 'json' }),
+    const res = await fetch(`${base}/site-content/`, {
+      headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.json();
-    if (body.status !== 'success') throw new Error(body.errorMessage);
-    const data = body.value;
+    const data = await res.json();
     await writeFile(OUTPUT, JSON.stringify({ site: { data, time: Date.now() } }));
     const counts = ['gallery', 'startups', 'news', 'team'].map((k) => `${data[k]?.length ?? 0} ${k}`);
     console.log(`[snapshot] Saved ${counts.join(', ')}.`);
   } catch (err) {
-    console.warn(`[snapshot] Skipped: could not load site content from ${base} (${err.message}).`);
+    console.warn(`[snapshot] Skipped: could not load ${base}/site-content/ (${err.message}).`);
   }
 }
 

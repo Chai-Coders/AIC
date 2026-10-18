@@ -1,33 +1,88 @@
-import { createContext, useContext, useCallback, useMemo } from 'react';
-import { useAuthActions } from '@convex-dev/auth/react';
-import { useConvexAuth, useQuery } from 'convex/react';
-import { anyApi } from 'convex/server';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { api, getAuthToken, clearTokens, SESSION_EXPIRED_EVENT } from '../services/api';
 
 const AuthContext = createContext();
 
-// Admin sessions are managed by Convex Auth, which stores and refreshes the
-// tokens itself. Accounts are created from the command line (admin.ts).
 export function AuthProvider({ children }) {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const { signIn, signOut } = useAuthActions();
-  const user = useQuery(anyApi.users.me, isAuthenticated ? {} : 'skip');
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('cms_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [token, setToken] = useState(() => getAuthToken());
+  // Only block the UI on startup when there is a stored session to verify.
+  const [loading, setLoading] = useState(() => !!getAuthToken());
 
-  const login = useCallback(
-    (email, password) => signIn('password', { email, password, flow: 'signIn' }),
-    [signIn]
-  );
+  // Verify a stored session once on startup.
+  useEffect(() => {
+    if (!getAuthToken()) return;
+    let cancelled = false;
 
-  const logout = useCallback(() => signOut(), [signOut]);
+    api.auth
+      .getMe()
+      .then((userData) => {
+        if (!cancelled) setUser(userData);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        // Only drop the session when the backend actually rejected it; a network
+        // blip or server error should not log the admin out.
+        if (err.status === 401 || err.status === 403) {
+          console.warn('Session expired or invalid:', err);
+          clearTokens();
+          setUser(null);
+          setToken(null);
+        } else {
+          console.warn('Could not verify session, keeping cached user:', err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Any request that fails auth (and cannot refresh) signs the user out of the UI.
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setToken(null);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+  }, []);
+
+  const login = useCallback(async (username, password) => {
+    const data = await api.auth.login(username, password);
+    setToken(data.access);
+    setUser(data.user || { username });
+    return data;
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.auth.logout();
+    } finally {
+      setUser(null);
+      setToken(null);
+    }
+  }, []);
 
   const value = useMemo(
     () => ({
-      user: user ?? null,
-      isAuthenticated,
-      loading: isLoading,
+      user,
+      isAuthenticated: !!token,
+      loading,
       login,
       logout,
     }),
-    [user, isAuthenticated, isLoading, login, logout]
+    [user, token, loading, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -110,7 +110,11 @@ export default function BackgroundVideoPage() {
     setUploading(true);
     setError(null);
     try {
-      const updated = await api.endpoints.backgroundVideo.upload(selectedFile, videoName.trim() || selectedFile.name);
+      const formData = new FormData();
+      formData.append('videofile', selectedFile);
+      formData.append('videoname', videoName.trim() || selectedFile.name);
+
+      const updated = await api.endpoints.backgroundVideo.upload(formData);
       setVideoData(updated);
       clearSelectedFile();
       showToast?.('New homepage video uploaded. It may take a few minutes to appear on the website.', 'success');
