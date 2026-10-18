@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import PageLayout from '../components/common/PageLayout';
 import PeopleCarousel from '../components/sections/PeopleCarousel';
 import PeopleNav from '../components/sections/PeopleNav';
-import { Tabs, TabsList, TabsTrigger, TabsPanel } from '../components/common/Tabs';
 
-// Mentor sub-categories, matching the TeamMember.CATEGORY_CHOICES values on the backend.
+// Mentor groups, matching `teamCategory` in convex-backend/convex/schema.ts.
+// Each is shown as its own section, like the single section on the team and
+// board pages.
 const MENTOR_CATEGORIES = [
   {
     value: 'mentor_intl_industry',
@@ -28,42 +29,23 @@ const MENTOR_CATEGORIES = [
   },
 ];
 
-const MentorPage = () => {
-  const [activeCategory, setActiveCategory] = useState(MENTOR_CATEGORIES[0].value);
-
-  return (
-    <PageLayout
-      title="Mentors"
-      hero={{
-        eyebrow: 'Mentor network',
-        title: 'Our mentors',
-        description: 'Domain experts and seasoned founders, from India and abroad, who coach our startups.',
-        breadcrumbs: [{ label: 'About' }, { label: 'Mentors' }],
-      }}
-    >
-      <div className="container people-nav-section">
-        <PeopleNav />
-      </div>
-
-      <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-        <div className="container mentor-tabs-section">
-          <TabsList aria-label="Mentor categories" className="tabs">
-            {MENTOR_CATEGORIES.map((cat) => (
-              <TabsTrigger key={cat.value} value={cat.value} className="tabs__link">
-                {cat.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-
-        {MENTOR_CATEGORIES.map((cat) => (
-          <TabsPanel key={cat.value} value={cat.value}>
-            <PeopleCarousel category={cat.value} title={cat.label} emptyText={cat.emptyText} />
-          </TabsPanel>
-        ))}
-      </Tabs>
-    </PageLayout>
-  );
-};
+const MentorPage = () => (
+  <PageLayout
+    title="Mentors"
+    hero={{
+      eyebrow: 'Mentor network',
+      title: 'Our mentors',
+      description: 'Domain experts and seasoned founders, from India and abroad, who coach our startups.',
+      breadcrumbs: [{ label: 'About' }, { label: 'Mentors' }],
+    }}
+  >
+    <div className="container people-nav-section">
+      <PeopleNav />
+    </div>
+    {MENTOR_CATEGORIES.map((cat) => (
+      <PeopleCarousel key={cat.value} category={cat.value} title={cat.label} emptyText={cat.emptyText} />
+    ))}
+  </PageLayout>
+);
 
 export default MentorPage;
