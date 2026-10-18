@@ -1,244 +1,69 @@
-// All backend routes live under /api (proxied to Django by Vite in dev).
-const API_BASE = (import.meta.env.VITE_API_BASE || '/api').replace(/\/+$/, '');
+import { anyApi } from 'convex/server';
+import { convex, run } from './convex';
+import { uploadImage } from '../lib/upload';
 
-export const SESSION_EXPIRED_EVENT = 'cms:session-expired';
+// Every section of the CMS goes through `api.endpoints`, backed by the Convex
+// functions in convex-backend/convex/. Records use the same field names as the
+// website (see content.ts), so components can treat them as before.
 
-export function getAuthToken() {
-  return localStorage.getItem('cms_access_token');
-}
+const backend = anyApi;
 
-export function getRefreshToken() {
-  return localStorage.getItem('cms_refresh_token');
-}
+const siteContent = () => run(() => convex.query(backend.content.siteContent, {}));
 
-export function setTokens(access, refresh) {
-  if (access) localStorage.setItem('cms_access_token', access);
-  if (refresh) localStorage.setItem('cms_refresh_token', refresh);
-}
+// Name of the picture argument of each section's create/update mutations.
+const IMAGE_ARG = { gallery: 'imageId', startups: 'logoId', news: 'thumbnailId', team: 'photoId' };
 
-export function clearTokens() {
-  localStorage.removeItem('cms_access_token');
-  localStorage.removeItem('cms_refresh_token');
-  localStorage.removeItem('cms_user');
-}
-
-// Shared in-flight refresh so parallel 401s don't each rotate (and blacklist) the same refresh token.
-let refreshPromise = null;
-
-function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      const refresh = getRefreshToken();
-      if (!refresh) return null;
-      try {
-        const res = await fetch(`${API_BASE}/auth/refresh/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh }),
-        });
-        if (!res.ok) return null;
-        const data = await res.json();
-        // ROTATE_REFRESH_TOKENS is on: the old refresh token is now blacklisted.
-        setTokens(data.access, data.refresh || refresh);
-        return data.access;
-      } catch {
-        return null;
-      }
-    })().finally(() => {
-      refreshPromise = null;
-    });
-  }
-  return refreshPromise;
-}
-
-function expireSession() {
-  clearTokens();
-  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
-}
-
-async function request(endpoint, options = {}) {
-  const { _isRetry, skipAuth, skipAuthRefresh, ...fetchOptions } = options;
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-  const headers = {
-    ...(fetchOptions.headers || {}),
+function section(id, name, functions) {
+  return {
+    name,
+    list: async (category) => {
+      const items = (await siteContent())[id];
+      return category ? items.filter((item) => item.category === category) : items;
+    },
+    count: async () => (await siteContent())[id].length,
+    /** Creates (no `itemId`) or updates a record; `file` is a new picture, if any. */
+    save: async (itemId, values, file) => {
+      const args = { ...values };
+      if (file) args[IMAGE_ARG[id]] = await uploadImage(file);
+      return run(() =>
+        itemId ? convex.mutation(functions.update, { id: itemId, ...args }) : convex.mutation(functions.create, args)
+      );
+    },
+    delete: (itemId) => run(() => convex.mutation(functions.remove, { id: itemId })),
   };
-
-  const token = getAuthToken();
-  if (token && !skipAuth && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  if (!(fetchOptions.body instanceof FormData) && !headers['Content-Type']) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  let response;
-  try {
-    response = await fetch(url, {
-      ...fetchOptions,
-      headers,
-    });
-  } catch (err) {
-    throw new Error("Couldn't reach the server. Check your internet connection and try again.", { cause: err });
-  }
-
-  if (response.status === 401 && !skipAuthRefresh) {
-    if (!_isRetry && getRefreshToken()) {
-      const newAccess = await refreshAccessToken();
-      if (newAccess) {
-        return request(endpoint, {
-          ...options,
-          _isRetry: true,
-          headers: {
-            ...(fetchOptions.headers || {}),
-            Authorization: `Bearer ${newAccess}`,
-          },
-        });
-      }
-    }
-    expireSession();
-  }
-
-  if (!response.ok) {
-    let errorDetail;
-    try {
-      const errData = await response.json();
-      errorDetail =
-        errData.detail ||
-        errData.error ||
-        errData.non_field_errors?.[0] ||
-        errData.message ||
-        Object.entries(errData)
-          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${Array.isArray(v) ? v.join(', ') : v}`)
-          .join(' ');
-    } catch {
-      // Non-JSON error body (e.g. proxy/HTML error page)
-    }
-    const fallback =
-      response.status >= 500
-        ? 'Something went wrong on the server. Please try again in a moment.'
-        : `The request failed (error ${response.status}). Please try again.`;
-    const error = new Error(errorDetail || fallback);
-    error.status = response.status;
-    throw error;
-  }
-
-  if (response.status === 204) {
-    return true;
-  }
-
-  try {
-    return await response.json();
-  } catch {
-    return true;
-  }
 }
 
-// DRF paginates list endpoints (PAGE_SIZE=20); walk every page so the CMS shows all records.
-async function listAll(endpoint, params = {}) {
-  const items = [];
-  for (let page = 1; page <= 500; page++) {
-    const query = new URLSearchParams({ ...params, page: String(page) });
-    const res = await request(`${endpoint}?${query}`);
-    if (Array.isArray(res)) return res;
-    items.push(...(res.results || []));
-    if (!res.next) break;
-  }
-  return items;
-}
-
-// Total number of records without fetching every page.
-async function countAll(endpoint) {
-  const res = await request(`${endpoint}?page=1`);
-  return Array.isArray(res) ? res.length : res.count ?? (res.results || []).length;
-}
+const NO_VIDEO = {
+  id: null,
+  video_name: 'No Background Video Active',
+  video_url: null,
+  thumbnail_url: null,
+  mux_playback_id: null,
+  updated_at: null,
+};
 
 export const api = {
-  // Authentication
-  auth: {
-    login: async (username, password) => {
-      const data = await request('/auth/login/', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-        skipAuth: true,
-        skipAuthRefresh: true,
-      });
-      if (data.access) {
-        setTokens(data.access, data.refresh);
-        if (data.user) {
-          localStorage.setItem('cms_user', JSON.stringify(data.user));
-        }
-      }
-      return data;
-    },
-    getMe: async () => {
-      const user = await request('/auth/me/');
-      localStorage.setItem('cms_user', JSON.stringify(user));
-      return user;
-    },
-    logout: async () => {
-      const refresh = getRefreshToken();
-      try {
-        if (refresh) {
-          await request('/auth/logout/', {
-            method: 'POST',
-            body: JSON.stringify({ refresh }),
-            skipAuth: true,
-            skipAuthRefresh: true,
-          });
-        }
-      } catch (err) {
-        // Server-side revocation is best effort; the local session is always cleared.
-        console.warn('Logout request failed:', err);
-      } finally {
-        clearTokens();
-      }
-    },
-  },
-
-  // Generic CRUD for CMS entities
   endpoints: {
-    gallery: {
-      name: 'Gallery',
-      endpoint: '/api/gallery/',
-      list: async () => listAll('/gallery/'),
-      count: async () => countAll('/gallery/'),
-      create: async (formData) => request('/gallery/', { method: 'POST', body: formData }),
-      update: async (id, formData) => request(`/gallery/${id}/`, { method: 'PATCH', body: formData }),
-      delete: async (id) => request(`/gallery/${id}/`, { method: 'DELETE' }),
-    },
-    startups: {
-      name: 'Startups',
-      endpoint: '/api/startups/',
-      list: async () => listAll('/startups/'),
-      count: async () => countAll('/startups/'),
-      create: async (formData) => request('/startups/', { method: 'POST', body: formData }),
-      update: async (id, formData) => request(`/startups/${id}/`, { method: 'PATCH', body: formData }),
-      delete: async (id) => request(`/startups/${id}/`, { method: 'DELETE' }),
-    },
-    news: {
-      name: 'News Updates',
-      endpoint: '/api/news/',
-      list: async () => listAll('/news/'),
-      count: async () => countAll('/news/'),
-      create: async (formData) => request('/news/', { method: 'POST', body: formData }),
-      update: async (id, formData) => request(`/news/${id}/`, { method: 'PATCH', body: formData }),
-      delete: async (id) => request(`/news/${id}/`, { method: 'DELETE' }),
-    },
-    team: {
-      name: 'Team Members',
-      endpoint: '/api/team/',
-      list: async (category) => listAll('/team/', category ? { category } : {}),
-      count: async () => countAll('/team/'),
-      create: async (formData) => request('/team/', { method: 'POST', body: formData }),
-      update: async (id, formData) => request(`/team/${id}/`, { method: 'PATCH', body: formData }),
-      delete: async (id) => request(`/team/${id}/`, { method: 'DELETE' }),
-    },
+    gallery: section('gallery', 'Gallery', backend.gallery),
+    startups: section('startups', 'Startups', backend.startups),
+    news: section('news', 'News Updates', backend.news),
+    team: section('team', 'Team Members', backend.team),
     backgroundVideo: {
       name: 'Background Video',
-      endpoint: '/api/backgroundvideo/',
-      get: async () => request('/backgroundvideo/'),
-      upload: async (formData) => request('/backgroundvideo/', { method: 'POST', body: formData }),
+      get: async () => (await siteContent()).background_video ?? NO_VIDEO,
+      /**
+       * Sends the file straight to Mux, then waits until Mux can play it and
+       * it has replaced the homepage video. Returns the new video.
+       */
+      upload: async (file, videoName) => {
+        const { uploadId, uploadUrl } = await run(() =>
+          convex.action(backend.mux.createUpload, { videoName, corsOrigin: window.location.origin })
+        );
+        const res = await fetch(uploadUrl, { method: 'PUT', body: file });
+        if (!res.ok) throw new Error('The video could not be uploaded. Please try again.');
+        await run(() => convex.action(backend.mux.finishUpload, { uploadId }));
+        return (await siteContent()).background_video ?? NO_VIDEO;
+      },
     },
   },
 };

@@ -107,16 +107,12 @@ export default function EditBar({ section, item, onClose, onSaved, onDelete, sho
 
     setSaving(true);
     try {
-      const data = new FormData();
-      section.fields.forEach((f) => data.append(f.name, String(values[f.name] ?? '').trim()));
-      if (selectedFile) data.append(section.imageField, selectedFile);
-
+      const trimmed = Object.fromEntries(section.fields.map((f) => [f.name, String(values[f.name] ?? '').trim()]));
       const resource = api.endpoints[section.id];
+      await resource.save(item?.id, trimmed, selectedFile);
       if (isEditing) {
-        await resource.update(item.id, data);
         showToast?.('Changes saved. They are now live on the website.', 'success');
       } else {
-        await resource.create(data);
         showToast?.(`${capitalize(section.noun)} added to the website.`, 'success');
       }
       onSaved();
