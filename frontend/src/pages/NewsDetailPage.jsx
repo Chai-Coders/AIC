@@ -11,7 +11,7 @@ import { formatDate } from '../lib/format';
 
 const NewsArticle = ({ id }) => {
   // Render instantly from the cached news list when we have it; the detail request refreshes it.
-  const fromList = useMemo(() => readCache('news')?.data?.find((n) => String(n.id) === id) ?? null, [id]);
+  const fromList = useMemo(() => readCache('site')?.data?.news?.find((n) => String(n.id) === id) ?? null, [id]);
   const article = useApi(fetchNewsItem(id), fromList);
   const all = useApi(fetchAllNews);
   const item = article.data;

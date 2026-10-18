@@ -5,6 +5,8 @@
 // - Cached data younger than FRESH_MS is used without touching the network;
 //   older data is shown immediately while a background refresh runs.
 // - Concurrent requests for the same key share one network call.
+// - A snapshot taken at build time (scripts/snapshot.mjs) is the last resort, so
+//   first-time visitors see content before the API has answered.
 
 const STORAGE_PREFIX = 'aic-cache:v1:';
 const FRESH_MS = 60 * 1000;
@@ -12,6 +14,20 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const memory = new Map(); // key -> { data, time }
 const inflight = new Map(); // key -> Promise
+
+// Optional: the file only exists when the build could reach the API.
+const snapshot = Object.values(
+  import.meta.glob('../data/snapshot.json', { eager: true, import: 'default' })
+)[0] || {};
+
+// Lists used to be cached one per key; they now all come from the 'site' entry.
+try {
+  ['gallery', 'startups', 'news', 'team', 'background-video'].forEach((key) =>
+    localStorage.removeItem(STORAGE_PREFIX + key)
+  );
+} catch {
+  // Storage unavailable.
+}
 
 function readStorage(key) {
   try {
@@ -38,6 +54,8 @@ export function readCache(key) {
   let entry = memory.get(key);
   if (!entry) {
     entry = readStorage(key);
+    const built = snapshot[key];
+    if (built && (!entry || built.time > entry.time)) entry = built;
     if (entry) memory.set(key, entry);
   }
   return entry || null;

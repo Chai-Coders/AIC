@@ -1,48 +1,12 @@
 import apiFetch from './client';
 import { getCached } from './cache';
 
-// Ask for big pages so a whole list usually arrives in one request. The
-// backend caps this (see StandardPagination); anything beyond the first page is
-// fetched in parallel rather than one page after another.
-const PAGE_SIZE = 100;
-
 async function getJson(path) {
   const res = await apiFetch(path);
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }
   return res.json();
-}
-
-/**
- * Fetches all pages of a paginated DRF list endpoint.
- * DRF pagination shape: { count, next, previous, results: [...] }
- * If the endpoint returns a plain array (non-paginated), returns it directly.
- *
- * @param {string} path - API path, e.g. '/gallery/'
- * @param {Record<string,string>} [params] - Extra query params
- * @returns {Promise<Array>}
- */
-async function fetchAllPages(path, params = {}) {
-  const query = (page) => new URLSearchParams({ ...params, page: String(page), page_size: String(PAGE_SIZE) });
-  const first = await getJson(`${path}?${query(1)}`);
-
-  // Non-paginated response (plain array)
-  if (Array.isArray(first)) {
-    return first;
-  }
-
-  const items = [...(first.results || [])];
-  const perPage = items.length;
-  if (!first.next || !perPage) return items;
-
-  // The server may use a smaller page size than requested; derive the page count from what it sent.
-  const totalPages = Math.ceil((first.count || 0) / perPage);
-  const rest = await Promise.all(
-    Array.from({ length: totalPages - 1 }, (_, i) => getJson(`${path}?${query(i + 2)}`))
-  );
-  rest.forEach((page) => items.push(...(page.results || [])));
-  return items;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,26 +21,37 @@ function cached(key, fetcher) {
 }
 
 /**
+ * Everything the public site shows, in one cached request (/api/site-content/).
+ * Every list below reads from this, so loading any page loads them all and
+ * switching pages never waits on the network.
+ * Returns: { gallery, startups, news, team, background_video }
+ */
+export const fetchSiteContent = cached('site', () => getJson('/site-content/'));
+
+function fromSite(select) {
+  const fn = () => fetchSiteContent().then(select);
+  fn.cacheKey = fetchSiteContent.cacheKey;
+  fn.select = select;
+  return fn;
+}
+
+/**
  * Fetch all gallery items.
  * Returns: Array<{ id, image, subtext, created_at }>
  */
-export const fetchAllGallery = cached('gallery', () => fetchAllPages('/gallery/'));
+export const fetchAllGallery = fromSite((site) => site.gallery);
 
 /**
  * Fetch all startups.
  * Returns: Array<{ id, name, description, logo_or_image, website_url, created_at }>
  */
-export const fetchAllStartups = cached('startups', () => fetchAllPages('/startups/'));
+export const fetchAllStartups = fromSite((site) => site.startups);
 
 /**
  * Fetch all news updates.
  * Returns: Array<{ id, title, subtitle, content, thumbnail, published_date }>
  */
-export const fetchAllNews = cached('news', () => fetchAllPages('/news/'));
-
-// All team members are fetched once and split by category on the client, so the
-// Team, Mentors and Board pages share one request and one cache entry.
-const fetchAllTeam = cached('team', () => fetchAllPages('/team/'));
+export const fetchAllNews = fromSite((site) => site.news);
 
 const teamFetchers = {};
 
@@ -87,19 +62,16 @@ const teamFetchers = {};
  */
 export function fetchTeam(category) {
   if (!teamFetchers[category]) {
-    const fn = () => fetchAllTeam().then((members) => members.filter((m) => m.category === category));
-    fn.cacheKey = fetchAllTeam.cacheKey;
-    fn.select = (members) => members.filter((m) => m.category === category);
-    teamFetchers[category] = fn;
+    teamFetchers[category] = fromSite((site) => site.team.filter((m) => m.category === category));
   }
   return teamFetchers[category];
 }
 
 /**
- * Fetch the homepage background video.
- * Returns: { id, video_name, video_url, thumbnail_url, mux_playback_id, updated_at }
+ * Fetch the homepage background video, or null when none is set.
+ * Returns: { id, video_name, video_url, thumbnail_url, mux_playback_id, updated_at } | null
  */
-export const fetchBackgroundVideo = cached('background-video', () => getJson('/backgroundvideo/'));
+export const fetchBackgroundVideo = fromSite((site) => site.background_video);
 
 const newsItemFetchers = {};
 
