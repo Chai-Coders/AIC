@@ -15,10 +15,15 @@ const formatDate = (value) =>
     ? new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
 
+// Must match `teamCategory` in convex-backend/convex/schema.ts. Mentors are
+// split into the four groups the website's mentors page shows as tabs.
 export const TEAM_CATEGORIES = [
   { value: 'team', label: 'AIC Team' },
-  { value: 'mentor', label: 'International Mentors' },
   { value: 'governor', label: 'Board of Governors' },
+  { value: 'mentor_intl_industry', label: 'International Mentors - Industry' },
+  { value: 'mentor_intl_academic', label: 'International Mentors - Academic' },
+  { value: 'mentor_india_industry', label: 'India Mentors - Industry' },
+  { value: 'mentor_india_academic', label: 'India Mentors - Academic' },
 ];
 
 // Everything the UI needs to know about each editable section of the website:

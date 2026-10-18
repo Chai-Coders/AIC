@@ -1,12 +1,24 @@
-import apiFetch from './client';
 import { getCached } from './cache';
 
-async function getJson(path) {
-  const res = await apiFetch(path);
+// Content comes from the Convex backend's public queries (convex-backend/
+// convex/content.ts), called over plain HTTP: a read-only site needs no
+// WebSocket or Convex client. Responses keep the shape the Django API had.
+const CONVEX_URL = (import.meta.env.VITE_CONVEX_URL || '').replace(/\/+$/, '');
+
+async function convexQuery(path, args = {}) {
+  const res = await fetch(`${CONVEX_URL}/api/query`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, args, format: 'json' }),
+  });
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }
-  return res.json();
+  const body = await res.json();
+  if (body.status !== 'success') {
+    throw new Error(body.errorMessage || 'API error');
+  }
+  return body.value;
 }
 
 // ---------------------------------------------------------------------------
@@ -21,12 +33,12 @@ function cached(key, fetcher) {
 }
 
 /**
- * Everything the public site shows, in one cached request (/api/site-content/).
+ * Everything the public site shows, in one cached request (content:siteContent).
  * Every list below reads from this, so loading any page loads them all and
  * switching pages never waits on the network.
  * Returns: { gallery, startups, news, team, background_video }
  */
-export const fetchSiteContent = cached('site', () => getJson('/site-content/'));
+export const fetchSiteContent = cached('site', () => convexQuery('content:siteContent'));
 
 function fromSite(select) {
   const fn = () => fetchSiteContent().then(select);
@@ -57,7 +69,7 @@ const teamFetchers = {};
 
 /**
  * Fetch team members filtered by category.
- * @param {'team'|'mentor'|'governor'} category
+ * @param {'team'|'governor'|'mentor_intl_industry'|'mentor_intl_academic'|'mentor_india_industry'|'mentor_india_academic'} category
  * Returns: Array<{ id, name, role, category, category_display, photo, bio }>
  */
 export function fetchTeam(category) {
@@ -77,11 +89,11 @@ const newsItemFetchers = {};
 
 /**
  * Fetch a single news update by id.
- * Returns: { id, title, subtitle, content, thumbnail, published_date }
+ * Returns: { id, title, subtitle, content, thumbnail, published_date } | null
  */
 export function fetchNewsItem(id) {
   if (!newsItemFetchers[id]) {
-    newsItemFetchers[id] = cached(`news:${id}`, () => getJson(`/news/${encodeURIComponent(id)}/`));
+    newsItemFetchers[id] = cached(`news:${id}`, () => convexQuery('content:newsItem', { id: String(id) }));
   }
   return newsItemFetchers[id];
 }

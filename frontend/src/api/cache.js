@@ -8,7 +8,8 @@
 // - A snapshot taken at build time (scripts/snapshot.mjs) is the last resort, so
 //   first-time visitors see content before the API has answered.
 
-const STORAGE_PREFIX = 'aic-cache:v1:';
+// v2: content moved from the Django API to Convex (new ids and image URLs).
+const STORAGE_PREFIX = 'aic-cache:v2:';
 const FRESH_MS = 60 * 1000;
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -20,11 +21,11 @@ const snapshot = Object.values(
   import.meta.glob('../data/snapshot.json', { eager: true, import: 'default' })
 )[0] || {};
 
-// Lists used to be cached one per key; they now all come from the 'site' entry.
+// Drop everything cached by the Django version of the site.
 try {
-  ['gallery', 'startups', 'news', 'team', 'background-video'].forEach((key) =>
-    localStorage.removeItem(STORAGE_PREFIX + key)
-  );
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith('aic-cache:v1:'))
+    .forEach((key) => localStorage.removeItem(key));
 } catch {
   // Storage unavailable.
 }
