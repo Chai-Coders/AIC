@@ -1,12 +1,54 @@
 import apiFetch from './client';
 import { getCached } from './cache';
 
+class ApiError extends Error {
+  constructor(res) {
+    super(`API error ${res.status}: ${res.statusText}`);
+    this.status = res.status;
+  }
+}
+
 async function getJson(path) {
   const res = await apiFetch(path);
   if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
+    throw new ApiError(res);
   }
   return res.json();
+}
+
+// Follows DRF pagination (`next`) and returns every item of a list endpoint.
+async function getAll(path) {
+  const items = [];
+  let next = path;
+  while (next) {
+    const data = await getJson(next);
+    if (Array.isArray(data)) return data;
+    items.push(...data.results);
+    next = data.next ? `${path}${new URL(data.next).search}` : null;
+  }
+  return items;
+}
+
+// Builds the /site-content/ payload from the per-resource endpoints, for a
+// backend deployed before /site-content/ existed.
+async function getSiteContentPerResource() {
+  const [gallery, startups, news, team, video] = await Promise.all([
+    getAll('/gallery/'),
+    getAll('/startups/'),
+    getAll('/news/'),
+    getAll('/team/'),
+    getJson('/background-video/'),
+  ]);
+  return { gallery, startups, news, team, background_video: video?.id ? video : null };
+}
+
+async function getSiteContent() {
+  try {
+    return await getJson('/site-content/');
+  } catch (err) {
+    if (err.status !== 404) throw err;
+    return getSiteContentPerResource();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -23,10 +65,11 @@ function cached(key, fetcher) {
 /**
  * Everything the public site shows, in one cached request (/api/site-content/).
  * Every list below reads from this, so loading any page loads them all and
- * switching pages never waits on the network.
+ * switching pages never waits on the network. Falls back to the per-resource
+ * endpoints when the backend has no /site-content/.
  * Returns: { gallery, startups, news, team, background_video }
  */
-export const fetchSiteContent = cached('site', () => getJson('/site-content/'));
+export const fetchSiteContent = cached('site', getSiteContent);
 
 function fromSite(select) {
   const fn = () => fetchSiteContent().then(select);
