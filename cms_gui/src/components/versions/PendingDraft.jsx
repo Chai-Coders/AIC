@@ -357,7 +357,7 @@ export default function PendingDraft() {
       showToast(
         result.kept > 0
           ? `Published ${plural(result.applied, 'change')}. ${plural(result.kept, 'field')} kept your newer edit.`
-          : `Published ${plural(result.applied, 'change')}. They are live on the website.`,
+          : `Published ${plural(result.applied, 'change')}. Visitors will see them within a minute or two.`,
         'success'
       );
       setConfirm(null);
@@ -446,7 +446,7 @@ export default function PendingDraft() {
         onConfirm={handleApprove}
         icon={ShieldCheck}
         title={`Publish ${plural(toApply.length, 'change')}?`}
-        message="They go live on the website straight away and are saved as a new version, so you can undo them later from History."
+        message="They are published straight away (visitors see them within a minute or two) and saved as a new version, so you can undo them later from History."
         confirmLabel="Publish"
         busyLabel={busy ?? 'Publishing…'}
         busy={!!busy}

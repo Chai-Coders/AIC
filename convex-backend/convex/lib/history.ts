@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { ENTITIES, fullSnapshot, sameValue, type Entity } from "./registry";
+import { allTextDocs, textDoc, writeText } from "./siteText";
 
 // Writing to the version history. Every live change to a tracked record goes
 // through here, whether it came from a CMS form, an undo or an approved AI
@@ -30,8 +31,15 @@ export async function resolveRecordId(ctx: QueryCtx, entity: Entity, recordId: s
 }
 
 export async function getRecord(ctx: QueryCtx, entity: Entity, recordId: string) {
+  if (entity === "siteText") return (await textDoc(ctx, recordId)) as unknown as Doc<Entity> | null;
   const id = ctx.db.normalizeId(entity, recordId);
   return id ? ((await ctx.db.get(id)) as Doc<Entity> | null) : null;
+}
+
+/** Every live record of a kind (website texts included). */
+export async function listRecords(ctx: QueryCtx, entity: Entity) {
+  if (entity === "siteText") return (await allTextDocs(ctx)) as unknown as Doc<Entity>[];
+  return (await ctx.db.query(entity).collect()) as Doc<Entity>[];
 }
 
 /** When a field (or, with field "", the record itself) last changed live. */
@@ -150,7 +158,7 @@ async function closeVersion(ctx: MutationCtx, version: Doc<"versions">) {
 }
 
 /** The CMS sitting to add an edit to: the open one, or a new one after a pause. */
-async function cmsSitting(ctx: MutationCtx) {
+export async function cmsSitting(ctx: MutationCtx) {
   const now = Date.now();
   const { sittingMinutes } = await getSettings(ctx);
   const open = await ctx.db
@@ -246,6 +254,9 @@ export async function applyTarget(
   const doc = await getRecord(ctx, entity, recordId);
   const noun = ENTITIES[entity].noun;
 
+  if (field === "" && ENTITIES[entity].fixed) {
+    throw new ConvexError(`A ${noun} can only be changed, not added or deleted.`);
+  }
   if (field === "") {
     if (target === null) {
       if (!doc) return { applied: false, reason: `The ${noun} was already deleted.`, recordId };
@@ -273,7 +284,8 @@ export async function applyTarget(
   if (!doc) return { applied: false, reason: `The ${noun} has since been deleted.`, recordId };
   const current = (doc as Record<string, unknown>)[field] ?? null;
   if (sameValue(current, target)) return { applied: false, reason: "It already has this value.", recordId };
-  await ctx.db.patch(doc._id, { [field]: target ?? undefined } as never);
+  if (entity === "siteText") await writeText(ctx, recordId, target);
+  else await ctx.db.patch(doc._id, { [field]: target ?? undefined } as never);
   await addChange(ctx, versionId, { entity, recordId, field, op: "update", before: current, after: target ?? null, editedAt });
   await touch(ctx, entity, recordId, field, editedAt);
   return { applied: true, recordId };

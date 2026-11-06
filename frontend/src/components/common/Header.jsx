@@ -86,6 +86,9 @@ const Header = ({ transparent = false }) => {
                 <li
                   key={entry.id}
                   className={`site-nav__item has-menu ${openGroup === entry.id ? 'is-open' : ''}`}
+                  // Menus also open on hover (CSS); moving to another one closes a
+                  // menu opened by click, so only one is ever open.
+                  onMouseEnter={() => openGroup && openGroup !== entry.id && setOpenGroup(null)}
                 >
                   <button
                     type="button"

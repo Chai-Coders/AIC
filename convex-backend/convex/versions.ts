@@ -3,7 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/access";
-import { ENTITIES, sameValue, type Entity, type FieldDef } from "./lib/registry";
+import { ENTITIES, fieldLabel, sameValue, type Entity, type FieldDef } from "./lib/registry";
 import {
   applyTarget,
   closeSittings,
@@ -70,7 +70,7 @@ export async function describeChange(ctx: QueryCtx, change: Doc<"changes">, vers
   const base = {
     id: change._id,
     entity: change.entity,
-    page: def.page,
+    page: def.pageOf?.(doc ?? snapshot) ?? def.page,
     noun: def.noun,
     recordId,
     itemTitle,
@@ -114,7 +114,7 @@ export async function describeChange(ctx: QueryCtx, change: Doc<"changes">, vers
   return {
     ...base,
     field: change.field,
-    fieldLabel: field.label,
+    fieldLabel: fieldLabel(change.entity, recordId, change.field),
     kind: field.kind,
     options: field.options ?? null,
     fields: null,
@@ -151,11 +151,12 @@ async function summarize(ctx: QueryCtx, version: Doc<"versions">, sittingMinutes
       const recordId = await resolveRecordId(ctx, change.entity, change.recordId);
       const doc = await getRecord(ctx, change.entity, recordId);
       const snapshot = (change.after ?? change.before ?? {}) as Record<string, unknown>;
-      item = { entity: change.entity, page: def.page, title: def.title((doc as never) ?? snapshot), op: change.op, fields: [] };
+      const record = (doc as never) ?? snapshot;
+      item = { entity: change.entity, page: def.pageOf?.(record) ?? def.page, title: def.title(record), op: change.op, fields: [] };
       items.set(key, item);
     }
     if (change.field) {
-      item.fields.push(ENTITIES[change.entity].fields.find((f) => f.key === change.field)?.label ?? change.field);
+      item.fields.push(fieldLabel(change.entity, change.recordId, change.field));
     } else {
       item.op = change.op;
     }
@@ -359,12 +360,14 @@ export const restorePreview = query({
       plan.map(async (item) => {
         const def = ENTITIES[item.entity];
         const doc = (await getRecord(ctx, item.entity, item.recordId)) as Record<string, unknown> | null;
-        const title = def.title(doc ?? (item.target as Record<string, unknown>) ?? {});
+        const record = doc ?? (item.target as Record<string, unknown>) ?? {};
+        const title = def.title(record);
+        const page = def.pageOf?.(record) ?? def.page;
         if (item.field === "") {
           return {
             key: item.key,
             entity: item.entity,
-            page: def.page,
+            page,
             noun: def.noun,
             itemTitle: title,
             kind: item.kind,
@@ -379,11 +382,11 @@ export const restorePreview = query({
         return {
           key: item.key,
           entity: item.entity,
-          page: def.page,
+          page,
           noun: def.noun,
           itemTitle: title,
           kind: item.kind,
-          fieldLabel: field.label,
+          fieldLabel: fieldLabel(item.entity, item.recordId, item.field),
           fieldKind: field.kind,
           fields: null,
           current: await displayValue(ctx, field, doc?.[item.field]),

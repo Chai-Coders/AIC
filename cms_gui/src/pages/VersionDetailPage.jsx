@@ -319,8 +319,8 @@ export default function VersionDetailPage() {
         message={
           <>
             {confirm?.type === 'undo'
-              ? 'They go back to how they were before this version, live on the website straight away.'
-              : 'This goes live on the website straight away.'}{' '}
+              ? 'They go back to how they were before this version. Visitors see this within a minute or two.'
+              : 'This is published straight away; visitors see it within a minute or two.'}{' '}
             It is saved as a new version, so you can undo this too.
           </>
         }

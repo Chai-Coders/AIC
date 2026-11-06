@@ -102,6 +102,20 @@ Build the apps with these variables (no trailing slashes):
 | `frontend`, `cms_gui` | `VITE_CONVEX_URL` | The public API address |
 | `cms_gui` | `VITE_SITE_URL` | The website's address ("View website" links, Site text preview) |
 | `frontend` | `VITE_CMS_URL` | The CMS address. Only this address may show the site in the Site text preview |
+| `frontend` | `VITE_CONVEX_SITE_URL` | Optional, Vercel only: the backend's site address (`CONVEX_SITE_URL`, serves `/img/`). Turns on CDN caching (below) |
+
+### Caching
+
+- **Convex** caches every query result until the data it reads changes.
+- **`GET /content`** (`convex/http.ts`) returns the website's content with cache headers: browsers
+  reuse it for a minute, and a CDN keeps it for a minute and then serves the last copy for up to a
+  day while it refreshes in the background.
+- **Vercel CDN**: with `VITE_CONVEX_SITE_URL` set, `frontend/vercel.ts` rewrites `/content.json` and
+  `/media/<id>` on the website's own address to the backend, and Vercel caches them near visitors
+  (pictures for a year, as they never change). Visitors then never wait on the backend, and its
+  bandwidth stays far inside the free plan. Edits show on the website within about a minute.
+- **The website** keeps the last content in the browser (`frontend/src/api/cache.js`) and a copy
+  baked in at build time, so pages render before anything is fetched.
 
 The website saves a copy of the content when it is built (`frontend/scripts/snapshot.mjs`)
 and shows it until the live content arrives, so rebuild it after large content changes.

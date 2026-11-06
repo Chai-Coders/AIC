@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useQuery } from 'convex/react';
+import { anyApi } from 'convex/server';
 import { AlertCircle, ArrowUp, Code2, Loader2, Rows3 } from 'lucide-react';
 import { api } from '../services/api';
 import { SITE_URL } from '../routes';
@@ -71,8 +73,9 @@ export default function SiteTextPage() {
   const frameRef = useRef(null);
 
   const [registry, setRegistry] = useState(null); // { pages, shared } from the website
-  const [published, setPublished] = useState(null); // { key: text } published from here
-  const [loadError, setLoadError] = useState(null);
+  // { key: text } published from here. Live: undoing on the Versions page or
+  // approving an AI change shows up here straight away.
+  const published = useQuery(anyApi.siteText.published) ?? null;
   const [frameTimedOut, setFrameTimedOut] = useState(false);
   const [draft, setDraft] = useState(loadDraft); // { key: text } not published yet
   const [pageId, setPageId] = useState('home');
@@ -90,17 +93,6 @@ export default function SiteTextPage() {
   }, []);
 
   // --- Loading -------------------------------------------------------------
-
-  useEffect(() => {
-    let cancelled = false;
-    api.endpoints.siteText
-      .published()
-      .then((texts) => !cancelled && setPublished(texts))
-      .catch((err) => !cancelled && setLoadError(err.message || 'Could not load the published text.'));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (registry || !siteOrigin) return;
@@ -231,10 +223,9 @@ export default function SiteTextPage() {
       // Text set back to the website's own wording drops the edit instead of storing a copy.
       const changes = changedKeys.map((key) => ({ key, value: draft[key] === fields[key].value ? null : draft[key] }));
       await api.endpoints.siteText.publish(changes);
-      setPublished(await api.endpoints.siteText.published());
       setDraft({});
       setCodeVersion((v) => v + 1);
-      showToast?.(`Published ${plural(changes.length, 'change')}. Visitors will see it within a minute.`, 'success');
+      showToast?.(`Published ${plural(changes.length, 'change')}. Visitors will see it within a minute or two. You can undo it from Versions.`, 'success');
     } catch (err) {
       showToast?.(err.message || 'Publishing failed. Please try again.', 'error');
     } finally {
@@ -338,18 +329,11 @@ export default function SiteTextPage() {
         </button>
       </header>
 
-      {loadError && (
-        <div role="alert" className="flex shrink-0 items-start gap-2.5 border-b border-destructive/30 bg-destructive/10 px-5 py-3 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{loadError}</span>
-        </div>
-      )}
-
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(280px,45%)_1fr] lg:grid-cols-[minmax(340px,420px)_1fr] lg:grid-rows-1">
         <section aria-label="Editor" className="flex min-h-0 flex-col border-b border-border bg-card lg:border-b-0 lg:border-r">
           {!ready ? (
             <div className="flex flex-1 items-center justify-center">
-              {!loadError && !stuck && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />}
+              {!stuck && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />}
             </div>
           ) : mode === 'fields' ? (
             <FieldsPanel

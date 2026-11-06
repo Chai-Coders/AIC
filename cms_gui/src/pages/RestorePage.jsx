@@ -169,7 +169,7 @@ export default function RestorePage() {
         onConfirm={handleRestore}
         icon={History}
         title={`Restore ${plural(selectedKeys.length, 'change')}?`}
-        message="They go live on the website straight away. This is saved as a new version, so you can undo the restore too."
+        message="They are published straight away (visitors see them within a minute or two). This is saved as a new version, so you can undo the restore too."
         confirmLabel="Restore"
         busyLabel="Restoring…"
         busy={busy}

@@ -50,7 +50,7 @@ export default function HomeView() {
             {user?.username ? `, ${user.username}` : ''}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Choose what you’d like to update. Changes go live on the website as soon as you save them.
+            Choose what you’d like to update. Changes you save are published at once; visitors see them within a minute or two.
           </p>
         </div>
         {SITE_URL && (

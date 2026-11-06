@@ -1,6 +1,7 @@
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { optionalUrl, text } from "./validate";
+import { TEXTS, textTitle } from "./siteText";
 
 // Every editable field on the website, with the label the CMS shows for it.
 // Version history, the Versions page and the MCP tools all read this, so a
@@ -11,6 +12,7 @@ export const entity = v.union(
   v.literal("startups"),
   v.literal("news"),
   v.literal("teamMembers"),
+  v.literal("siteText"),
 );
 export type Entity = Infer<typeof entity>;
 
@@ -33,6 +35,10 @@ export type EntityDef = {
   noun: string;
   fields: FieldDef[];
   title: (doc: Record<string, unknown>) => string;
+  /** The page a record is on, when it differs per record (website text). */
+  pageOf?: (doc: Record<string, unknown>) => string;
+  /** Records can only be changed, not added or deleted (website text). */
+  fixed?: boolean;
 };
 
 export const TEAM_CATEGORY_OPTIONS = [
@@ -98,9 +104,27 @@ export const ENTITIES: Record<Entity, EntityDef> = {
     ],
     title: (doc) => str(doc.name) || "Unnamed member",
   },
+  // Headings, paragraphs and buttons on every page (the CMS's Site text page).
+  // Each text is a record with the text's key as its id; see lib/siteText.ts.
+  siteText: {
+    entity: "siteText",
+    type: "text",
+    page: "Site text",
+    noun: "text",
+    fields: [{ key: "value", label: "Text", kind: "textarea", max: 5000 }],
+    title: (doc) => textTitle(str(doc.key) || str(doc._id)),
+    pageOf: (doc) => TEXTS.get(str(doc.key) || str(doc._id))?.page ?? "Site text",
+    fixed: true,
+  },
 };
 
 export const ENTITY_LIST = Object.values(ENTITIES);
+
+/** A field's label as people see it; a website text is named by its own label ("Primary button"). */
+export function fieldLabel(entityName: Entity, recordId: string, key: string) {
+  if (entityName === "siteText") return TEXTS.get(recordId)?.label ?? "Text";
+  return ENTITIES[entityName].fields.find((f) => f.key === key)?.label ?? key;
+}
 
 /** Accepts the MCP type name ("team") or the table name ("teamMembers"). */
 export function entityByType(type: string): EntityDef {

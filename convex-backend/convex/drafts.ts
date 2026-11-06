@@ -18,11 +18,13 @@ import {
   applyTarget,
   closeSittings,
   getRecord,
+  listRecords,
   lastEditAt,
   lastRecordEditAt,
   resolveRecordId,
 } from "./lib/history";
 import { todayIso } from "./lib/validate";
+import { TEXT_FORMAT, TEXTS, textPage } from "./lib/siteText";
 import { describeChange, displayValue } from "./versions";
 
 // The AI draft: changes proposed by connected AI apps (see mcp.ts). There is
@@ -129,6 +131,7 @@ export const proposeCreate = internalMutation({
   args: { app: v.string(), type: v.string(), fields: v.record(v.string(), v.any()) },
   handler: async (ctx, { app, type, fields }) => {
     const def = entityByType(type);
+    if (def.fixed) throw new ConvexError(`Website texts can't be added, only changed: use propose_edit on a "${def.type}/..." field.`);
     const record: Record<string, unknown> = {};
     for (const field of def.fields) {
       const given = fields[field.key];
@@ -159,6 +162,7 @@ export const proposeDelete = internalMutation({
   args: { app: v.string(), type: v.string(), id: v.string() },
   handler: async (ctx, { app, type, id }) => {
     const def = entityByType(type);
+    if (def.fixed) throw new ConvexError("Website texts can't be deleted. To empty one, propose_edit it with an empty value.");
     const versionId = await openDraft(ctx, app);
     const { live } = await findTarget(ctx, versionId, def.entity, id);
     const changeId = await addChange(ctx, versionId, {
@@ -517,6 +521,16 @@ export const reject = mutation({
 async function liveItem(ctx: QueryCtx, entity: Entity, doc: Doc<Entity>) {
   const def = ENTITIES[entity];
   const values = snapshot(entity, doc as never);
+  if (entity === "siteText") {
+    const text = TEXTS.get(doc._id as string)!;
+    return {
+      type: def.type,
+      id: doc._id as string,
+      title: def.title(doc as never),
+      page: text.page,
+      fields: [{ field: fieldKey(entity, doc._id, "value"), label: text.label, format: TEXT_FORMAT[text.kind], value: values.value }],
+    };
+  }
   return {
     type: def.type,
     id: doc._id as string,
@@ -533,12 +547,29 @@ async function liveItem(ctx: QueryCtx, entity: Entity, doc: Doc<Entity>) {
   };
 }
 
+/**
+ * What a page filter means: a content type ("startups") or a website page
+ * ("site:home"), whose texts are then the only ones meant.
+ */
+function pageFilter(page: string) {
+  const site = page.startsWith("site:") ? textPage(page.slice("site:".length)) : null;
+  if (site) return { entity: "siteText" as Entity, sitePage: site.name };
+  if (page.startsWith("site:")) throw new ConvexError(`There is no website page "${page.slice(5)}".`);
+  return { entity: entityByType(page).entity, sitePage: null };
+}
+
 export const getPage = internalQuery({
   args: { type: v.string() },
   handler: async (ctx, { type }) => {
-    const def = entityByType(type);
-    const docs = (await ctx.db.query(def.entity).collect()) as Doc<Entity>[];
-    return { page: def.page, type: def.type, items: await Promise.all(docs.map((d) => liveItem(ctx, def.entity, d))) };
+    const { entity, sitePage } = pageFilter(type);
+    const def = ENTITIES[entity];
+    let docs = await listRecords(ctx, entity);
+    if (sitePage) docs = docs.filter((d) => TEXTS.get(d._id as string)?.page === sitePage);
+    return {
+      page: sitePage ?? def.page,
+      type: def.type,
+      items: await Promise.all(docs.map((d) => liveItem(ctx, entity, d))),
+    };
   },
 });
 
@@ -564,14 +595,17 @@ export const findContent = internalQuery({
     const terms = text.toLowerCase().split(/\s+/).filter(Boolean);
     if (terms.length === 0) throw new ConvexError("Give some words to search for.");
     const results: { score: number; field: string; label: string; page: string; item: string; value: unknown }[] = [];
+    const filter = page ? pageFilter(page) : null;
     for (const def of Object.values(ENTITIES)) {
-      if (page && entityByType(page).entity !== def.entity) continue;
-      for (const doc of (await ctx.db.query(def.entity).collect()) as Doc<Entity>[]) {
+      if (filter && filter.entity !== def.entity) continue;
+      for (const doc of await listRecords(ctx, def.entity)) {
         const title = def.title(doc as never);
+        const docPage = def.pageOf?.(doc as never) ?? def.page;
+        if (filter?.sitePage && docPage !== filter.sitePage) continue;
         for (const f of def.fields) {
           const raw = (doc as Record<string, unknown>)[f.key];
           const value = typeof raw === "string" && f.kind !== "image" ? raw : "";
-          const haystack = `${value} ${f.label} ${f.key} ${title} ${def.page} ${def.type}`.toLowerCase();
+          const haystack = `${value} ${f.label} ${f.key} ${doc._id} ${title} ${docPage} ${def.page} ${def.type}`.toLowerCase();
           const inValue = terms.filter((t) => value.toLowerCase().includes(t)).length;
           const anywhere = terms.filter((t) => haystack.includes(t)).length;
           if (anywhere < terms.length) continue;
@@ -580,8 +614,8 @@ export const findContent = internalQuery({
             // Matches in the text itself rank above matches on labels.
             score: inValue * 2 + anywhere,
             field: fieldKey(def.entity, doc._id, f.key),
-            label: f.label,
-            page: def.page,
+            label: def.entity === "siteText" ? TEXTS.get(doc._id as string)!.label : f.label,
+            page: docPage,
             item: title,
             value: f.kind === "image" ? "(picture)" : at >= 0 ? snippet(value, at) : value.slice(0, 240),
           });
