@@ -15,7 +15,14 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
         Undo these changes (tick list), Put back one field, older/newer links
   - [x] Restore page: preview Now -> After restoring, untick to keep
   - [x] Sign-out closes the sitting (setting UI comes with the AI connection page)
-- [ ] 2. MCP server and tools (temporary token)
+- [x] 2. MCP server and tools (temporary token: `npx convex run oauth:createTestToken '{"email":"…"}'`)
+  - [x] /mcp: stateless Streamable HTTP JSON-RPC, hand-written (no SDK needed in Convex)
+  - [x] Tools: find_content, get_page, get_item, propose_edit/create/delete, propose_image,
+        request_upload_link, view_draft, undo_change. No publish tool.
+  - [x] Draft: one pending version, merged per field; approve (all or nothing, later edits on
+        top, force per field), reject (kept in history)
+  - [x] Waiting for approval tab: tick/untick, edit AI value, use AI value anyway,
+        upload missing pictures, approve and publish / reject all
 - [ ] 3. OAuth login, AI connection page
 - [ ] 4. Pictures: URL download, upload links, resizing on approve
 - [ ] 5. `find_content` across every field
@@ -25,3 +32,5 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
 - 2026-11-06: backend for step 1 done and tested on the local deployment
   (edit merge, undo one field, delete + restore to point).
 - 2026-11-06: Versions UI done; checked with headless Chromium (desktop + phone).
+- 2026-11-06: MCP tested with curl (auth challenge, tools, validation, SSRF block, image via redirect);
+  approve flow tested in headless browser (override kept, edited value, uploaded logo).

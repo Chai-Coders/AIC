@@ -30,9 +30,9 @@ function Checkbox({ checked, disabled, onChange, label }) {
 /** Why a change is shown greyed out, if it is. */
 function notes(change) {
   const out = [];
-  if (change.overridden) out.push('Not applied: a later edit to this field was kept');
+  if (change.overridden) out.push('Not applied: your newer edit was kept');
   if (change.skipped) out.push('Left out when this draft was approved');
-  if (change.laterEditAt) out.push(`Changed again on ${formatDateTime(change.laterEditAt)}`);
+  if (change.laterEditAt && !change.overridden && !change.skipped) out.push(`Changed again on ${formatDateTime(change.laterEditAt)}`);
   if (!change.recordExists && change.op === 'update') out.push(`This ${change.noun} has since been deleted`);
   return out;
 }

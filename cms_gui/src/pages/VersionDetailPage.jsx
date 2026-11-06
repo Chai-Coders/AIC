@@ -201,8 +201,8 @@ export default function VersionDetailPage() {
         ))}
         {version.overriddenCount > 0 && (
           <Notice tone="warning">
-            {plural(version.overriddenCount, 'change')} were not applied, because you had edited the same field after the AI
-            proposed it. Your edit was kept.
+            {version.overriddenCount === 1 ? '1 change was' : `${version.overriddenCount} changes were`} not applied, because you
+            had edited the same field after the AI proposed it. Your edit was kept.
           </Notice>
         )}
       </div>
