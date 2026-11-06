@@ -91,7 +91,7 @@ const StartupGrid = () => {
         {selected && (
           <div className="startup-dialog__inner">
             <div className="startup-dialog__logo">
-              <img src={cdnImage(selected.logo_or_image, 600)} alt={`${selected.name} logo`} />
+              <img src={cdnImage(selected.logo_or_image, 600)} alt={selected.alt_text || `${selected.name} logo`} />
             </div>
             <h2>{selected.name}</h2>
             {selected.description && <p className="prose">{selected.description}</p>}

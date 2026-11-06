@@ -32,7 +32,7 @@ const GalleryGrid = ({ limit, featured = false }) => {
                       {...(featured && i === 0
                         ? cdnImageProps(item.image, [800, 1200, 1600], '(min-width: 1100px) 50vw, (min-width: 640px) 66vw, 100vw')
                         : cdnImageProps(item.image, [400, 800], '(min-width: 1100px) 25vw, (min-width: 640px) 33vw, 50vw'))}
-                      alt={item.subtext || `Gallery photo ${i + 1}`}
+                      alt={item.alt_text || item.subtext || `Gallery photo ${i + 1}`}
                       loading="lazy"
                       decoding="async"
                     />

@@ -1,16 +1,18 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireAdmin } from "./lib/access";
-import { optionalUrl, text } from "./lib/validate";
+import { altTextPatch, optionalUrl, text } from "./lib/validate";
 import { deleteImage, requireImage } from "./images";
 
 const fieldArgs = {
+  alt_text: v.optional(v.string()),
   name: v.string(),
   description: v.string(),
   website_url: v.optional(v.string()),
 };
 
-const fields = (args: { name: string; description: string; website_url?: string }) => ({
+const fields = (args: { name: string; description: string; website_url?: string; alt_text?: string }) => ({
+  ...altTextPatch(args.alt_text),
   name: text(args.name, "Startup name", { required: true, max: 200 }),
   description: text(args.description, "Description", { required: true }),
   websiteUrl: optionalUrl(args.website_url, "Website"),

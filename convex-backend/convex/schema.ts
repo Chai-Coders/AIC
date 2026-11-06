@@ -15,6 +15,90 @@ export const teamCategory = v.union(
 
 export type TeamCategory = Infer<typeof teamCategory>;
 
+// ---------------------------------------------------------------------------
+// AI Assistant (see docs/ai-agent.md)
+// ---------------------------------------------------------------------------
+
+export const changeSetStatus = v.union(
+  v.literal("drafting"), // the editor agent is working
+  v.literal("building"), // waiting for the preview to compile the code edits
+  v.literal("reviewing"), // the review agent is checking the draft
+  v.literal("needs_admin"), // waiting on the admin: a delete to confirm, or a review objection
+  v.literal("ready"), // reviewed and approved; can be published
+  v.literal("publishing"),
+  v.literal("published"),
+  v.literal("discarded"),
+  v.literal("failed"),
+);
+export type ChangeSetStatus = Infer<typeof changeSetStatus>;
+
+// Tables the agent may change through the content path.
+export const contentTable = v.union(
+  v.literal("gallery"),
+  v.literal("startups"),
+  v.literal("news"),
+  v.literal("teamMembers"),
+  v.literal("backgroundVideo"),
+);
+export type ContentTable = Infer<typeof contentTable>;
+
+// One typed edit to a CMS record. Replayed exactly on Publish. Ids of records
+// created in the same draft are "new:<n>" until published.
+export const contentOp = v.union(
+  v.object({
+    op: v.literal("update"),
+    table: contentTable,
+    id: v.string(),
+    field: v.string(),
+    from: v.any(),
+    to: v.any(),
+  }),
+  v.object({ op: v.literal("create"), table: contentTable, id: v.string(), doc: v.any() }),
+  v.object({ op: v.literal("delete"), table: contentTable, id: v.string(), label: v.string() }),
+  v.object({ op: v.literal("reorder"), table: contentTable, ids: v.array(v.string()) }),
+);
+export type ContentOp = Infer<typeof contentOp>;
+
+// Whole-file contents per path (relative to the repo root). `content: null`
+// deletes the file. `baseSha` is the blob the agent read, for the
+// files-changed check on Publish.
+export const codeEdit = v.object({
+  path: v.string(),
+  content: v.union(v.string(), v.null()),
+  baseSha: v.union(v.string(), v.null()),
+});
+export type CodeEdit = Infer<typeof codeEdit>;
+
+// One plain-English item for the walkthrough.
+export const changeItem = v.object({
+  summary: v.string(),
+  kind: v.union(v.literal("content"), v.literal("code")),
+  // Website route where the change shows, e.g. "/summary". Absent for
+  // changes with no visible page (backend or CMS code).
+  page: v.optional(v.string()),
+  // How to find the element: a CSS selector and/or text it contains.
+  selector: v.optional(v.string()),
+  text: v.optional(v.string()),
+  // The text to look for in the "before" version, when it differs.
+  beforeText: v.optional(v.string()),
+});
+
+// A change the admin must confirm before it enters the draft.
+export const pendingConfirm = v.object({
+  kind: v.union(v.literal("delete_record"), v.literal("delete_file")),
+  table: v.optional(contentTable),
+  id: v.optional(v.string()),
+  path: v.optional(v.string()),
+  label: v.string(),
+  reason: v.string(),
+});
+
+export const providerName = v.union(v.literal("anthropic"), v.literal("openai"), v.literal("google"));
+export type ProviderName = Infer<typeof providerName>;
+
+export const modelRef = v.object({ provider: providerName, model: v.string() });
+export type ModelRef = Infer<typeof modelRef>;
+
 export default defineSchema({
   // users, authAccounts, authSessions, ... Every user is a CMS admin: there is
   // no public sign-up, accounts are created with `admin:createAdmin`.
@@ -36,6 +120,8 @@ export default defineSchema({
   // touched items are listed first.
   gallery: defineTable({
     imageId: v.id("images"),
+    // Text read out by screen readers in place of the picture.
+    altText: v.optional(v.string()),
     subtext: v.string(),
     createdAt: v.number(),
     legacyId: v.optional(v.number()),
@@ -47,6 +133,7 @@ export default defineSchema({
     name: v.string(),
     description: v.string(),
     logoId: v.id("images"),
+    altText: v.optional(v.string()),
     websiteUrl: v.optional(v.string()),
     createdAt: v.number(),
     legacyId: v.optional(v.number()),
@@ -59,6 +146,7 @@ export default defineSchema({
     subtitle: v.string(),
     content: v.string(),
     thumbnailId: v.id("images"),
+    altText: v.optional(v.string()),
     // ISO date, YYYY-MM-DD.
     publishedDate: v.string(),
     legacyId: v.optional(v.number()),
@@ -72,6 +160,7 @@ export default defineSchema({
     category: teamCategory,
     // Board members imported from the old site have no photo yet.
     photoId: v.optional(v.id("images")),
+    altText: v.optional(v.string()),
     bio: v.string(),
     createdAt: v.number(),
     legacyId: v.optional(v.number()),
@@ -99,4 +188,128 @@ export default defineSchema({
     error: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_uploadId", ["uploadId"]),
+
+  // ---- AI Assistant ----------------------------------------------------
+
+  // One draft per admin request, from the first edit to publish or discard.
+  changeSets: defineTable({
+    threadId: v.string(),
+    title: v.string(),
+    status: changeSetStatus,
+    contentOps: v.array(contentOp),
+    codeEdits: v.array(codeEdit),
+    changeList: v.array(changeItem),
+    // Head of the working branch when the draft read its first file.
+    baseCommitSha: v.optional(v.string()),
+    reviewAttempts: v.number(),
+    buildAttempts: v.number(),
+    // Latest compile/runtime error reported by the preview, if any.
+    buildError: v.optional(v.string()),
+    review: v.optional(
+      v.object({ verdict: v.union(v.literal("approved"), v.literal("rejected")), reasons: v.array(v.string()), at: v.number() }),
+    ),
+    pendingConfirm: v.optional(pendingConfirm),
+    // Why the agent stopped, in words for the admin (spend cap, error, ...).
+    notice: v.optional(v.string()),
+    editorModel: modelRef,
+    reviewerModel: modelRef,
+    // Set while an agent step is scheduled or running, so only one runs.
+    running: v.optional(v.boolean()),
+    // Bumped each time the agent is started or stopped; a step holding an older
+    // number gives up, so a stopped run can't carry on.
+    runSeq: v.optional(v.number()),
+    // The admin message the editor is answering, and model calls made for it.
+    promptMessageId: v.optional(v.string()),
+    stepCount: v.optional(v.number()),
+    // The element the admin clicked in the preview.
+    selectedElement: v.optional(v.any()),
+    versionId: v.optional(v.id("versions")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_threadId", ["threadId"])
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy", "createdAt"]),
+
+  // One row per publish (or rollback), used to roll back.
+  versions: defineTable({
+    changeSetId: v.optional(v.id("changeSets")),
+    kind: v.union(v.literal("content"), v.literal("code"), v.literal("mixed")),
+    summary: v.string(),
+    // Previous values of every touched record: `before` null = the publish
+    // created it; `after` null = the publish deleted it.
+    contentSnapshot: v.array(
+      v.object({ table: contentTable, id: v.string(), before: v.any(), after: v.any() }),
+    ),
+    // Code: the commit made, the one it was made on, and previous contents.
+    commitSha: v.optional(v.string()),
+    parentCommitSha: v.optional(v.string()),
+    files: v.optional(v.array(v.object({ path: v.string(), before: v.union(v.string(), v.null()) }))),
+    revertOf: v.optional(v.id("versions")),
+    revertedBy: v.optional(v.id("versions")),
+    status: v.union(v.literal("ok"), v.literal("content_pending"), v.literal("failed")),
+    error: v.optional(v.string()),
+    publishedBy: v.id("users"),
+    publishedAt: v.number(),
+  }).index("by_publishedAt", ["publishedAt"]),
+
+  // Every prompt, tool call, review verdict, publish and rollback.
+  auditLog: defineTable({
+    userId: v.optional(v.id("users")),
+    action: v.string(),
+    changeSetId: v.optional(v.id("changeSets")),
+    detail: v.any(),
+    costUsd: v.optional(v.number()),
+    at: v.number(),
+  })
+    .index("by_at", ["at"])
+    .index("by_changeSet", ["changeSetId", "at"]),
+
+  // Tokens and cost of each model call.
+  usage: defineTable({
+    month: v.string(), // YYYY-MM (UTC)
+    provider: v.string(),
+    model: v.string(),
+    role: v.union(v.literal("editor"), v.literal("reviewer")),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    costUsd: v.number(),
+    changeSetId: v.optional(v.id("changeSets")),
+    at: v.number(),
+  }).index("by_month", ["month"]),
+
+  // One row of agent settings. API keys are encrypted (AES-GCM, key in the
+  // AI_SETTINGS_KEY environment variable) and never sent to the browser.
+  aiSettings: defineTable({
+    providers: v.array(
+      v.object({ name: providerName, ciphertext: v.string(), iv: v.string(), last4: v.string(), updatedAt: v.number() }),
+    ),
+    editorModel: modelRef,
+    reviewerModel: modelRef,
+    monthlyBudgetUsd: v.number(),
+    // USD per million tokens.
+    priceTable: v.array(
+      v.object({ provider: providerName, model: v.string(), inputPerMTok: v.number(), outputPerMTok: v.number() }),
+    ),
+    pricesUpdatedAt: v.number(),
+    updatedAt: v.number(),
+  }),
+
+  // Cached copy of the working branch, read by the agent's code tools.
+  repoFiles: defineTable({
+    path: v.string(),
+    sha: v.string(),
+    // Text files only; binary files are listed with content null.
+    content: v.union(v.string(), v.null()),
+    commitSha: v.string(),
+  }).index("by_path", ["path"]),
+
+  // State of the repo cache: which commit it holds and when it was fetched.
+  repoCache: defineTable({
+    branch: v.string(),
+    commitSha: v.string(),
+    fetchedAt: v.number(),
+    fileCount: v.number(),
+  }),
 });

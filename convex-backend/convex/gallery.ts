@@ -1,15 +1,16 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireAdmin } from "./lib/access";
-import { text } from "./lib/validate";
+import { altTextPatch, text } from "./lib/validate";
 import { deleteImage, requireImage } from "./images";
 
-const fields = (args: { subtext?: string }) => ({
+const fields = (args: { subtext?: string; alt_text?: string }) => ({
   subtext: text(args.subtext ?? "", "Caption", { max: 255 }),
+  ...altTextPatch(args.alt_text),
 });
 
 export const create = mutation({
-  args: { imageId: v.id("images"), subtext: v.optional(v.string()) },
+  args: { imageId: v.id("images"), subtext: v.optional(v.string()), alt_text: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     return await ctx.db.insert("gallery", {
@@ -22,7 +23,7 @@ export const create = mutation({
 
 /** `imageId` is only passed when the picture was replaced. */
 export const update = mutation({
-  args: { id: v.id("gallery"), imageId: v.optional(v.id("images")), subtext: v.optional(v.string()) },
+  args: { id: v.id("gallery"), imageId: v.optional(v.id("images")), subtext: v.optional(v.string()), alt_text: v.optional(v.string()) },
   handler: async (ctx, { id, imageId, ...args }) => {
     await requireAdmin(ctx);
     const doc = await ctx.db.get(id);

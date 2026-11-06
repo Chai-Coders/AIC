@@ -1,0 +1,47 @@
+// What the preview pane and the Changes tab read.
+import { v } from "convex/values";
+import { query } from "../_generated/server";
+import { requireAdmin } from "../lib/access";
+import { toBackgroundVideo, toGallery, toNews, toStartup, toTeamMember } from "../content";
+import { loadTables } from "./drafts";
+import { lineDiff } from "./diff";
+import { applyOps, describeOp } from "./records";
+
+/** Site content in the shape of content:siteContent, with a draft applied. */
+export const siteContentPreview = query({
+  args: { changeSetId: v.optional(v.id("changeSets")) },
+  handler: async (ctx, { changeSetId }) => {
+    await requireAdmin(ctx);
+    const cs = changeSetId ? await ctx.db.get(changeSetId) : null;
+    const t = applyOps(await loadTables(ctx), cs?.contentOps ?? []);
+    const newest = (a: any, b: any) => (b.createdAt ?? 0) - (a.createdAt ?? 0);
+    return {
+      gallery: [...t.gallery].sort(newest).map((d) => toGallery(d as any)),
+      startups: [...t.startups].sort(newest).map((d) => toStartup(d as any)),
+      news: [...t.news].sort((a, b) => String(b.publishedDate).localeCompare(String(a.publishedDate))).map((d) => toNews(d as any)),
+      team: [...t.teamMembers].sort((a, b) => String(a.name).localeCompare(String(b.name))).map((d) => toTeamMember(d as any)),
+      background_video: t.backgroundVideo[0] ? toBackgroundVideo(t.backgroundVideo[0] as any) : null,
+    };
+  },
+});
+
+/** Everything in a draft, for the Changes tab. */
+export const changes = query({
+  args: { changeSetId: v.id("changeSets") },
+  handler: async (ctx, { changeSetId }) => {
+    await requireAdmin(ctx);
+    const cs = await ctx.db.get(changeSetId);
+    if (!cs) return null;
+    const code = [];
+    for (const edit of cs.codeEdits) {
+      const row = await ctx.db.query("repoFiles").withIndex("by_path", (q) => q.eq("path", edit.path)).unique();
+      code.push({
+        path: edit.path,
+        change: edit.content === null ? "deleted" : row ? "edited" : "new",
+        previewable: edit.path.startsWith("frontend/"),
+        diff: lineDiff(row?.content ?? null, edit.content),
+      });
+    }
+    return { content: cs.contentOps.map(describeOp), code };
+  },
+});

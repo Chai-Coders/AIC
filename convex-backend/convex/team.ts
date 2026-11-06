@@ -2,17 +2,19 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { teamCategory, type TeamCategory } from "./schema";
 import { requireAdmin } from "./lib/access";
-import { text } from "./lib/validate";
+import { altTextPatch, text } from "./lib/validate";
 import { deleteImage, requireImage } from "./images";
 
 const fieldArgs = {
+  alt_text: v.optional(v.string()),
   name: v.string(),
   role: v.string(),
   category: teamCategory,
   bio: v.optional(v.string()),
 };
 
-const fields = (args: { name: string; role: string; category: TeamCategory; bio?: string }) => ({
+const fields = (args: { name: string; role: string; category: TeamCategory; bio?: string; alt_text?: string }) => ({
+  ...altTextPatch(args.alt_text),
   name: text(args.name, "Full name", { required: true, max: 150 }),
   role: text(args.role, "Job title", { required: true, max: 150 }),
   category: args.category,

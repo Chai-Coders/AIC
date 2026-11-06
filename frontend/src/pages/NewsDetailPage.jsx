@@ -47,7 +47,7 @@ const NewsArticle = ({ id }) => {
         </header>
         {item.thumbnail && (
           <div className="media-frame article__media">
-            <img {...cdnImageProps(item.thumbnail, [800, 1200, 1600], '(min-width: 900px) 860px, 100vw')} alt="" onLoad={fitWideImage} />
+            <img {...cdnImageProps(item.thumbnail, [800, 1200, 1600], '(min-width: 900px) 860px, 100vw')} alt={item.alt_text || ''} onLoad={fitWideImage} />
           </div>
         )}
         {item.content && <div className="prose">{item.content}</div>}

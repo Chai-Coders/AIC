@@ -26,6 +26,16 @@ export const TEAM_CATEGORIES = [
   { value: 'mentor_india_academic', label: 'India Mentors - Academic' },
 ];
 
+// Describes the picture for people using screen readers (stored as `altText`).
+const ALT_TEXT_FIELD = {
+  name: 'alt_text',
+  label: 'Alt text',
+  type: 'text',
+  maxLength: 300,
+  placeholder: 'e.g. Founders presenting to the jury on Demo Day',
+  help: 'Optional. Describes the picture for people who can\'t see it.',
+};
+
 // Everything the UI needs to know about each editable section of the website:
 // how it is labelled, which form fields it has and how its items are summarised
 // on a card. `id` matches the keys of api.endpoints.
@@ -50,6 +60,7 @@ export const SECTIONS = {
         placeholder: 'e.g. Demo Day 2026 at the main hall',
         help: 'Optional. A short line shown with the photo.',
       },
+      ALT_TEXT_FIELD,
     ],
     summarize: (item) => ({
       title: item.subtext || 'Untitled photo',
@@ -84,6 +95,7 @@ export const SECTIONS = {
         required: true,
         placeholder: 'What does the startup do?',
       },
+      ALT_TEXT_FIELD,
     ],
     summarize: (item) => ({
       title: item.name || 'Unnamed startup',
@@ -120,6 +132,7 @@ export const SECTIONS = {
         required: true,
         placeholder: 'Write the full article here…',
       },
+      ALT_TEXT_FIELD,
     ],
     summarize: (item) => ({
       title: item.title || 'Untitled article',
@@ -151,6 +164,7 @@ export const SECTIONS = {
         help: 'Which group this person appears under on the website.',
       },
       { name: 'bio', label: 'Short bio', type: 'textarea', rows: 4, placeholder: 'Optional. A few lines about this person.' },
+      ALT_TEXT_FIELD,
     ],
     summarize: (item) => ({
       title: item.name || 'Unnamed member',

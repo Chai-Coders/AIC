@@ -12,7 +12,7 @@ const Row = ({ items, reverse }) => (
       {/* Items are rendered twice so the loop is seamless; the copy is hidden from assistive tech. */}
       {[...items, ...items].map((item, i) => (
         <li key={`${item.id}-${i}`} className="logo-tile" aria-hidden={i >= items.length || undefined}>
-          <img src={cdnImage(item.logo_or_image, 320)} alt={item.name} title={item.name} loading="lazy" decoding="async" />
+          <img src={cdnImage(item.logo_or_image, 320)} alt={item.alt_text || item.name} title={item.name} loading="lazy" decoding="async" />
         </li>
       ))}
     </ul>
