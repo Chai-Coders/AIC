@@ -4,11 +4,10 @@
 import { Agent, stepCountIs } from "@convex-dev/agent";
 import { generateText, hasToolCall } from "ai";
 import { ConvexError, v } from "convex/values";
-import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../_generated/server";
+import { internalAction, internalMutation, type ActionCtx } from "../_generated/server";
 import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { audit } from "./audit";
-import { lineDiff } from "./diff";
 import { afterEditorStep, haltForAdmin, MAX_REVIEW_RETRIES, resumeEditor } from "./flow";
 import { languageModel } from "./models";
 import { EDITOR_INSTRUCTIONS, REVIEWER_INSTRUCTIONS } from "./prompts";
@@ -135,15 +134,6 @@ export const editorStep = internalAction({
       return;
     }
 
-    // The session's copy of the code. Content edits still work if this fails.
-    if (!cs.stepCount) {
-      try {
-        await ctx.runAction(internal.ai.repo.sync, {});
-      } catch (e) {
-        await ctx.runMutation(internal.ai.audit.log, { changeSetId, action: "repo.syncFailed", detail: { error: errorText(e) } });
-      }
-    }
-
     try {
       const apiKey = await providerKey(ctx, ref.provider);
       const meta = { provider: ref.provider, model: ref.model, role: "editor" as const, changeSetId, userId: cs.createdBy };
@@ -179,20 +169,6 @@ export const editorStep = internalAction({
 });
 
 // ---- Review ----------------------------------------------------------------
-
-export const reviewMaterial = internalQuery({
-  args: { changeSetId: v.id("changeSets") },
-  handler: async (ctx, { changeSetId }) => {
-    const cs = await ctx.db.get(changeSetId);
-    if (!cs) return null;
-    const diffs = [];
-    for (const edit of cs.codeEdits) {
-      const row = await ctx.db.query("repoFiles").withIndex("by_path", (q) => q.eq("path", edit.path)).unique();
-      diffs.push(`--- ${edit.path}${edit.content === null ? " (deleted)" : row ? "" : " (new file)"}\n${lineDiff(row?.content ?? null, edit.content)}`);
-    }
-    return { diffs, ops: cs.contentOps.map(describeOp) };
-  },
-});
 
 export const saveVerdict = internalMutation({
   args: { changeSetId: v.id("changeSets"), runSeq: v.number(), approved: v.boolean(), reasons: v.array(v.string()) },
@@ -241,7 +217,6 @@ export const reviewStep = internalAction({
     try {
       await ctx.runQuery(internal.ai.usage.check, ref);
       const apiKey = await providerKey(ctx, ref.provider);
-      const material = (await ctx.runQuery(internal.ai.agent.reviewMaterial, { changeSetId }))!;
       const meta = { provider: ref.provider, model: ref.model, role: "reviewer" as const, changeSetId, userId: cs.createdBy };
       let verdict: { approved: boolean; reasons: string[] } | null = null;
       let overBudget = false;
@@ -249,8 +224,7 @@ export const reviewStep = internalAction({
       const prompt = [
         `What the admin asked for:\n${cs.title}`,
         `Change list shown to the admin:\n${cs.changeList.map((c) => `- ${c.summary}${c.page ? ` (${c.page})` : ""}`).join("\n") || "(empty)"}`,
-        `Content edits:\n${material.ops.join("\n") || "(none)"}`,
-        `Code edits (line diffs):\n${material.diffs.join("\n\n") || "(none)"}`,
+        `Edits in the draft:\n${cs.contentOps.map(describeOp).join("\n") || "(none)"}`,
       ].join("\n\n");
 
       // Providers can't all be forced to call a tool, so a review ending without

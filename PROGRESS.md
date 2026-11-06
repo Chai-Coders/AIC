@@ -1,25 +1,35 @@
 # AIC CMS AI Agent — Progress
 
-Design doc: `AIC CMS AI Agent — Design Doc.md` (repo root, not committed).
+Design doc: `AIC CMS AI Agent — Design Doc.md` (repo root, not committed; frozen).
 Setup and behaviour: `docs/ai-agent.md`. Tests: `convex-backend/tests/ai/README.md`.
-Last updated: 2026-11-06.
+Last updated: 2026-11-07.
 
 ## Branch status
 
 Work is on `migrations-johny`, with `migrations` merged in up to d109e45 (Abhijith's Site text editor).
-All commits for this feature go to `migrations-johny` only. `migrations` itself is untouched.
+All commits for this feature go to `migrations-johny` only.
 
-## Decisions from the open questions (answered 2026-11-06)
+## Decisions
 
-- Convex backend: runs locally (`npx convex dev`). Containers come later.
-- CMS (`cms_gui/`): runs locally for now. Containers come later.
-- Preview: edits are shown in the right pane, next to the chat on the left. `frontend/` renders
-  live; `convex-backend/` and `cms_gui/` changes show as a plain-English list and diff.
-- Branch: feature work goes to `migrations-johny`. The agent's Publish target also defaults to it.
-- Protected files: enforced, confirmed by Johnston. The list goes beyond the proposal (see below).
-  One file to change: `convex-backend/convex/ai/protected.ts`.
-- Budget currency: USD, confirmed by Johnston.
-- Align with Abhijith's version of `migrations`, confirmed by Johnston. **The design doc doesn't change.**
+- Convex backend and the CMS run locally for now. Containers come later.
+- **Changes are saved to Convex only. The agent doesn't touch source code or GitHub** (Johnston, 2026-11-07).
+- **The preview is the real website in a frame**, as on the Site text page, not a Sandpack sandbox (2026-11-07).
+- Budget currency: USD.
+- Align with Abhijith's Site text work. Sanjay's later work on `migrations` is deliberately not looked at or merged.
+
+## Where the build differs from the design doc
+
+The design doc is frozen and stays as it was approved. These differences are recorded here instead.
+
+- **Edit paths.** The doc has a content path and a code path, with Publish committing through GitHub. Only the
+  content path exists. So the agent can't change layout, styling or components, which the doc's goals include.
+- **Build check, protected files, deploy wait, code rollback.** These existed only for the code path and are gone.
+- **Preview.** The doc says Sandpack, with Vercel previews as the fallback. It's the real site in a frame, which also
+  means no Sandpack dependency.
+- **Hardcoded text.** The doc says it stays in code for v1. Abhijith's work moved it into `registry.js` with a `siteText`
+  override table, and the agent edits those rows with `get_site_text` and `update_site_text`.
+- **Pointing** takes up to 10 elements at once. The doc describes one.
+- **Tools.** `get_site_text`, `update_site_text` and `remove_change` are additions; the code tools are removed.
 
 ## Phases
 
@@ -27,71 +37,28 @@ Numbered 0–7 here; the design doc numbers them 1–8.
 
 | # | Phase | Status |
 |---|-------|--------|
-| 0 | Sandpack prototype | ✅ Gate re-run on the final preview code: 0.00% pixel difference on /, /summary, /news, /aicteam |
+| 0 | Preview | ✅ Real site in a frame: same images, buttons, links, headings and fonts as the public site on 11 pages |
 | 1 | Backend foundation | ✅ |
 | 2 | Content path | ✅ |
 | 3 | AI Assistant page | ✅ |
-| 4 | Code path | ✅ against a fake GitHub. ⚠️ Not yet run against the real API |
+| 4 | Code path | ❌ Removed by decision |
 | 5 | Review agent | ✅ |
-| 6 | Click to point | ✅ |
-| 7 | Hardening | ✅ `tests/ai`: 29 backend checks and 11 browser scenarios, on the merged code |
-
-## Where the build differs from the design doc
-
-The design doc is frozen and stays as it was approved. These differences are recorded here instead.
-
-- **Hardcoded text.** The doc says hardcoded text stays in code for v1, the agent edits it there, and moving it
-  into the CMS is a later phase. Abhijith's work on `migrations` has since moved it into `registry.js` with a
-  `siteText` override table. To align with it, website text is part of the content path: `get_site_text` and
-  `update_site_text`, with a typed `text` op that previews, publishes and rolls back like other content.
-- **Agent tools.** The two tools above are additions to the doc's tool list.
-- **Tables.** `siteText` is Abhijith's. `repoFiles` and `repoCache` hold the cached branch. The doc lists 5 new tables.
-
-## Waiting on a decision
-
-`origin/migrations` moved on after this merge, to e6fe753 (Sanjay's version history, MCP server and AI connection).
-It isn't merged here: it adds its own `versions` table with a different shape, and its own AI draft, approval and
-undo flow, overlapping the ChangeSet and rollback flow here. Merging conflicts in 7 files and means choosing one system.
-
-## Reviews (2026-11-06)
-
-- Security review: no finding reached the confidence bar. Its hardening notes are applied (more build files and
-  entry points protected, no new files under `convex-backend/convex/`, stricter path checks).
-- Code review: 9 of 10 findings fixed. Not changed, because the design doc lets the agent edit these folders: the
-  agent can still add exports to existing `convex/*.ts` files, and `registry.js` being plain data is checked only by
-  the review agent. A real fix is making `convex-backend/` read-only for the agent and importing the registry as JSON.
+| 6 | Click to point | ✅ Several at once |
+| 7 | Hardening | ✅ `tests/ai` |
 
 ## Verified against real services
 
-- Gemini (`gemini-3.5-flash-lite`, free plan), 2026-11-07: a real content edit from the AI Assistant page, including
-  pointing at two things, review, publish and rollback.
+Gemini (`gemini-3.5-flash-lite`, free plan): content edits from the AI Assistant page, including pointing, review,
+publish and rollback. Other tests use a scripted fake model. Claude's request shape was checked against a fake; OpenAI
+has no default prices. On 2026-11-07 `gemini-3.8-flash` was returning 503 (high demand), and `gemini-2.5-flash-lite`
+returned 404 for new users though Google's pricing page still lists it.
 
-## Not verified yet
+## Open
 
-The other tests use a scripted fake model and a fake GitHub. Still to try for real, in order:
-
-1. A `GITHUB_TOKEN` with a small `frontend/` edit, publish and rollback on a scratch branch (`GITHUB_BRANCH`).
-2. A mixed change, to see whether Vercel's checks report on the branch. If nothing deploys it, use Apply content.
-3. Claude and OpenAI. Claude's request shape was checked against a fake. OpenAI has no default prices.
-4. Gemini on a long code task: free-plan limits may be hit, and `gemini-3.8-flash` was returning 503 (high demand)
-   on 2026-11-07. `gemini-2.5-flash-lite` returns 404 for new users, though Google's pricing page still lists it.
-
-## Choices beyond the design doc
-
-- Pointing takes several elements at once (up to 10), numbered in the preview. The doc describes a single element.
-- The right pane copies the Site text page's browser frame, with Desktop/Phone, draggable panes and a side-by-side view.
-
-- Protected list also covers `schema.ts`, `admin.ts`, `http.ts`, `crons.ts`, `AuthContext`, `LoginPage`,
-  `services/convex.js`, the CMS's `main.jsx` and `index.html`, `package.json` and lockfiles, build and deploy
-  settings, and scripts. The agent also can't add new files under `convex-backend/convex/`. Dependency and build files run
-  code on install or build, which is the obvious path for instructions hidden in content.
-- Publish also stops on content conflicts (a record changed since the draft), not just file changes.
-- A draft with a failing build can't be published even by override; a review objection can.
-- `edit_file` accepts exact replacements as well as whole files, to cut token cost. Drafts still store whole files.
-- The preview drives `sandpack-client` directly. `SandpackProvider` loses its client under StrictMode, which
-  silently dropped all file updates and errors; the Phase 0 gate only tested first render, so it didn't show.
+- Should the agent be able to change styling or layout? It could only do so through data the site reads from Convex
+  (for example theme colours or showing and hiding sections), which needs site support first.
 
 ## Follow-ups
 
 - Prompt caching for the editor: each step resends the conversation, so this is the biggest saving available.
-- `docs/ai-agent.md` lists the known limits.
+- A container build of `convex-backend/` needs `frontend/src/content/registry.js` in its build context.

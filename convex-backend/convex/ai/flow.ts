@@ -1,13 +1,11 @@
-// Moves a draft between states: running the editor, the build check, the review
-// and back. Helpers for mutations; the agents themselves are in agent.ts.
+// Moves a draft between states: running the editor, the review and back. Helpers for mutations; the agents themselves are in agent.ts.
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { components, internal } from "../_generated/api";
 import { saveMessage } from "@convex-dev/agent";
 import { audit } from "./audit";
 
-// Retry limits from the design: separate for build errors and review rejections.
-export const MAX_BUILD_RETRIES = 2;
+// The review sends a draft back up to twice, then the admin decides.
 export const MAX_REVIEW_RETRIES = 2;
 const MAX_EDITOR_STEPS = 40;
 export const NOTE_PREFIX = "[Automated note] ";
@@ -41,14 +39,9 @@ export async function resumeEditor(ctx: MutationCtx, cs: Doc<"changeSets">, note
 /** The editor finished its turn: run the checks if it changed anything. */
 export async function finishEditing(ctx: MutationCtx, cs: Doc<"changeSets">) {
   const now = Date.now();
-  if (cs.contentOps.length === 0 && cs.codeEdits.length === 0) {
-    // Just a reply or a question; the draft stays open.
-    await ctx.db.patch(cs._id, { running: false, updatedAt: now });
-    return;
-  }
-  if (cs.codeEdits.some((e) => e.path.startsWith("frontend/"))) {
-    // The admin's browser compiles the preview and reports back (reportBuild).
-    await ctx.db.patch(cs._id, { status: "building", running: false, updatedAt: now });
+  if (cs.contentOps.length === 0) {
+    // Just a reply or a question, or edits that changed nothing; the draft stays open.
+    await ctx.db.patch(cs._id, { running: false, changeList: [], updatedAt: now });
     return;
   }
   await startReview(ctx, cs);
@@ -56,7 +49,7 @@ export async function finishEditing(ctx: MutationCtx, cs: Doc<"changeSets">) {
 
 export async function startReview(ctx: MutationCtx, cs: Doc<"changeSets">) {
   const runSeq = (cs.runSeq ?? 0) + 1;
-  await ctx.db.patch(cs._id, { status: "reviewing", running: true, runSeq, rateLimitWaits: 0, notice: undefined, buildError: undefined, updatedAt: Date.now() });
+  await ctx.db.patch(cs._id, { status: "reviewing", running: true, runSeq, rateLimitWaits: 0, notice: undefined, updatedAt: Date.now() });
   await ctx.scheduler.runAfter(0, internal.ai.agent.reviewStep, { changeSetId: cs._id, runSeq });
 }
 

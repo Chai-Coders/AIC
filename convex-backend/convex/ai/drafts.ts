@@ -9,12 +9,6 @@ import { imageUrl } from "../images";
 import { checkSiteText } from "../siteText";
 import { findTextFields, textField, textKeyForValue } from "./textFields";
 import { applyTextOps, canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
-import { cleanPath, editBlockedReason, isSecretPath, newFileBlockedReason } from "./protected";
-
-// A Convex document can hold 1 MiB and a draft keeps whole files.
-const MAX_DRAFT_CODE_CHARS = 800_000;
-const MAX_READ_CHARS = 60_000;
-const SEARCH_LIMIT = 30;
 
 export async function loadTables(ctx: QueryCtx): Promise<Tables> {
   const [gallery, startups, news, teamMembers, backgroundVideo] = await Promise.all([
@@ -47,9 +41,9 @@ async function requireDrafting(ctx: QueryCtx, changeSetId: Id<"changeSets">, run
   return cs;
 }
 
-/** Any edit invalidates an earlier review verdict and build error. */
+/** Any edit invalidates an earlier review verdict. */
 async function patchDraft(ctx: MutationCtx, cs: Doc<"changeSets">, patch: Partial<Doc<"changeSets">>) {
-  await ctx.db.patch(cs._id, { ...patch, review: undefined, buildError: undefined, updatedAt: Date.now() });
+  await ctx.db.patch(cs._id, { ...patch, review: undefined, updatedAt: Date.now() });
 }
 
 const realDoc = async (ctx: QueryCtx, table: ContentTable, id: string) => {
@@ -153,99 +147,18 @@ export const searchMedia = internalQuery({
   },
 });
 
-/** Text of one path with the draft applied. Undefined when it doesn't exist. */
-async function draftFile(ctx: QueryCtx, cs: Doc<"changeSets">, path: string) {
-  const edit = cs.codeEdits.find((e) => e.path === path);
-  if (edit) return { content: edit.content, inDraft: true };
-  const row = await ctx.db.query("repoFiles").withIndex("by_path", (q) => q.eq("path", path)).unique();
-  if (!row) return { content: null as string | null, inDraft: false, missing: true };
-  return { content: row.content, inDraft: false, binary: row.content === null };
-}
-
-export const readFile = internalQuery({
-  args: { changeSetId: v.id("changeSets"), path: v.string(), fromLine: v.optional(v.number()), toLine: v.optional(v.number()) },
-  handler: async (ctx, { changeSetId, path, fromLine, toLine }) => {
-    const cs = await requireDraft(ctx, changeSetId);
-    const clean = cleanPath(path);
-    if (!clean || isSecretPath(clean)) return { error: "That file can't be read." };
-    if (!(await ctx.db.query("repoCache").first())) return { error: "Code changes aren't set up: there is no copy of the repository on the server." };
-    const file = await draftFile(ctx, cs, clean);
-    if (file.content === null) {
-      return { error: file.binary ? "That is a binary file." : `${clean} doesn't exist.` };
-    }
-    const lines = file.content.split("\n");
-    const start = Math.max(1, fromLine ?? 1);
-    const end = Math.min(lines.length, toLine ?? lines.length);
-    const text = lines.slice(start - 1, end).join("\n");
-    const blocked = editBlockedReason(clean);
-    return {
-      path: clean,
-      totalLines: lines.length,
-      fromLine: start,
-      toLine: end,
-      inDraft: file.inDraft,
-      ...(blocked ? { readOnly: `This file can't be edited: ${blocked}.` } : {}),
-      ...(text.length > MAX_READ_CHARS
-        ? { content: text.slice(0, MAX_READ_CHARS), cut: "Too long to read at once; ask for a line range." }
-        : { content: text }),
-    };
-  },
-});
-
-async function draftFiles(ctx: QueryCtx, cs: Doc<"changeSets">) {
-  const edits = new Map(cs.codeEdits.map((e) => [e.path, e.content]));
-  const rows = await ctx.db.query("repoFiles").collect();
-  const files = rows.filter((r) => !edits.has(r.path)).map((r) => ({ path: r.path, content: r.content }));
-  for (const [path, content] of edits) files.push({ path, content });
-  return files;
-}
-
-function searchFiles(files: { path: string; content: string | null }[], query: string, folder?: string) {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return [];
-  const hits: { path: string; line: number; text: string }[] = [];
-  for (const file of files) {
-    if (file.content === null || (folder && !file.path.startsWith(folder))) continue;
-    const lines = file.content.split("\n");
-    for (let i = 0; i < lines.length && hits.length < SEARCH_LIMIT; i++) {
-      if (lines[i].toLowerCase().includes(needle)) hits.push({ path: file.path, line: i + 1, text: lines[i].trim().slice(0, 200) });
-    }
-    if (hits.length >= SEARCH_LIMIT) break;
-  }
-  return hits;
-}
-
-export const searchCode = internalQuery({
-  args: { changeSetId: v.id("changeSets"), query: v.string(), folder: v.optional(v.string()) },
-  handler: async (ctx, { changeSetId, query, folder }) => {
-    const cs = await requireDraft(ctx, changeSetId);
-    if (!(await ctx.db.query("repoCache").first())) return { error: "Code changes aren't set up: there is no copy of the repository on the server." };
-    const hits = searchFiles(await draftFiles(ctx, cs), query, folder);
-    return { matches: hits, ...(hits.length >= SEARCH_LIMIT ? { note: `Only the first ${SEARCH_LIMIT} shown; search for something more specific.` } : {}) };
-  },
-});
-
-/** The clicked elements, each with where it most likely lives in the source. */
+/** The clicked elements, each with the website text it shows, if any. */
 export const selectedElements = internalQuery({
   args: { changeSetId: v.id("changeSets") },
   handler: async (ctx, { changeSetId }) => {
     const cs = await requireDraft(ctx, changeSetId);
     const elements = cs.selectedElements ?? [];
     if (!elements.length) return { error: "The admin hasn't pointed at anything." };
-    const files = await draftFiles(ctx, cs);
-    // Most wording is website text, edited with update_site_text, not in the source.
     const values = applyTextOps(await ctx.db.query("siteText").collect(), cs.contentOps);
     return {
       elements: elements.map((el) => {
-        const candidates = [el.text, ...(el.classes ?? []), el.sectionHeading].filter((x) => typeof x === "string" && x.trim());
-        let nearestSource: { path: string; line: number; text: string }[] = [];
-        for (const candidate of candidates) {
-          // Long text wraps across JSX lines, so match on its first words.
-          nearestSource = searchFiles(files, candidate.trim().split("\n")[0].slice(0, 60), "frontend/src/");
-          if (nearestSource.length) break;
-        }
-        const siteTextKey = typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
-        return { element: el, ...(siteTextKey ? { siteTextKey } : {}), nearestSource: nearestSource.slice(0, 5) };
+        const key = typeof el.key === "string" && textField(el.key) ? el.key : typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
+        return { ...el, key, ...(key ? { showsNow: values[key] ?? textField(key)?.value } : {}) };
       }),
     };
   },
@@ -359,114 +272,21 @@ export const queueDeleteRecord = internalMutation({
   },
 });
 
-// ---- Code edits ------------------------------------------------------------
-
-async function writeFile(ctx: MutationCtx, cs: Doc<"changeSets">, path: string, content: string | null) {
-  const row = await ctx.db.query("repoFiles").withIndex("by_path", (q) => q.eq("path", path)).unique();
-  const previous = cs.codeEdits.find((e) => e.path === path);
-  const baseSha = previous ? previous.baseSha : (row?.sha ?? null);
-  const rest = cs.codeEdits.filter((e) => e.path !== path);
-  const unchanged = row ? row.content === content : content === null;
-  const codeEdits = unchanged ? rest : [...rest, { path, content, baseSha }];
-  const size = codeEdits.reduce((sum, e) => sum + (e.content?.length ?? 0), 0);
-  if (size > MAX_DRAFT_CODE_CHARS) {
-    throw new ConvexError("This draft has grown too large to store. Publish or discard it, then make the rest as a separate request.");
-  }
-  const cache = await ctx.db.query("repoCache").first();
-  await patchDraft(ctx, cs, { codeEdits, baseCommitSha: cs.baseCommitSha ?? cache?.commitSha });
-}
-
-function editablePath(path: string) {
-  const clean = cleanPath(path);
-  if (!clean) throw new ConvexError(`"${path}" isn't a valid path.`);
-  const blocked = editBlockedReason(clean);
-  if (blocked) throw new ConvexError(`${clean} can't be edited by the AI Assistant: ${blocked}. Tell the admin a developer has to make this change.`);
-  return clean;
-}
-
-/** Whole new contents, or exact replacements (cheaper for large files). */
-export const editFile = internalMutation({
-  args: {
-    changeSetId: v.id("changeSets"), runSeq: v.number(),
-    path: v.string(),
-    content: v.optional(v.string()),
-    replacements: v.optional(v.array(v.object({ find: v.string(), replace: v.string() }))),
-  },
-  handler: async (ctx, { changeSetId, runSeq, path, content, replacements }) => {
-    const cs = await requireDrafting(ctx, changeSetId, runSeq);
-    const clean = editablePath(path);
-    const current = await draftFile(ctx, cs, clean);
-    if (current.content === null) throw new ConvexError(`${clean} doesn't exist. Use create_file, or read the file first.`);
-    let next = content ?? current.content;
-    if (content === undefined && !replacements?.length) throw new ConvexError("Give either content or replacements.");
-    for (const { find, replace } of replacements ?? []) {
-      const count = find ? next.split(find).length - 1 : 0;
-      if (count !== 1) {
-        throw new ConvexError(`"${find.slice(0, 80)}" appears ${count} times in ${clean}; it must match exactly once. Read the file and use a longer, exact snippet.`);
-      }
-      next = next.replace(find, () => replace);
-    }
-    await writeFile(ctx, cs, clean, next);
-    return { ok: true, path: clean, lines: next.split("\n").length };
-  },
-});
-
-export const createFile = internalMutation({
-  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), path: v.string(), content: v.string() },
-  handler: async (ctx, { changeSetId, runSeq, path, content }) => {
-    const cs = await requireDrafting(ctx, changeSetId, runSeq);
-    const clean = editablePath(path);
-    const current = await draftFile(ctx, cs, clean);
-    if (current.content !== null || current.binary) throw new ConvexError(`${clean} already exists. Use edit_file.`);
-    const blocked = newFileBlockedReason(clean);
-    if (blocked) throw new ConvexError(`${clean} can't be edited by the AI Assistant: ${blocked}. Tell the admin a developer has to make this change.`);
-    await writeFile(ctx, cs, clean, content);
-    return { ok: true, path: clean };
-  },
-});
-
-export const queueDeleteFile = internalMutation({
-  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), path: v.string(), reason: v.string() },
-  handler: async (ctx, { changeSetId, runSeq, path, reason }) => {
-    const cs = await requireDrafting(ctx, changeSetId, runSeq);
-    const clean = editablePath(path);
-    const edit = cs.codeEdits.find((e) => e.path === clean);
-    if (edit && edit.baseSha === null) {
-      // Only exists in this draft, so nothing to confirm.
-      await patchDraft(ctx, cs, { codeEdits: cs.codeEdits.filter((e) => e !== edit) });
-      return { ok: true };
-    }
-    if ((await draftFile(ctx, cs, clean)).content === null) throw new ConvexError(`${clean} doesn't exist.`);
-    await ctx.db.patch(cs._id, {
-      status: "needs_admin",
-      running: false,
-      pendingConfirm: { kind: "delete_file", path: clean, label: clean, reason },
-      updatedAt: Date.now(),
-    });
-    return { ok: true, waiting: "Paused until the admin confirms this delete. End your turn now." };
-  },
-});
-
 /** Called once the admin has confirmed. Adds the pending delete to the draft. */
 export async function applyConfirmedDelete(ctx: MutationCtx, cs: Doc<"changeSets">) {
   const pending = cs.pendingConfirm;
-  if (!pending) return;
-  if (pending.kind === "delete_record") {
-    const contentOps = cs.contentOps.filter((op) => !("id" in op && op.id === pending.id));
-    contentOps.push({ op: "delete", table: pending.table!, id: pending.id!, label: pending.label });
-    await patchDraft(ctx, cs, { contentOps, pendingConfirm: undefined });
-  } else {
-    await writeFile(ctx, cs, pending.path!, null);
-    await ctx.db.patch(cs._id, { pendingConfirm: undefined });
-  }
+  if (!pending?.table || !pending.id) return;
+  const contentOps = cs.contentOps.filter((op) => !("id" in op && op.id === pending.id));
+  contentOps.push({ op: "delete", table: pending.table, id: pending.id, label: pending.label });
+  await patchDraft(ctx, cs, { contentOps, pendingConfirm: undefined });
 }
 
 export const describeChange = internalMutation({
   args: {
     changeSetId: v.id("changeSets"), runSeq: v.number(),
     summary: v.string(),
-    kind: v.union(v.literal("content"), v.literal("code")),
     page: v.optional(v.string()),
+    textKey: v.optional(v.string()),
     selector: v.optional(v.string()),
     text: v.optional(v.string()),
     beforeText: v.optional(v.string()),

@@ -4,7 +4,6 @@ import { query } from "../_generated/server";
 import { requireAdmin } from "../lib/access";
 import { toBackgroundVideo, toGallery, toNews, toStartup, toTeamMember } from "../content";
 import { loadTables } from "./drafts";
-import { lineDiff } from "./diff";
 import { applyOps, applyTextOps, describeOp } from "./records";
 
 /** Site content in the shape of content:siteContent, with a draft applied. */
@@ -35,16 +34,6 @@ export const changes = query({
     await requireAdmin(ctx);
     const cs = await ctx.db.get(changeSetId);
     if (!cs) return null;
-    const code = [];
-    for (const edit of cs.codeEdits) {
-      const row = await ctx.db.query("repoFiles").withIndex("by_path", (q) => q.eq("path", edit.path)).unique();
-      code.push({
-        path: edit.path,
-        change: edit.content === null ? "deleted" : row ? "edited" : "new",
-        previewable: edit.path.startsWith("frontend/"),
-        diff: lineDiff(row?.content ?? null, edit.content),
-      });
-    }
-    return { content: cs.contentOps.map(describeOp), code };
+    return { content: cs.contentOps.map(describeOp) };
   },
 });

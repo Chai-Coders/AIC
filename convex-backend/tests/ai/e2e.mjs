@@ -45,17 +45,16 @@ const rejects = async (fn, pattern) => {
 };
 const spent = async () => (await c.query(api.ai.usage.meter, {})).spentUsd;
 
-const describe = (summary, extra = {}) => ['describe_change', { summary, kind: 'content', ...extra }];
+const describe = (summary, extra = {}) => ['describe_change', { summary, ...extra }];
 const OK = { tools: [['approve', {}]] };
 const DONE = { text: 'Done.' };
-const FILE = 'frontend/src/pages/NotFoundPage.jsx';
 
 const tests = {
   async 'browser access: everything needs a session, and keys never come back'() {
     await rejects(() => anon.query(api.ai.settings.get, {}), /session/i);
     await rejects(() => anon.mutation(api.ai.chat.send, { prompt: 'hi' }), /session/i);
     await rejects(() => anon.query(api.ai.preview.siteContentPreview, {}), /session/i);
-    await rejects(() => anon.action(api.ai.versions.rollback, { versionId: 'x' }), /./);
+    await rejects(() => anon.mutation(api.ai.versions.rollback, { versionId: 'x' }), /./);
     const s = await c.query(api.ai.settings.get, {});
     const text = JSON.stringify(s);
     assert.ok(!text.includes('sk-ant-fake') && !text.includes('ciphertext'), 'settings leak the key');
@@ -63,11 +62,12 @@ const tests = {
   },
 
   async 'content path: draft stays private until Publish, then rolls back'() {
+    const NEW = `Edited by the agent ${Date.now()}`;
     const before = await live();
     const item = before.news[0];
     await script([
       { tools: [['get_site_content', { table: 'news', query: item.title.slice(0, 8) }]] },
-      { tools: [['update_record', { table: 'news', id: item.id, field: 'title', value: 'Edited by the agent' }], describe('Changed the headline', { page: '/news', text: 'Edited by the agent' })] },
+      { tools: [['update_record', { table: 'news', id: item.id, field: 'title', value: NEW }], describe('Changed the headline', { page: '/news', text: NEW })] },
       DONE,
       OK,
     ]);
@@ -83,30 +83,41 @@ const tests = {
     assert.ok(calls[2].messages.length > calls[1].messages.length, 'progress carries over between scheduled steps');
     assert.ok(calls.every((x) => !['any', 'tool'].includes(x.tool_choice?.type)), 'forced tool choice is rejected by current models');
     assert.ok(calls[3].tools.includes('approve') && !calls[3].tools.includes('edit_file'), 'the reviewer can only read and judge');
-    assert.ok(calls[3].messages[0].content[0].text.includes('Edited by the agent'), 'the reviewer sees the edit');
-    assert.ok(!JSON.stringify(calls).includes('fake-token'), 'the GitHub token reaches the model');
+    assert.ok(calls[3].messages[0].content[0].text.includes(NEW), 'the reviewer sees the edit');
+    assert.ok(!JSON.stringify(calls.map((x) => [x.system, x.messages])).includes('sk-ant-fake'), 'a provider key reached the model');
 
     assert.equal((await live()).news[0].title, item.title, 'live content changed before Publish');
     const preview = await c.query(api.ai.preview.siteContentPreview, { changeSetId });
-    assert.equal(preview.news.find((n) => n.id === item.id).title, 'Edited by the agent');
+    assert.equal(preview.news.find((n) => n.id === item.id).title, NEW);
 
-    await c.action(api.ai.publish.publish, { changeSetId });
-    assert.equal((await live()).news.find((n) => n.id === item.id).title, 'Edited by the agent');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    assert.equal((await live()).news.find((n) => n.id === item.id).title, NEW);
     assert.equal((await draftOf(threadId)).status, 'published');
 
     const [version] = await c.query(api.ai.versions.list, {});
-    assert.equal(version.kind, 'content');
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
     assert.equal((await live()).news.find((n) => n.id === item.id).title, item.title);
     const [newest, old] = await c.query(api.ai.versions.list, {});
     assert.ok(newest.isRollback && old.rolledBack);
-    await rejects(() => c.action(api.ai.versions.rollback, { versionId: version.id }), /already/);
+    await rejects(() => c.mutation(api.ai.versions.rollback, { versionId: version.id }), /already/);
 
     const log = await c.query(api.ai.audit.list, { changeSetId });
-    for (const action of ['prompt', 'tool.update_record', 'model.editor', 'model.reviewer', 'review.approved', 'publish.start', 'rollback']) {
+    for (const action of ['prompt', 'tool.update_record', 'model.editor', 'model.reviewer', 'review.approved', 'publish', 'rollback']) {
       assert.ok(log.some((row) => row.action === action), `audit log has ${action}`);
     }
     assert.ok(log.some((row) => row.action === 'model.editor' && row.costUsd > 0), 'audit log has the cost');
+  },
+
+  async 'the agent only changes data: it has no code or GitHub tools'() {
+    await script([{ text: 'A developer has to do that.' }]);
+    const { threadId, changeSetId } = await say('Make the button red');
+    await inState(threadId, 'drafting');
+    const { calls } = await control('state');
+    const tools = calls[0].tools;
+    for (const name of ['update_site_text', 'update_record', 'delete_record', 'describe_change']) assert.ok(tools.includes(name), `missing ${name}`);
+    for (const name of ['edit_file', 'create_file', 'delete_file', 'read_file', 'search_code']) assert.ok(!tools.includes(name), `still has ${name}`);
+    assert.ok(/can't change the site's code/.test(JSON.stringify(calls[0].system)), 'it is told to send those to a developer');
+    await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 
   async 'requests fit what current Claude models accept'() {
@@ -141,7 +152,6 @@ const tests = {
     let { threadId, changeSetId } = await say('Change the not found heading');
     let d = await inState(threadId, 'ready');
     assert.deepEqual(d.contentOps[0], { op: 'text', key: KEY, from: null, to: 'Lost page' });
-    assert.equal(d.codeEdits.length, 0, 'wording is content, not a code edit');
     const { calls } = await control('state');
     assert.ok(toolResults(calls[1]).includes(KEY), 'search finds the key from the words on the page');
     assert.ok(toolResults(calls[1]).includes('Page not found'), 'and says which page it is on');
@@ -151,7 +161,7 @@ const tests = {
     const preview = await c.query(api.ai.preview.siteContentPreview, { changeSetId });
     assert.equal(textOf(preview), 'Lost page');
 
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     assert.equal(textOf(await live()), 'Lost page');
 
     // A second publish over it, then going back to the code's text with null.
@@ -159,22 +169,22 @@ const tests = {
     ({ threadId, changeSetId } = await say('Reword it'));
     d = await inState(threadId, 'ready');
     assert.equal(d.contentOps[0].from, 'Lost page');
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     await script([draftTo(null), DONE, OK]);
     ({ threadId, changeSetId } = await say('Back to the original'));
     await inState(threadId, 'ready');
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     assert.equal(textOf(await live()), undefined, 'null removes the edit');
 
     // Rollbacks restore each state: no row, then the earlier value.
     let [newest, previous] = await c.query(api.ai.versions.list, {});
-    await c.action(api.ai.versions.rollback, { versionId: newest.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: newest.id });
     assert.equal(textOf(await live()), 'Lost again');
-    await c.action(api.ai.versions.rollback, { versionId: previous.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: previous.id });
     assert.equal(textOf(await live()), 'Lost page');
     const list = await c.query(api.ai.versions.list, {});
     const first = list.find((v) => !v.isRollback && !v.rolledBack);
-    await c.action(api.ai.versions.rollback, { versionId: first.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: first.id });
     assert.equal(textOf(await live()), undefined, 'back to the text in the code');
   },
 
@@ -184,7 +194,7 @@ const tests = {
     let { threadId, changeSetId } = await say('Change the description');
     await inState(threadId, 'ready');
     await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: 'Admin words' }] });
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /has changed/);
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId }), /has changed/);
     assert.equal((await live()).text.find((t) => t.key === KEY).value, 'Admin words');
     await c.mutation(api.ai.chat.discard, { changeSetId });
 
@@ -192,10 +202,10 @@ const tests = {
     await script([{ tools: [['update_site_text', { key: KEY, value: 'Agent words' }]] }, DONE, OK]);
     ({ threadId, changeSetId } = await say('Change it again'));
     await inState(threadId, 'ready');
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     const [version] = await c.query(api.ai.versions.list, {});
     await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: 'Admin again' }] });
-    await rejects(() => c.action(api.ai.versions.rollback, { versionId: version.id }), /changed after this publish/);
+    await rejects(() => c.mutation(api.ai.versions.rollback, { versionId: version.id }), /changed after this publish/);
     await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: null }] });
 
     await script([
@@ -230,10 +240,10 @@ const tests = {
     await script([{ tools: [['update_record', { table: 'startups', id: item.id, field: 'name', value: 'Agent Name' }]] }, DONE, OK]);
     const { threadId, changeSetId } = await say('Rename the startup');
     await inState(threadId, 'ready');
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     const [version] = await c.query(api.ai.versions.list, {});
     await c.mutation(api.startups.update, { id: item.id, name: 'Admin Name', description: item.description });
-    await rejects(() => c.action(api.ai.versions.rollback, { versionId: version.id }), /changed after this publish/);
+    await rejects(() => c.mutation(api.ai.versions.rollback, { versionId: version.id }), /changed after this publish/);
     assert.equal((await live()).startups.find((s) => s.id === item.id).name, 'Admin Name');
     await c.mutation(api.startups.update, { id: item.id, name: item.name, description: item.description });
   },
@@ -244,7 +254,7 @@ const tests = {
     const { threadId, changeSetId } = await say('Change the job title');
     await inState(threadId, 'ready');
     await c.mutation(api.team.update, { id: item.id, name: item.name, role: 'Changed Meanwhile', category: item.category, bio: item.bio });
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /changed since/);
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId }), /changed since/);
     assert.equal((await draftOf(threadId)).status, 'ready');
     assert.equal((await live()).team.find((t) => t.id === item.id).role, 'Changed Meanwhile');
     await c.mutation(api.team.update, { id: item.id, name: item.name, role: item.role, category: item.category, bio: item.bio });
@@ -258,7 +268,7 @@ const tests = {
     let d = await inState(threadId, 'needs_admin');
     assert.equal(d.pendingConfirm.id, target.id);
     assert.equal(d.contentOps.length, 0, 'an unconfirmed delete entered the draft');
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId, override: true }), /hasn't passed/);
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId, override: true }), /hasn't passed/);
     await rejects(() => say('something else', threadId), /answer the question/);
 
     await script([{ text: 'Left it alone.' }]);
@@ -275,166 +285,12 @@ const tests = {
     d = await inState(threadId, 'ready');
     assert.equal(d.contentOps[0].op, 'delete');
     assert.ok((await live()).gallery.some((g) => g.id === target.id), 'deleted before Publish');
-    await c.action(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.publish.publish, { changeSetId });
     assert.ok(!(await live()).gallery.some((g) => g.id === target.id));
     const [version] = await c.query(api.ai.versions.list, {});
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
     const restored = (await live()).gallery.find((g) => g.subtext === target.subtext && g.image === target.image);
     assert.ok(restored, 'the record and its picture came back');
-  },
-
-  async 'protected files and paths outside the repo are refused'() {
-    await script([
-      {
-        tools: [
-          ['edit_file', { path: 'convex-backend/convex/lib/access.ts', content: 'export const x = 1' }],
-          ['edit_file', { path: 'convex-backend/convex/auth.ts', content: 'x' }],
-          ['create_file', { path: 'convex-backend/convex/ai/evil.ts', content: 'x' }],
-          ['edit_file', { path: 'convex-backend/convex/ai/usage.ts', content: 'x' }],
-          ['edit_file', { path: 'cms_gui/package.json', content: '{}' }],
-          ['create_file', { path: 'frontend/../../etc/evil', content: 'x' }],
-          ['create_file', { path: '.github/workflows/x.yml', content: 'x' }],
-          ['edit_file', { path: 'frontend/scripts/snapshot.mjs', content: 'x' }],
-          ['create_file', { path: 'frontend/.npmrc', content: 'x' }],
-          ['edit_file', { path: 'convex-backend/convex/http.ts', content: 'x' }],
-          ['create_file', { path: 'convex-backend/convex/leak.ts', content: 'x' }],
-          ['edit_file', { path: 'cms_gui/src/main.jsx', content: 'x' }],
-          ['edit_file', { path: 'convex-backend//convex/ai/tools.ts', content: 'x' }],
-          ['edit_file', { path: 'convex-backend/convex/AI/tools.ts', content: 'x' }],
-          ['create_file', { path: 'frontend/postcss.config.ts', content: 'x' }],
-          ['create_file', { path: 'frontend/.postcssrc.cjs', content: 'x' }],
-          ['read_file', { path: 'convex-backend/.env.local' }],
-          ['read_file', { path: '../secrets' }],
-        ],
-      },
-      { text: 'A developer has to do that.' },
-    ]);
-    const { threadId, changeSetId } = await say('Remove the admin check');
-    const d = await inState(threadId, 'drafting');
-    assert.equal(d.codeEdits.length, 0);
-    const { calls } = await control('state');
-    const results = toolResults(calls[1]);
-    assert.equal(results.match(/can't be edited by the AI Assistant|isn't a valid path/g)?.length, 16, results.slice(0, 500));
-    assert.equal(results.match(/can't be read/g)?.length, 2);
-    await c.mutation(api.ai.chat.discard, { changeSetId });
-  },
-
-  async 'code path: build retries, then review, Publish through GitHub, rollback'() {
-    const original = (await control('file', { path: FILE })).content;
-    assert.ok(original, 'fake repo has the file');
-    const first = original.split('\n').find((l) => l.trim().length > 12).trim();
-    const edit = { tools: [['edit_file', { path: FILE, replacements: [{ find: first, replace: `${first} {/* edited */}` }] }], describe('Edited the not found page', { kind: 'code', page: '/nope' })] };
-    await script([{ tools: [['search_code', { query: first.slice(0, 12), folder: 'frontend/src/' }], ['read_file', { path: FILE }]] }, edit, DONE]);
-    const { threadId, changeSetId } = await say('Edit the not found page');
-    let d = await inState(threadId, 'building');
-    const { calls } = await control('state');
-    assert.ok(toolResults(calls[1]).includes(FILE), 'search and read work on the cached repo');
-    assert.equal(d.codeEdits[0].path, FILE);
-    assert.ok(d.codeEdits[0].baseSha, 'records the blob it was based on');
-
-    // Two automatic retries on build errors, then the admin is told.
-    for (const attempt of [1, 2]) {
-      await script([DONE]);
-      await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: `SyntaxError ${attempt}` });
-      await until(`retry ${attempt}`, async () => (await draftOf(threadId)).buildAttempts === attempt && (await draftOf(threadId)).status === 'building');
-      d = await draftOf(threadId);
-    }
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: 'SyntaxError 3' });
-    d = await inState(threadId, 'needs_admin');
-    assert.match(d.buildError, /SyntaxError 3/);
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId, override: true }), /hasn't passed/);
-
-    await script([DONE]);
-    await say('Try again', threadId);
-    d = await inState(threadId, 'building');
-    assert.equal(d.buildAttempts, 0, 'a new instruction resets retries');
-    // A result for an older version of the draft is ignored.
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: 1, error: null });
-    assert.equal((await draftOf(threadId)).status, 'building');
-    await script([OK]);
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
-    await inState(threadId, 'ready');
-
-    const diff = await c.query(api.ai.preview.changes, { changeSetId });
-    assert.ok(diff.code[0].diff.includes('{/* edited */}') && diff.code[0].previewable);
-
-    assert.equal((await control('file', { path: FILE })).content, original, 'branch changed before Publish');
-    const headBefore = (await control('state')).head;
-    await c.action(api.ai.publish.publish, { changeSetId });
-    const after = await control('state');
-    assert.notEqual(after.head, headBefore);
-    assert.ok((await control('file', { path: FILE })).content.includes('{/* edited */}'));
-    assert.match(after.commits.find((x) => x.sha === after.head).message, /Edited the not found page/);
-    assert.equal((await draftOf(threadId)).status, 'published');
-
-    const [version] = await c.query(api.ai.versions.list, {});
-    assert.equal(version.kind, 'code');
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
-    assert.equal((await control('file', { path: FILE })).content, original);
-  },
-
-  async 'Publish stops when the same file changed on the branch'() {
-    const original = (await control('file', { path: FILE })).content;
-    await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// agent` }]] }, DONE]);
-    const { threadId, changeSetId } = await say('Edit the file');
-    const d = await inState(threadId, 'building');
-    await script([OK]);
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
-    await inState(threadId, 'ready');
-    await control('external-edit', { path: FILE, content: `${original}\n// someone else` });
-    const head = (await control('state')).head;
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /changed on .* since the draft started/);
-    assert.equal((await control('state')).head, head, 'nothing was committed');
-    assert.equal((await draftOf(threadId)).status, 'ready');
-    await c.mutation(api.ai.chat.discard, { changeSetId });
-    await control('external-edit', { path: FILE, content: original });
-    await c.action(api.ai.repo.refresh, {});
-  },
-
-  async 'mixed: content waits for the deploy, and a failed deploy leaves it unapplied'() {
-    const original = (await control('file', { path: FILE })).content;
-    const item = (await live()).gallery[0];
-    // Unique, so a value left behind by an interrupted run can't make the edit a no-op.
-    const stamp = Date.now();
-    const run = async (label) => {
-      const caption = `${label} ${stamp}`;
-      await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// ${caption}` }], ['update_record', { table: 'gallery', id: item.id, field: 'subtext', value: caption }]] }, DONE]);
-      const { threadId, changeSetId } = await say('Change code and content together');
-      const d = await inState(threadId, 'building');
-      assert.equal(d.contentOps.length, 1, 'the caption must really change, or this tests a code-only publish');
-      await script([OK]);
-      await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
-      await inState(threadId, 'ready');
-      await c.action(api.ai.publish.publish, { changeSetId });
-      const after = await draftOf(threadId);
-      assert.equal(after.status, 'publishing');
-      assert.notEqual((await live()).gallery.find((g) => g.id === item.id).subtext, caption, 'content applied before the deploy');
-      return { threadId, head: (await control('state')).head };
-    };
-
-    let { threadId, head } = await run('Mixed caption');
-    // An unrelated failing check isn't a failed deploy.
-    await control('deploy', { sha: head, state: 'failure', context: 'lint' });
-    await control('deploy', { sha: head, state: 'success' });
-    await until('content applied', async () => (await draftOf(threadId)).status === 'published', 60000);
-    assert.equal((await live()).gallery.find((g) => g.id === item.id).subtext, `Mixed caption ${stamp}`);
-    let [version] = await c.query(api.ai.versions.list, {});
-    assert.equal(version.kind, 'mixed');
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
-    assert.equal((await live()).gallery.find((g) => g.id === item.id).subtext, item.subtext);
-    assert.equal((await control('file', { path: FILE })).content, original);
-
-    ({ threadId, head } = await run('Should not appear'));
-    await control('deploy', { sha: head, state: 'failure' });
-    const failed = await until('failure noticed', async () => {
-      const d = await draftOf(threadId);
-      return d.status === 'failed' ? d : null;
-    }, 60000);
-    assert.match(failed.notice, /failed to deploy/);
-    assert.equal((await live()).gallery.find((g) => g.id === item.id).subtext, item.subtext);
-    [version] = await c.query(api.ai.versions.list, {});
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
-    assert.equal((await control('file', { path: FILE })).content, original);
   },
 
   async 'review rejects twice automatically, then the admin decides'() {
@@ -449,13 +305,13 @@ const tests = {
     const { calls } = await control('state');
     assert.ok(JSON.stringify(calls[3].messages).includes('Too vague'), 'the editor is told why');
     assert.equal((await control('state')).remaining, 0, 'no fourth attempt');
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
-    await c.action(api.ai.publish.publish, { changeSetId, override: true });
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
+    await c.mutation(api.ai.publish.publish, { changeSetId, override: true });
     assert.equal((await live()).news.find((n) => n.id === item.id).subtitle, 'Attempt 3');
     const log = await c.query(api.ai.audit.list, { changeSetId });
     assert.ok(log.some((row) => row.action === 'publish.overrideReview'), 'the override is logged');
     const [version] = await c.query(api.ai.versions.list, {});
-    await c.action(api.ai.versions.rollback, { versionId: version.id });
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
   },
 
   async 'a review with no verdict is not a pass'() {
@@ -464,7 +320,7 @@ const tests = {
     const { threadId, changeSetId } = await say('Edit');
     const d = await inState(threadId, 'needs_admin');
     assert.equal(d.review.verdict, 'rejected');
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 
@@ -480,7 +336,7 @@ const tests = {
     assert.equal(d.contentOps[0].to, 'Step two', 'the draft so far is kept');
     assert.equal((await control('state')).remaining, 3, 'no model call after the cap');
     assert.equal((await c.query(api.ai.usage.meter, {})).level, 'blocked');
-    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId }), /hasn't passed/);
 
     await c.mutation(api.ai.settings.save, { monthlyBudgetUsd: 20 });
     await say('Carry on', threadId);
@@ -541,6 +397,20 @@ const tests = {
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 
+  async 'Stop can never reopen a finished draft'() {
+    const item = (await live()).news[2];
+    const value = `Stop test ${Date.now()}`;
+    await script([{ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value }]] }, DONE, OK]);
+    const { threadId, changeSetId } = await say('Edit');
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    await c.mutation(api.ai.chat.stop, { changeSetId });
+    assert.equal((await draftOf(threadId)).status, 'published');
+    await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId, override: true }), /hasn't passed/);
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+  },
+
   async 'the change list can be corrected'() {
     const item = (await live()).news[2];
     await script([
@@ -553,57 +423,6 @@ const tests = {
     const d = await inState(threadId, 'ready');
     assert.deepEqual(d.changeList.map((x) => x.summary), ['Kept idea']);
     await c.mutation(api.ai.chat.discard, { changeSetId });
-  },
-
-  async 'a GitHub failure before the commit never leaves a draft stuck in publishing'() {
-    const original = (await control('file', { path: FILE })).content;
-    await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// x` }]] }, DONE]);
-    const { threadId, changeSetId } = await say('Edit');
-    const d = await inState(threadId, 'building');
-    await script([OK]);
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
-    await inState(threadId, 'ready');
-    const head = (await control('state')).head;
-    await control('set', { truncated: true });
-    try {
-      await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /too large/);
-    } finally {
-      await control('set', { truncated: false });
-    }
-    assert.equal((await draftOf(threadId)).status, 'ready');
-    assert.equal((await control('state')).head, head);
-    await c.mutation(api.ai.chat.discard, { changeSetId });
-  },
-
-  async 'a rollback that cannot restore content still records its commit'() {
-    const original = (await control('file', { path: FILE })).content;
-    const item = (await live()).gallery[1];
-    const caption = `Rollback race ${Date.now()}`;
-    await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// race` }], ['update_record', { table: 'gallery', id: item.id, field: 'subtext', value: caption }]] }, DONE]);
-    const { threadId, changeSetId } = await say('Change both');
-    const d = await inState(threadId, 'building');
-    await script([OK]);
-    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
-    await inState(threadId, 'ready');
-    await c.action(api.ai.publish.publish, { changeSetId });
-    const [version] = await c.query(api.ai.versions.list, {});
-    await c.mutation(api.ai.publish.applyPendingContent, { versionId: version.id });
-
-    await control('set', { refDelay: 2500 });
-    try {
-      const rollingBack = c.action(api.ai.versions.rollback, { versionId: version.id });
-      await later(1200);
-      await c.mutation(api.gallery.update, { id: item.id, subtext: 'Edited during rollback' });
-      await rejects(() => rollingBack, /couldn't be restored/);
-    } finally {
-      await control('set', { refDelay: 0 });
-    }
-    const [newest, old] = await c.query(api.ai.versions.list, {});
-    assert.equal(newest.status, 'failed');
-    assert.ok(newest.commitSha && newest.isRollback, 'the revert commit is on record');
-    assert.ok(old.rolledBack);
-    assert.equal((await control('file', { path: FILE })).content, original);
-    await c.mutation(api.gallery.update, { id: item.id, subtext: item.subtext });
   },
 
   async 'Gemini: works with only a Google key, keeps thought signatures, valid tool schemas'() {
@@ -705,14 +524,14 @@ const tests = {
     await script([{ tools: [['get_selected_element', {}]] }, { text: 'Got it.' }]);
     const { threadId, changeSetId } = await c.mutation(api.ai.chat.send, {
       prompt: 'Make this bigger',
-      selectedElements: [{ path: '/nope', tag: 'a', text: 'Go to home page', classes: ['btn'], selector: 'a.btn' }, { path: '/', tag: 'h1', text: 'No such words here', classes: [], selector: 'h1' }],
+      selectedElements: [{ path: '/nope', tag: 'a', key: null, text: 'Go to home page', classes: ['btn'], selector: 'a.btn' }, { path: '/', tag: 'h1', key: 'home.hero.title', text: 'No such words here', classes: [], selector: 'h1' }],
     });
     await inState(threadId, 'drafting');
     const { calls } = await control('state');
     assert.ok(JSON.stringify(calls[0].messages).includes('2 elements'), 'the agent is told how many');
     const results = toolResults(calls[1]);
-    assert.ok(results.includes('notFound.hero.home'), 'it gets the website text key');
-    assert.ok(results.includes('registry.js'), 'it gets the source location');
+    assert.ok(results.includes('notFound.hero.home'), 'it works out the website text key from the words');
+    assert.ok(results.includes('home.hero.title'), 'it uses the key the page gave');
     assert.ok(results.includes('No such words here'), 'it gets every element');
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
@@ -722,7 +541,6 @@ const { tokens } = await c.action(api.auth.signIn, { provider: 'password', param
 c.setAuth(tokens.token);
 await c.action(api.ai.settings.setProviderKey, { provider: 'anthropic', apiKey: 'sk-ant-fake-key-1234' });
 await c.mutation(api.ai.settings.save, { monthlyBudgetUsd: 20 });
-await c.action(api.ai.repo.refresh, {});
 
 let failed = 0;
 for (const [name, test] of Object.entries(tests)) {

@@ -19,13 +19,16 @@ export type TeamCategory = Infer<typeof teamCategory>;
 // AI Assistant (see docs/ai-agent.md)
 // ---------------------------------------------------------------------------
 
+// Rows saved by earlier versions of this feature can hold values and fields nothing
+// uses now. They stay allowed, because Convex refuses a deploy when any saved row
+// doesn't fit the schema.
 export const changeSetStatus = v.union(
   v.literal("drafting"), // the editor agent is working
-  v.literal("building"), // waiting for the preview to compile the code edits
   v.literal("reviewing"), // the review agent is checking the draft
   v.literal("needs_admin"), // waiting on the admin: a delete to confirm, or a review objection
+  v.literal("building"), // older rows only
+  v.literal("publishing"), // older rows only
   v.literal("ready"), // reviewed and approved; can be published
-  v.literal("publishing"),
   v.literal("published"),
   v.literal("discarded"),
   v.literal("failed"),
@@ -62,24 +65,14 @@ export const contentOp = v.union(
 );
 export type ContentOp = Infer<typeof contentOp>;
 
-// Whole-file contents per path (relative to the repo root). `content: null`
-// deletes the file. `baseSha` is the blob the agent read, for the
-// files-changed check on Publish.
-export const codeEdit = v.object({
-  path: v.string(),
-  content: v.union(v.string(), v.null()),
-  baseSha: v.union(v.string(), v.null()),
-});
-export type CodeEdit = Infer<typeof codeEdit>;
-
 // One plain-English item for the walkthrough.
 export const changeItem = v.object({
   summary: v.string(),
-  kind: v.union(v.literal("content"), v.literal("code")),
-  // Website route where the change shows, e.g. "/summary". Absent for
-  // changes with no visible page (backend or CMS code).
+  kind: v.optional(v.string()), // older rows only
+  // Website route where the change shows, e.g. "/summary".
   page: v.optional(v.string()),
-  // How to find the element: a CSS selector and/or text it contains.
+  // How to find the element: a website text's key, a CSS selector, and/or text it contains.
+  textKey: v.optional(v.string()),
   selector: v.optional(v.string()),
   text: v.optional(v.string()),
   // The text to look for in the "before" version, when it differs.
@@ -88,10 +81,10 @@ export const changeItem = v.object({
 
 // A change the admin must confirm before it enters the draft.
 export const pendingConfirm = v.object({
-  kind: v.union(v.literal("delete_record"), v.literal("delete_file")),
+  kind: v.union(v.literal("delete_record"), v.literal("delete_file")), // delete_file: older rows only
   table: v.optional(contentTable),
   id: v.optional(v.string()),
-  path: v.optional(v.string()),
+  path: v.optional(v.string()), // older rows only
   label: v.string(),
   reason: v.string(),
 });
@@ -210,14 +203,8 @@ export default defineSchema({
     title: v.string(),
     status: changeSetStatus,
     contentOps: v.array(contentOp),
-    codeEdits: v.array(codeEdit),
     changeList: v.array(changeItem),
-    // Head of the working branch when the draft read its first file.
-    baseCommitSha: v.optional(v.string()),
     reviewAttempts: v.number(),
-    buildAttempts: v.number(),
-    // Latest compile/runtime error reported by the preview, if any.
-    buildError: v.optional(v.string()),
     review: v.optional(
       v.object({ verdict: v.union(v.literal("approved"), v.literal("rejected")), reasons: v.array(v.string()), at: v.number() }),
     ),
@@ -236,8 +223,13 @@ export default defineSchema({
     stepCount: v.optional(v.number()),
     // The elements the admin clicked in the preview.
     selectedElements: v.optional(v.array(v.any())),
-    // Older drafts hold a single clicked element here. Nothing reads it now.
+    // Older drafts hold these. Nothing reads them now, but dropping a field that
+    // saved rows still have makes Convex refuse every deploy.
     selectedElement: v.optional(v.any()),
+    codeEdits: v.optional(v.any()),
+    baseCommitSha: v.optional(v.string()),
+    buildAttempts: v.optional(v.number()),
+    buildError: v.optional(v.string()),
     // Times this run has waited out the provider's rate limit.
     rateLimitWaits: v.optional(v.number()),
     versionId: v.optional(v.id("versions")),
@@ -252,21 +244,21 @@ export default defineSchema({
   // One row per publish (or rollback), used to roll back.
   versions: defineTable({
     changeSetId: v.optional(v.id("changeSets")),
-    kind: v.union(v.literal("content"), v.literal("code"), v.literal("mixed")),
+    kind: v.union(v.literal("content"), v.literal("code"), v.literal("mixed")), // code, mixed: older rows only
     summary: v.string(),
     // Previous values of every touched record: `before` null = the publish
-    // created it; `after` null = the publish deleted it.
+    // created it; `after` null = the publish deleted it. For `siteText`, `id` is
+    // the text's key.
     contentSnapshot: v.array(
-      // For `siteText`, `id` is the text's key.
       v.object({ table: v.union(contentTable, v.literal("siteText")), id: v.string(), before: v.any(), after: v.any() }),
     ),
-    // Code: the commit made, the one it was made on, and previous contents.
-    commitSha: v.optional(v.string()),
-    parentCommitSha: v.optional(v.string()),
-    files: v.optional(v.array(v.object({ path: v.string(), before: v.union(v.string(), v.null()) }))),
     revertOf: v.optional(v.id("versions")),
     revertedBy: v.optional(v.id("versions")),
-    status: v.union(v.literal("ok"), v.literal("content_pending"), v.literal("failed")),
+    // Older rows only.
+    commitSha: v.optional(v.string()),
+    parentCommitSha: v.optional(v.string()),
+    files: v.optional(v.any()),
+    status: v.optional(v.string()),
     error: v.optional(v.string()),
     publishedBy: v.id("users"),
     publishedAt: v.number(),
@@ -312,22 +304,5 @@ export default defineSchema({
     ),
     pricesUpdatedAt: v.number(),
     updatedAt: v.number(),
-  }),
-
-  // Cached copy of the working branch, read by the agent's code tools.
-  repoFiles: defineTable({
-    path: v.string(),
-    sha: v.string(),
-    // Text files only; binary files are listed with content null.
-    content: v.union(v.string(), v.null()),
-    commitSha: v.string(),
-  }).index("by_path", ["path"]),
-
-  // State of the repo cache: which commit it holds and when it was fetched.
-  repoCache: defineTable({
-    branch: v.string(),
-    commitSha: v.string(),
-    fetchedAt: v.number(),
-    fileCount: v.number(),
   }),
 });

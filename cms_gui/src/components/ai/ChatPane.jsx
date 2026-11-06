@@ -14,23 +14,17 @@ const TOOL_LABELS = {
   get_site_text: 'Read the website text',
   update_site_text: 'Edited the website text in the draft',
   search_media: 'Looked through the media library',
-  search_code: 'Searched the website code',
-  read_file: 'Read part of the website code',
   get_selected_element: 'Looked at the element you pointed to',
   update_record: 'Edited a record in the draft',
   create_record: 'Added a record to the draft',
   delete_record: 'Asked to delete a record',
   swap_media: 'Swapped a picture in the draft',
   reorder: 'Changed the order in the draft',
-  edit_file: 'Edited the code in the draft',
-  create_file: 'Added a file to the draft',
-  delete_file: 'Asked to delete a file',
   describe_change: 'Noted the change',
 };
 
 const STATUS_TEXT = {
   drafting: 'Working on your request…',
-  building: 'Checking that the change builds in the preview…',
   reviewing: 'The review agent is checking the change…',
 };
 
@@ -82,7 +76,7 @@ function ConfirmCard({ draft, onError }) {
         <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
         <div className="min-w-0 space-y-1">
           <p className="text-sm font-semibold text-foreground">
-            Delete {pending.kind === 'delete_file' ? 'this file' : 'this record'}?
+            Delete this record?
           </p>
           <p className="text-sm break-words text-foreground">{pending.label}</p>
           <p className="text-xs text-muted-foreground">{pending.reason}</p>
@@ -137,12 +131,12 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
   const endRef = useRef(null);
 
   const lastId = messages?.at(-1)?.id;
-  const statusLine = draft && (draft.running || draft.status === 'building') ? STATUS_TEXT[draft.status] : null;
+  const statusLine = draft?.running ? STATUS_TEXT[draft.status] : null;
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [lastId, statusLine, draft?.pendingConfirm, draft?.notice]);
 
-  const busy = !!draft && (draft.running || ['publishing', 'building', 'reviewing'].includes(draft.status));
+  const busy = !!draft && (draft.running || draft.status === 'reviewing');
   const noKey = settings && !settings.providers.some((p) => p.configured);
   const canType = !busy && !sending && !draft?.pendingConfirm && !noKey;
 
@@ -220,13 +214,6 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
             </div>
           )}
 
-          {draft?.buildError && (
-            <div role="alert" className="space-y-1.5 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
-              <p className="text-sm font-semibold text-foreground">The change doesn't build</p>
-              <pre className="overflow-x-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground">{draft.buildError}</pre>
-            </div>
-          )}
-
           {(draft?.notice || closedNotice) && (
             <p role="status" className="rounded-xl border border-border bg-muted p-3 text-sm text-foreground">
               {draft?.notice || closedNotice}
@@ -278,7 +265,7 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
             <button type="button" onClick={onTogglePick} aria-pressed={picking} className={`btn-secondary px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}>
               <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
             </button>
-            {draft?.running || draft?.status === 'building' ? (
+            {draft?.running ? (
               <button type="button" onClick={onStop} className="btn-secondary px-3 py-1.5 text-xs">
                 <Square className="h-3.5 w-3.5" /> Stop
               </button>

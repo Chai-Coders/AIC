@@ -47,13 +47,12 @@ function Walkthrough({ items, index, onStep, mode, onMode }) {
 }
 
 const PreviewPane = forwardRef(function PreviewPane(
-  { tab, onTab, files, dependencies, draft, changeList, step, onStep, mode, onMode, location, canPublish, publishLabel, publishing, onPublish, onDiscard, onApplyContent, onAbandonContent, picking, onDonePicking, ...previewEvents },
+  { tab, onTab, content, draft, changeList, step, onStep, mode, onMode, location, canPublish, publishLabel, publishing, onPublish, onDiscard, picking, onDonePicking, ...previewEvents },
   ref,
 ) {
   const [device, setDevice] = useState('desktop');
   const [codeWidth, setCodeWidth] = useStoredSize('aic-cms:ai-code-width', 460);
-  const showActions = draft && ['drafting', 'building', 'reviewing', 'needs_admin', 'ready'].includes(draft.status) && (draft.contentOps.length > 0 || draft.codeEdits.length > 0);
-  const waitingForDeploy = draft?.status === 'publishing' && draft.versionId;
+  const showActions = draft && draft.contentOps.length > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -87,16 +86,6 @@ const PreviewPane = forwardRef(function PreviewPane(
             </button>
           </>
         )}
-        {waitingForDeploy && (
-          <>
-            <button type="button" onClick={onAbandonContent} className="btn-secondary px-3 py-1.5 text-xs">
-              Give up on content
-            </button>
-            <button type="button" onClick={onApplyContent} className="btn-primary px-3 py-1.5 text-xs">
-              Apply content
-            </button>
-          </>
-        )}
       </div>
 
       <Walkthrough items={changeList} index={step} onStep={onStep} mode={mode} onMode={onMode} />
@@ -111,13 +100,7 @@ const PreviewPane = forwardRef(function PreviewPane(
         {tab === 'split' && <SplitDivider label="Resize the changes" value={codeWidth} min={260} max={900} onChange={setCodeWidth} />}
         <div className={tab === 'changes' ? 'invisible absolute inset-0' : 'h-full min-w-0 flex-1'} aria-hidden={tab === 'changes'}>
           <BrowserFrame path={location} device={device} onDeviceChange={setDevice} picking={picking} onDonePicking={onDonePicking}>
-            {files ? (
-              <SitePreview ref={ref} files={files} dependencies={dependencies} {...previewEvents} />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Loading the website…
-              </div>
-            )}
+            <SitePreview ref={ref} content={content} {...previewEvents} />
           </BrowserFrame>
         </div>
         {tab === 'changes' && (

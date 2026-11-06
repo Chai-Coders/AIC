@@ -38,7 +38,28 @@ function cached(key, fetcher) {
  * switching pages never waits on the network.
  * Returns: { gallery, startups, news, team, background_video }
  */
-export const fetchSiteContent = cached('site', () => convexQuery('content:siteContent'));
+const fetchLiveSite = cached('site', () => convexQuery('content:siteContent'));
+
+// The CMS's AI Assistant previews a draft by sending it here (content/AgentBridge).
+// It's held in memory only, never in the cache, which this browser's visits to the
+// public site would read. Stays null everywhere else.
+let previewContent = null;
+const previewListeners = new Set();
+
+export const getPreviewContent = () => previewContent;
+
+export function setPreviewContent(content) {
+  previewContent = content;
+  previewListeners.forEach((listener) => listener());
+}
+
+export function onPreviewContent(listener) {
+  previewListeners.add(listener);
+  return () => previewListeners.delete(listener);
+}
+
+export const fetchSiteContent = () => (previewContent ? Promise.resolve(previewContent) : fetchLiveSite());
+fetchSiteContent.cacheKey = fetchLiveSite.cacheKey;
 
 function fromSite(select) {
   const fn = () => fetchSiteContent().then(select);
@@ -99,7 +120,11 @@ const newsItemFetchers = {};
  */
 export function fetchNewsItem(id) {
   if (!newsItemFetchers[id]) {
-    newsItemFetchers[id] = cached(`news:${id}`, () => convexQuery('content:newsItem', { id: String(id) }));
+    const fetchLive = cached(`news:${id}`, () => convexQuery('content:newsItem', { id: String(id) }));
+    const fetchItem = () =>
+      previewContent ? Promise.resolve(previewContent.news.find((item) => item.id === String(id)) ?? null) : fetchLive();
+    fetchItem.cacheKey = fetchLive.cacheKey;
+    newsItemFetchers[id] = fetchItem;
   }
   return newsItemFetchers[id];
 }

@@ -1,13 +1,11 @@
 // History and rollback. A rollback is itself a new version, so it can be rolled
 // back too, and it refuses to overwrite anything changed after the publish.
 import { ConvexError, v } from "convex/values";
-import { action, internalMutation, internalQuery, query, type QueryCtx } from "../_generated/server";
-import { internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
+import { mutation, query, type QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import type { ContentTable } from "../schema";
 import { requireAdmin } from "../lib/access";
 import { audit } from "./audit";
-import { blobText, branchHead, changedSince, commitFiles, commitTree, safeCommitMessage } from "./github";
 import { writeSiteText } from "./publish";
 import { sameValue } from "./records";
 
@@ -45,12 +43,7 @@ async function rollbackConflicts(ctx: QueryCtx, version: Doc<"versions">) {
   return conflicts;
 }
 
-export const getInternal = internalQuery({
-  args: { versionId: v.id("versions") },
-  handler: async (ctx, { versionId }) => await ctx.db.get(versionId),
-});
-
-/** Newest first, without file contents. */
+/** Newest first. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -58,13 +51,8 @@ export const list = query({
     const rows = await ctx.db.query("versions").withIndex("by_publishedAt").order("desc").take(100);
     return rows.map((r) => ({
       id: r._id,
-      kind: r.kind,
       summary: r.summary,
-      commitSha: r.commitSha ?? null,
-      files: (r.files ?? []).map((f) => f.path),
       records: r.contentSnapshot.length,
-      status: r.status,
-      error: r.error ?? null,
       publishedAt: r.publishedAt,
       isRollback: !!r.revertOf,
       rolledBack: !!r.revertedBy,
@@ -72,52 +60,16 @@ export const list = query({
   },
 });
 
-export const prepareRollback = internalQuery({
+export const rollback = mutation({
   args: { versionId: v.id("versions") },
   handler: async (ctx, { versionId }) => {
+    const userId = await requireAdmin(ctx);
     const version = await ctx.db.get(versionId);
     if (!version) throw new ConvexError("That version no longer exists.");
     if (version.revertedBy) throw new ConvexError("This version has already been rolled back.");
-    if (version.status === "content_pending") throw new ConvexError("This version is still publishing.");
     const conflicts = await rollbackConflicts(ctx, version);
     if (conflicts.length) {
       throw new ConvexError(`This can't be rolled back automatically: ${conflicts.join("; ")}. Nothing was changed.`);
-    }
-    return version;
-  },
-});
-
-export const finishRollback = internalMutation({
-  args: {
-    userId: v.id("users"),
-    versionId: v.id("versions"),
-    commitSha: v.optional(v.string()),
-    parentCommitSha: v.optional(v.string()),
-    files: v.optional(v.array(v.object({ path: v.string(), before: v.union(v.string(), v.null()) }))),
-  },
-  handler: async (ctx, { userId, versionId, commitSha, parentCommitSha, files }): Promise<Id<"versions">> => {
-    const version = (await ctx.db.get(versionId))!;
-    const conflicts = await rollbackConflicts(ctx, version);
-    if (conflicts.length) {
-      const error = `The code was rolled back, but the content couldn't be restored: ${conflicts.join("; ")}.`;
-      // The revert commit is on the branch, so it must be recorded, or it can't be undone.
-      const failed = await ctx.db.insert("versions", {
-        changeSetId: version.changeSetId,
-        kind: "code",
-        summary: `Rolled back the code only: ${version.summary}`.slice(0, 500),
-        contentSnapshot: [],
-        commitSha,
-        parentCommitSha,
-        files,
-        revertOf: versionId,
-        status: "failed",
-        error,
-        publishedBy: userId,
-        publishedAt: Date.now(),
-      });
-      await ctx.db.patch(versionId, { revertedBy: failed });
-      await audit(ctx, { userId, changeSetId: version.changeSetId, action: "rollback.partial", detail: { versionId, failed, commitSha, error } });
-      return failed;
     }
 
     const contentSnapshot = [];
@@ -144,54 +96,14 @@ export const finishRollback = internalMutation({
 
     const newVersion = await ctx.db.insert("versions", {
       changeSetId: version.changeSetId,
-      kind: version.kind,
+      kind: "content",
       summary: `Rolled back: ${version.summary}`.slice(0, 500),
       contentSnapshot,
-      commitSha,
-      parentCommitSha,
-      files,
       revertOf: versionId,
-      status: "ok",
       publishedBy: userId,
       publishedAt: Date.now(),
     });
     await ctx.db.patch(versionId, { revertedBy: newVersion });
-    await audit(ctx, { userId, changeSetId: version.changeSetId, action: "rollback", detail: { versionId, newVersion, commitSha } });
-    return newVersion;
-  },
-});
-
-export const rollback = action({
-  args: { versionId: v.id("versions") },
-  handler: async (ctx, { versionId }): Promise<void> => {
-    const userId = await requireAdmin(ctx);
-    const version: Doc<"versions"> = await ctx.runQuery(internal.ai.versions.prepareRollback, { versionId });
-    let code: { commitSha: string; parentCommitSha: string; files: { path: string; before: string | null }[] } | undefined;
-    if (version.commitSha && version.files?.length) {
-      const head = await branchHead();
-      const changed = await changedSince(version.commitSha, head);
-      const touched = version.files.map((f) => f.path).filter((p) => changed.includes(p));
-      if (touched.length) {
-        throw new ConvexError(`These files changed after this publish, so it can't be rolled back automatically: ${touched.join(", ")}. Nothing was changed.`);
-      }
-      const { entries } = await commitTree(head);
-      const shas = new Map(entries.map((e) => [e.path, e.sha]));
-      const files = await Promise.all(
-        version.files.map(async (f) => {
-          const sha = shas.get(f.path);
-          return { path: f.path, before: sha ? await blobText(sha) : null };
-        }),
-      );
-      const commitSha = await commitFiles({
-        parentSha: head,
-        message: safeCommitMessage(`AI Assistant: roll back "${version.summary.slice(0, 60)}"\n\nReverts ${version.commitSha}.`),
-        files: version.files.map((f) => ({ path: f.path, content: f.before })),
-      });
-      code = { commitSha, parentCommitSha: head, files };
-    }
-    const newVersion: Id<"versions"> = await ctx.runMutation(internal.ai.versions.finishRollback, { userId, versionId, ...code });
-    if (code) await ctx.runAction(internal.ai.repo.sync, { force: true }).catch(() => undefined);
-    const result: Doc<"versions"> | null = await ctx.runQuery(internal.ai.versions.getInternal, { versionId: newVersion });
-    if (result?.status === "failed") throw new ConvexError(result.error ?? "The rollback only partly finished.");
+    await audit(ctx, { userId, changeSetId: version.changeSetId, action: "rollback", detail: { versionId, newVersion } });
   },
 });

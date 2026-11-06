@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { readCache } from '../api/cache';
+import { getPreviewContent, onPreviewContent } from '../api/content';
 
 /**
  * Generic data-fetching hook with stale-while-revalidate caching.
@@ -17,6 +18,8 @@ import { readCache } from '../api/cache';
  */
 function useApi(fetcher, emptyValue = []) {
   const [state, setState] = useState(() => {
+    const preview = fetcher.select && getPreviewContent();
+    if (preview) return { data: fetcher.select(preview), loading: false, error: null };
     const entry = fetcher.cacheKey ? readCache(fetcher.cacheKey) : null;
     if (entry) {
       const select = fetcher.select || ((d) => d);
@@ -47,6 +50,9 @@ function useApi(fetcher, emptyValue = []) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]);
+
+  // A new draft from the CMS preview: read it again.
+  useEffect(() => onPreviewContent(() => setAttempt((n) => n + 1)), []);
 
   const retry = useCallback(() => {
     setState((prev) => ({ ...prev, loading: true, error: null }));

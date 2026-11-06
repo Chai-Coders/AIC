@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAction, useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { Loader2, RotateCcw } from 'lucide-react';
 import { run } from '../services/convex';
@@ -8,11 +8,7 @@ import { run } from '../services/convex';
 const api = anyApi.ai;
 
 const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const KIND = { content: 'Content', code: 'Code', mixed: 'Code and content' };
-
 function statusOf(v) {
-  if (v.status === 'content_pending') return 'Waiting for deploy';
-  if (v.status === 'failed') return 'Partly published';
   if (v.rolledBack) return 'Rolled back';
   if (v.isRollback) return 'Rollback';
   return 'Live';
@@ -22,7 +18,7 @@ export default function AiHistoryPage() {
   const { showToast } = useOutletContext();
   const versions = useQuery(api.versions.list);
   const log = useQuery(api.audit.list, { limit: 100 });
-  const rollback = useAction(api.versions.rollback);
+  const rollback = useMutation(api.versions.rollback);
   const [busy, setBusy] = useState(null);
 
   const onRollback = async (v) => {
@@ -55,19 +51,11 @@ export default function AiHistoryPage() {
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="text-sm break-words text-foreground">{v.summary}</p>
                 <p className="text-xs text-muted-foreground">
-                  {when(v.publishedAt)} · {KIND[v.kind]} · {statusOf(v)}
-                  {v.commitSha && (
-                    <>
-                      {' · '}
-                      <span className="font-mono">{v.commitSha.slice(0, 7)}</span>
-                    </>
-                  )}
-                  {v.files.length > 0 && ` · ${v.files.length} file${v.files.length === 1 ? '' : 's'}`}
-                  {v.records > 0 && ` · ${v.records} record${v.records === 1 ? '' : 's'}`}
+                  {when(v.publishedAt)} · {statusOf(v)}
+                  {v.records > 0 && ` · ${v.records} change${v.records === 1 ? '' : 's'}`}
                 </p>
-                {v.error && <p className="text-xs text-destructive">{v.error}</p>}
               </div>
-              {!v.rolledBack && v.status !== 'content_pending' && (
+              {!v.rolledBack && (
                 <button type="button" onClick={() => onRollback(v)} disabled={busy !== null} className="btn-secondary shrink-0 px-3 py-1.5 text-xs">
                   {busy === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                   Roll back

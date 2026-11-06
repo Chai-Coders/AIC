@@ -1,7 +1,6 @@
 // Which website texts exist. They are defined in the website's own registry, which
 // is plain data, so the backend bundles it instead of keeping a second list. A key
-// added there is known here once the backend is redeployed. Because this runs on
-// the backend, the review agent rejects anything in that file that isn't data.
+// added there is known here once the backend is redeployed.
 import { FIELDS, PAGES, SHARED } from "../../../frontend/src/content/registry.js";
 
 type Field = { key: string; label: string; kind: string; value: string };

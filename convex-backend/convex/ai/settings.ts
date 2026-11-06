@@ -61,7 +61,6 @@ export const get = query({
       priceTable: s.priceTable,
       pricesUpdatedAt: s.pricesUpdatedAt || null,
       encryptionReady: !!process.env.AI_SETTINGS_KEY,
-      githubReady: !!process.env.GITHUB_TOKEN && !!process.env.GITHUB_REPO,
     };
   },
 });

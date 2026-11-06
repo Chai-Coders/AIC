@@ -1,5 +1,5 @@
 // What the AI Assistant page calls: send a message, answer a confirm card, stop,
-// discard, report the preview's build result.
+// discard.
 import { ConvexError, v } from "convex/values";
 import { createThread, listMessages, saveMessage } from "@convex-dev/agent";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../_generated/server";
@@ -8,10 +8,10 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireAdmin } from "../lib/access";
 import { audit } from "./audit";
 import { applyConfirmedDelete } from "./drafts";
-import { MAX_BUILD_RETRIES, NOTE_PREFIX, resumeEditor, startEditor, startReview } from "./flow";
+import { NOTE_PREFIX, resumeEditor, startEditor } from "./flow";
 import { loadSettings } from "./settings";
 
-const OPEN: Doc<"changeSets">["status"][] = ["drafting", "building", "reviewing", "needs_admin", "ready", "publishing"];
+const OPEN: Doc<"changeSets">["status"][] = ["drafting", "reviewing", "needs_admin", "ready"];
 const MAX_PROMPT_CHARS = 8000;
 const MAX_POINTED = 10;
 const MAX_POINTED_CHARS = 20_000;
@@ -116,13 +116,10 @@ export const send = mutation({
     if (cs) {
       if (cs.running) throw new ConvexError("The assistant is still working. Wait for it to finish, or press Stop.");
       if (cs.pendingConfirm) throw new ConvexError("Please answer the question about the delete first.");
-      if (cs.status === "publishing") throw new ConvexError("This draft is being published. Wait for that to finish.");
       // A new instruction starts fresh retry counts: it isn't the same attempt.
       await ctx.db.patch(cs._id, {
         reviewAttempts: 0,
-        buildAttempts: 0,
         review: undefined,
-        buildError: undefined,
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
         // What the review checks against: everything the admin has asked for.
@@ -138,10 +135,8 @@ export const send = mutation({
         title: clean,
         status: "drafting",
         contentOps: [],
-        codeEdits: [],
         changeList: [],
         reviewAttempts: 0,
-        buildAttempts: 0,
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
         selectedElements,
@@ -188,7 +183,8 @@ export const stop = mutation({
   handler: async (ctx, { changeSetId }) => {
     const userId = await requireAdmin(ctx);
     const cs = await requireOwnDraft(ctx, changeSetId, userId);
-    if (cs.status === "publishing") throw new ConvexError("Publishing can't be stopped.");
+    // Nothing to stop, and a finished draft must never reopen: it could be published twice.
+    if (!cs.running) return;
     await audit(ctx, { userId, changeSetId, action: "agent.stoppedByAdmin" });
     await ctx.db.patch(changeSetId, {
       status: "needs_admin",
@@ -205,7 +201,7 @@ export const discard = mutation({
   handler: async (ctx, { changeSetId }) => {
     const userId = await requireAdmin(ctx);
     const cs = await requireOwnDraft(ctx, changeSetId, userId);
-    if (!OPEN.includes(cs.status) || cs.status === "publishing") throw new ConvexError("This draft can't be discarded now.");
+    if (!OPEN.includes(cs.status)) throw new ConvexError("This draft can't be discarded now.");
     await audit(ctx, { userId, changeSetId, action: "discard" });
     await ctx.db.patch(changeSetId, {
       status: "discarded",
@@ -214,37 +210,5 @@ export const discard = mutation({
       pendingConfirm: undefined,
       updatedAt: Date.now(),
     });
-  },
-});
-
-/**
- * The admin's browser compiled the preview. `revision` is the `updatedAt` it
- * compiled, so a result for an older version of the draft is ignored.
- */
-export const reportBuild = mutation({
-  args: { changeSetId: v.id("changeSets"), revision: v.number(), error: v.union(v.string(), v.null()) },
-  handler: async (ctx, { changeSetId, revision, error }) => {
-    const userId = await requireAdmin(ctx);
-    const cs = await requireOwnDraft(ctx, changeSetId, userId);
-    if (cs.status !== "building" || cs.updatedAt !== revision) return;
-    await audit(ctx, { userId, changeSetId, action: error ? "build.failed" : "build.passed", detail: { error } });
-    if (!error) {
-      await startReview(ctx, cs);
-      return;
-    }
-    const buildAttempts = cs.buildAttempts + 1;
-    if (buildAttempts > MAX_BUILD_RETRIES) {
-      await ctx.db.patch(changeSetId, {
-        status: "needs_admin",
-        running: false,
-        buildAttempts,
-        buildError: error.slice(0, 2000),
-        notice: "The change still doesn't build, so it can't be published. Tell the assistant what to try, or discard the draft.",
-        updatedAt: Date.now(),
-      });
-      return;
-    }
-    await ctx.db.patch(changeSetId, { buildAttempts });
-    await resumeEditor(ctx, { ...cs, buildAttempts }, `The preview failed to build with this error. Fix it, then finish your turn:\n${error.slice(0, 2000)}`);
   },
 });
