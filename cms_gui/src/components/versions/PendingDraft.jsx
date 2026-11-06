@@ -122,9 +122,23 @@ function PictureButton({ label, onUploaded, showToast, primary = false }) {
   );
 }
 
+/** Shows a tick or "use the AI value" choice at once, before the server confirms it. */
+const patchChange = (changeId, patch) => (store) => {
+  const draft = store.getQuery(anyApi.drafts.get, {});
+  if (!draft) return;
+  store.setQuery(anyApi.drafts.get, {}, {
+    ...draft,
+    changes: draft.changes.map((c) => (c.id === changeId ? { ...c, ...patch } : c)),
+  });
+};
+
 function DraftChange({ change, showToast }) {
-  const setIncluded = useMutation(anyApi.drafts.setIncluded);
-  const setForce = useMutation(anyApi.drafts.setForce);
+  const setIncluded = useMutation(anyApi.drafts.setIncluded).withOptimisticUpdate((store, { changeId, included }) =>
+    patchChange(changeId, { skipped: !included })(store)
+  );
+  const setForce = useMutation(anyApi.drafts.setForce).withOptimisticUpdate((store, { changeId, force }) =>
+    patchChange(changeId, { force })(store)
+  );
   const editValue = useMutation(anyApi.drafts.editValue);
   const [editing, setEditing] = useState(null); // field key being edited
   const [busy, setBusy] = useState(false);
@@ -153,7 +167,6 @@ function DraftChange({ change, showToast }) {
       <input
         type="checkbox"
         checked={included}
-        disabled={busy}
         onChange={() => act(() => setIncluded({ changeId: change.id, included: !included }))}
         aria-label={`Include ${change.fieldLabel}`}
         className="mt-1 h-4 w-4 shrink-0 cursor-pointer accent-primary"
