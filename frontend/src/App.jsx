@@ -4,6 +4,8 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SplashScreen from './components/common/SplashScreen';
 import useScrollReveal from './hooks/useScrollReveal';
+import { TextProvider } from './content/Text';
+import CmsBridge from './content/CmsBridge';
 
 const BoardMemberPage = lazy(() => import('./pages/BoardMemberPage'));
 const AicTeamPage = lazy(() => import('./pages/AicTeamPage'));
@@ -64,7 +66,8 @@ function App() {
   useScrollReveal();
 
   return (
-    <>
+    <TextProvider>
+      <CmsBridge />
       <SplashScreen />
       <ScrollToTop />
       <Suspense fallback={<PageFallback />}>
@@ -89,7 +92,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
-    </>
+    </TextProvider>
   );
 }
 

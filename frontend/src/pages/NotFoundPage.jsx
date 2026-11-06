@@ -1,22 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/common/PageLayout';
+import { Text } from '../content/Text';
 
 const NotFoundPage = () => (
   <PageLayout
     title="Page not found"
     hero={{
-      eyebrow: 'Error 404',
-      title: 'We couldn’t find that page',
-      description: 'The page may have moved, or the link may be out of date.',
+      prefix: 'notFound.hero',
       breadcrumbs: [{ label: 'Not found' }],
       actions: (
         <>
           <Link className="btn btn--accent" to="/">
-            Go to home page
+            <Text k="notFound.hero.home" />
           </Link>
           <Link className="btn btn--outline" to="/#contact">
-            Contact us
+            <Text k="notFound.hero.contact" />
           </Link>
         </>
       ),

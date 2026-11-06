@@ -1,39 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Text } from '../../content/Text';
 
-const LINKS = [
-  {
-    title: 'Who we are',
-    text: 'The incubation centre of the Indian Institute of Information Technology Kottayam, under the Atal Innovation Mission of the Government of India.',
-    to: '/summary',
-  },
-  {
-    title: 'Our people',
-    text: 'Governed by leading industrialists and academicians, run by a dedicated team, and backed by a global mentor panel.',
-    to: '/aicteam',
-  },
-  {
-    title: 'Sustainability',
-    text: 'We are building a lasting ecosystem of entrepreneurs in the IoT cloud domain and beyond.',
-    to: '/summary',
-  },
-];
+// Titles and texts are home.about.links.<i>.title / .text.
+const LINKS = ['/summary', '/aicteam', '/summary'];
 
 const HomeAbout = () => (
   <section id="about" className="section section--white" aria-labelledby="about-title">
     <div className="container">
       <div className="about">
         <div className="about__intro">
-          <p className="eyebrow">About the centre</p>
+          <p className="eyebrow">
+            <Text k="home.about.eyebrow" />
+          </p>
           <h2 id="about-title" className="section-title">
-            An incubator with the depth of a <em>national institute.</em>
+            <Text k="home.about.title" />
           </h2>
           <p className="section-lead">
-            AIC-IIITKottayam gives founders what is hardest to find early on: serious technical depth, honest
-            mentorship and the credibility of an institution behind them.
+            <Text k="home.about.lead" />
           </p>
           <div className="about__backers">
-            <p>Supported by</p>
+            <p>
+              <Text k="home.about.backers" />
+            </p>
             <img src="/img/site/aim-niti.png" alt="Atal Innovation Mission, NITI Aayog" width="600" height="242" loading="lazy" />
             <img src="/img/site/iiitk.jpg" alt="Indian Institute of Information Technology Kottayam" width="600" height="338" loading="lazy" />
           </div>
@@ -47,14 +36,18 @@ const HomeAbout = () => (
       </div>
 
       <ol className="about__list">
-        {LINKS.map((item, i) => (
-          <li key={item.title}>
-            <Link to={item.to} className="about__link">
+        {LINKS.map((to, i) => (
+          <li key={i}>
+            <Link to={to} className="about__link">
               <span className="about__num">{String(i + 1).padStart(2, '0')}</span>
-              <span className="about__title">{item.title}</span>
-              <span className="about__text">{item.text}</span>
+              <span className="about__title">
+                <Text k={`home.about.links.${i}.title`} />
+              </span>
+              <span className="about__text">
+                <Text k={`home.about.links.${i}.text`} />
+              </span>
               <span className="about__more">
-                Read more <i className="fa fa-arrow-right" aria-hidden="true" />
+                <Text k="home.about.more" /> <i className="fa fa-arrow-right" aria-hidden="true" />
               </span>
             </Link>
           </li>

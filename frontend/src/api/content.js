@@ -85,6 +85,12 @@ export function fetchTeam(category) {
  */
 export const fetchBackgroundVideo = fromSite((site) => site.background_video);
 
+/**
+ * Website text published from the CMS, by key (see src/content/Text.jsx).
+ * Returns: { [key]: string }
+ */
+export const fetchSiteText = fromSite((site) => Object.fromEntries((site.text ?? []).map((t) => [t.key, t.value])));
+
 const newsItemFetchers = {};
 
 /**
