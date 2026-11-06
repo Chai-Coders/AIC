@@ -202,6 +202,7 @@ const tests = {
       {
         tools: [
           ['update_site_text', { key: 'no.such.key', value: 'x' }],
+          ['update_site_text', { key: 'constructor', value: 'x' }],
           ['update_site_text', { key: '../bad key', value: 'x' }],
           ['update_site_text', { key: KEY, value: 'x'.repeat(5001) }],
         ],
@@ -293,6 +294,15 @@ const tests = {
           ['edit_file', { path: 'cms_gui/package.json', content: '{}' }],
           ['create_file', { path: 'frontend/../../etc/evil', content: 'x' }],
           ['create_file', { path: '.github/workflows/x.yml', content: 'x' }],
+          ['edit_file', { path: 'frontend/scripts/snapshot.mjs', content: 'x' }],
+          ['create_file', { path: 'frontend/.npmrc', content: 'x' }],
+          ['edit_file', { path: 'convex-backend/convex/http.ts', content: 'x' }],
+          ['create_file', { path: 'convex-backend/convex/leak.ts', content: 'x' }],
+          ['edit_file', { path: 'cms_gui/src/main.jsx', content: 'x' }],
+          ['edit_file', { path: 'convex-backend//convex/ai/tools.ts', content: 'x' }],
+          ['edit_file', { path: 'convex-backend/convex/AI/tools.ts', content: 'x' }],
+          ['create_file', { path: 'frontend/postcss.config.ts', content: 'x' }],
+          ['create_file', { path: 'frontend/.postcssrc.cjs', content: 'x' }],
           ['read_file', { path: 'convex-backend/.env.local' }],
           ['read_file', { path: '../secrets' }],
         ],
@@ -304,7 +314,7 @@ const tests = {
     assert.equal(d.codeEdits.length, 0);
     const { calls } = await control('state');
     const results = toolResults(calls[1]);
-    assert.equal(results.match(/can't be edited by the AI Assistant|isn't a valid path/g)?.length, 7, results.slice(0, 500));
+    assert.equal(results.match(/can't be edited by the AI Assistant|isn't a valid path/g)?.length, 16, results.slice(0, 500));
     assert.equal(results.match(/can't be read/g)?.length, 2);
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
@@ -384,10 +394,14 @@ const tests = {
   async 'mixed: content waits for the deploy, and a failed deploy leaves it unapplied'() {
     const original = (await control('file', { path: FILE })).content;
     const item = (await live()).gallery[0];
-    const run = async (caption) => {
+    // Unique, so a value left behind by an interrupted run can't make the edit a no-op.
+    const stamp = Date.now();
+    const run = async (label) => {
+      const caption = `${label} ${stamp}`;
       await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// ${caption}` }], ['update_record', { table: 'gallery', id: item.id, field: 'subtext', value: caption }]] }, DONE]);
       const { threadId, changeSetId } = await say('Change code and content together');
       const d = await inState(threadId, 'building');
+      assert.equal(d.contentOps.length, 1, 'the caption must really change, or this tests a code-only publish');
       await script([OK]);
       await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
       await inState(threadId, 'ready');
@@ -399,9 +413,11 @@ const tests = {
     };
 
     let { threadId, head } = await run('Mixed caption');
+    // An unrelated failing check isn't a failed deploy.
+    await control('deploy', { sha: head, state: 'failure', context: 'lint' });
     await control('deploy', { sha: head, state: 'success' });
     await until('content applied', async () => (await draftOf(threadId)).status === 'published', 60000);
-    assert.equal((await live()).gallery.find((g) => g.id === item.id).subtext, 'Mixed caption');
+    assert.equal((await live()).gallery.find((g) => g.id === item.id).subtext, `Mixed caption ${stamp}`);
     let [version] = await c.query(api.ai.versions.list, {});
     assert.equal(version.kind, 'mixed');
     await c.action(api.ai.versions.rollback, { versionId: version.id });
@@ -507,6 +523,94 @@ const tests = {
     assert.ok((await control('state')).remaining >= 1, 'the loop carried on after Stop');
     await c.mutation(api.ai.chat.discard, { changeSetId });
     await rejects(() => c.mutation(api.ai.chat.discard, { changeSetId }), /can't be discarded/);
+  },
+
+  async 'a stopped step cannot write, even once a newer run is going'() {
+    const item = (await live()).news[2];
+    const edit = (value, extra = {}) => ({ ...extra, tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value }]] });
+    await script([edit('First'), edit('Stale', { delay: 2500 }), DONE]);
+    const { threadId, changeSetId } = await say('Edit');
+    await until('first edit', async () => (await draftOf(threadId)).contentOps.length === 1);
+    await c.mutation(api.ai.chat.stop, { changeSetId });
+    await say('Do something else instead', threadId);
+    await inState(threadId, 'ready', 'reviewing', 'drafting', 'needs_admin');
+    await later(4500);
+    const d = await draftOf(threadId);
+    assert.equal(d.contentOps[0]?.to, 'First', 'the stopped step wrote to the draft');
+    await c.mutation(api.ai.chat.stop, { changeSetId }).catch(() => undefined);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'the change list can be corrected'() {
+    const item = (await live()).news[2];
+    await script([
+      { tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'Temp' }], describe('Old idea'), describe('Kept idea')] },
+      { tools: [['remove_change', { summary: 'Old idea' }], ['remove_change', { summary: 'Never added' }]] },
+      DONE,
+      OK,
+    ]);
+    const { threadId, changeSetId } = await say('Edit');
+    const d = await inState(threadId, 'ready');
+    assert.deepEqual(d.changeList.map((x) => x.summary), ['Kept idea']);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'a GitHub failure before the commit never leaves a draft stuck in publishing'() {
+    const original = (await control('file', { path: FILE })).content;
+    await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// x` }]] }, DONE]);
+    const { threadId, changeSetId } = await say('Edit');
+    const d = await inState(threadId, 'building');
+    await script([OK]);
+    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
+    await inState(threadId, 'ready');
+    const head = (await control('state')).head;
+    await control('set', { truncated: true });
+    try {
+      await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /too large/);
+    } finally {
+      await control('set', { truncated: false });
+    }
+    assert.equal((await draftOf(threadId)).status, 'ready');
+    assert.equal((await control('state')).head, head);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'a rollback that cannot restore content still records its commit'() {
+    const original = (await control('file', { path: FILE })).content;
+    const item = (await live()).gallery[1];
+    const caption = `Rollback race ${Date.now()}`;
+    await script([{ tools: [['read_file', { path: FILE }]] }, { tools: [['edit_file', { path: FILE, content: `${original}\n// race` }], ['update_record', { table: 'gallery', id: item.id, field: 'subtext', value: caption }]] }, DONE]);
+    const { threadId, changeSetId } = await say('Change both');
+    const d = await inState(threadId, 'building');
+    await script([OK]);
+    await c.mutation(api.ai.chat.reportBuild, { changeSetId, revision: d.updatedAt, error: null });
+    await inState(threadId, 'ready');
+    await c.action(api.ai.publish.publish, { changeSetId });
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.publish.applyPendingContent, { versionId: version.id });
+
+    await control('set', { refDelay: 2500 });
+    try {
+      const rollingBack = c.action(api.ai.versions.rollback, { versionId: version.id });
+      await later(1200);
+      await c.mutation(api.gallery.update, { id: item.id, subtext: 'Edited during rollback' });
+      await rejects(() => rollingBack, /couldn't be restored/);
+    } finally {
+      await control('set', { refDelay: 0 });
+    }
+    const [newest, old] = await c.query(api.ai.versions.list, {});
+    assert.equal(newest.status, 'failed');
+    assert.ok(newest.commitSha && newest.isRollback, 'the revert commit is on record');
+    assert.ok(old.rolledBack);
+    assert.equal((await control('file', { path: FILE })).content, original);
+    await c.mutation(api.gallery.update, { id: item.id, subtext: item.subtext });
+  },
+
+  async 'a model priced at zero is refused'() {
+    await rejects(
+      () => c.mutation(api.ai.settings.save, { priceTable: [{ provider: 'openai', model: 'gpt-x', inputPerMTok: 0, outputPerMTok: 0 }] }),
+      /enter a price/,
+    );
   },
 
   async 'pointing: the clicked element reaches the agent with a source location'() {

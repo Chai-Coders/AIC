@@ -106,15 +106,20 @@ export async function changedSince(baseSha: string, headSha: string) {
 
 export type DeployState = "success" | "failure" | "pending" | "none";
 
-/** What the commit's checks (Vercel reports through these) say about a deploy. */
+/**
+ * What the website's deploy check says about a commit. Only checks whose name
+ * matches count (GITHUB_DEPLOY_CHECK, default "vercel"): a failing lint job isn't
+ * a failed deploy, and a passing one doesn't mean the new code is live.
+ */
 export async function deployState(sha: string): Promise<DeployState> {
+  const isDeploy = new RegExp(process.env.GITHUB_DEPLOY_CHECK || "vercel", "i");
   const [status, runs] = await Promise.all([
-    gh<{ statuses: { state: string }[] }>(`/commits/${sha}/status`),
-    gh<{ check_runs: { status: string; conclusion: string | null }[] }>(`/commits/${sha}/check-runs`),
+    gh<{ statuses: { state: string; context: string }[] }>(`/commits/${sha}/status`),
+    gh<{ check_runs: { name: string; status: string; conclusion: string | null }[] }>(`/commits/${sha}/check-runs`),
   ]);
   const states = [
-    ...status.statuses.map((s) => s.state),
-    ...runs.check_runs.map((r) =>
+    ...status.statuses.filter((s) => isDeploy.test(s.context)).map((s) => s.state),
+    ...runs.check_runs.filter((r) => isDeploy.test(r.name)).map((r) =>
       r.status !== "completed"
         ? "pending"
         : ["success", "neutral", "skipped"].includes(r.conclusion ?? "")

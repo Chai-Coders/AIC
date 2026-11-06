@@ -90,7 +90,7 @@ export const editorStep = internalAction({
         name: "AI Assistant",
         languageModel: languageModel(ref.provider, ref.model, apiKey),
         instructions: EDITOR_INSTRUCTIONS,
-        tools: editorTools({ ctx, changeSetId, userId: cs.createdBy }),
+        tools: editorTools({ ctx, changeSetId, runSeq, userId: cs.createdBy }),
         usageHandler: async (usageCtx, { usage }) => {
           await recordUsage(usageCtx as ActionCtx, meta, usage);
         },

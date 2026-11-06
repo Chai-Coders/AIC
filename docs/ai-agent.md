@@ -25,6 +25,7 @@ Set these on the Convex deployment with `npx convex env set NAME value`:
 | `GITHUB_TOKEN` | Fine-grained token scoped to this repo only: Contents read/write, Commit statuses and Checks read. Needed for the code path. |
 | `GITHUB_REPO` | `Chai-Coders/AIC` |
 | `GITHUB_BRANCH` | Optional. The branch the agent reads and Publish commits to. Default: `migrations-johny`. |
+| `GITHUB_DEPLOY_CHECK` | Optional. Pattern for the commit check that means the website deployed. Default: `vercel`. |
 
 Then, in the CMS, open **AI settings**, add a provider key, and check the model and budget.
 Without the GitHub variables the content path still works, and the preview uses the
@@ -65,8 +66,10 @@ Access). Allow it. This doesn't apply in production.
 ## What the agent can't do
 
 - Edit protected files, listed with reasons in `convex-backend/convex/ai/protected.ts`:
-  sign-in, the admin check, admin accounts, the agent's own code and limits, the schema,
-  `package.json` and lockfiles, build and deploy settings, generated code and scripts.
+  sign-in and its routes, the admin check, admin accounts, scheduled jobs, the CMS's startup,
+  the agent's own code and limits, the schema, `package.json` and lockfiles, build and deploy
+  settings, generated code and scripts.
+- Add new files under `convex-backend/convex/`, because each one can become a public API.
 - Read `.env` files or key files. They are never cached.
 - Upload or edit pictures.
 - See API keys, the GitHub token or admin credentials. They stay inside actions.
@@ -84,6 +87,8 @@ Access). Allow it. This doesn't apply in production.
 - **Website text keys:** the backend bundles `registry.js` to know which texts exist, so a key
   added there can be edited by the agent once the backend is redeployed. A container build
   of `convex-backend/` will need `frontend/src/content/registry.js` in its build context.
+- **Deploy check:** the name match (`GITHUB_DEPLOY_CHECK`) hasn't been tried against real Vercel checks. If the CMS
+  also deploys from this repo through Vercel, narrow the pattern to the website's project.
 - **Draft size:** a draft holds up to about 800 KB of file contents.
 - **Dev server:** after pulling new `frontend/` files, restart the CMS dev server. Without a
   GitHub token the preview uses a file list Vite doesn't refresh for folders outside the CMS.

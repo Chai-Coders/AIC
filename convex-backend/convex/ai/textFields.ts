@@ -1,6 +1,7 @@
 // Which website texts exist. They are defined in the website's own registry, which
 // is plain data, so the backend bundles it instead of keeping a second list. A key
-// added there is known here once the backend is redeployed.
+// added there is known here once the backend is redeployed. Because this runs on
+// the backend, the review agent rejects anything in that file that isn't data.
 import { FIELDS, PAGES, SHARED } from "../../../frontend/src/content/registry.js";
 
 type Field = { key: string; label: string; kind: string; value: string };
@@ -19,7 +20,7 @@ for (const page of PAGES as unknown as { id: string; name: string; path: string;
   }
 }
 
-export const textField = (key: string): Field | undefined => fields[key];
+export const textField = (key: string): Field | undefined => (Object.hasOwn(fields, key) ? fields[key] : undefined);
 
 const plain = (text: string) => text.replace(/\*+/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 

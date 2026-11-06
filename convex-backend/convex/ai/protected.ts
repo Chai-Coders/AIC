@@ -11,6 +11,10 @@ const PROTECTED: { test: RegExp; reason: string }[] = [
   { test: /^convex-backend\/convex\/lib\/access\.ts$/, reason: "the admin check" },
   { test: /^convex-backend\/convex\/auth(\.config)?\.ts$/, reason: "sign-in" },
   { test: /^convex-backend\/convex\/admin\.ts$/, reason: "admin accounts" },
+  { test: /^convex-backend\/convex\/http\.ts$/, reason: "sign-in routes" },
+  { test: /^convex-backend\/convex\/crons\.ts$/, reason: "scheduled jobs" },
+  { test: /^cms_gui\/src\/main\.jsx$/, reason: "the CMS's startup" },
+  { test: /^cms_gui\/index\.html$/, reason: "the CMS's startup" },
   { test: /^cms_gui\/src\/context\/AuthContext\.jsx$/, reason: "sign-in" },
   { test: /^cms_gui\/src\/components\/LoginPage\.jsx$/, reason: "sign-in" },
   { test: /^cms_gui\/src\/services\/convex\.js$/, reason: "the CMS connection" },
@@ -24,8 +28,9 @@ const PROTECTED: { test: RegExp; reason: string }[] = [
   // Generated, and anything that runs on install or build.
   { test: /\/_generated\//, reason: "generated code" },
   { test: /(^|\/)package(-lock)?\.json$/, reason: "dependencies, which run code when installed" },
-  { test: /(^|\/)(vite\.config\.[jt]s|vercel\.json|docker-compose\.yml)$/, reason: "build and deploy settings" },
-  { test: /^convex-backend\/scripts\//, reason: "maintenance scripts" },
+  { test: /(^|\/)((vite|vitest|postcss|tailwind|eslint|babel)\.config\.[a-z]+|\.postcssrc(\.[a-z]+)?|\.babelrc(\.[a-z]+)?|\.eslintrc(\.[a-z]+)?|vercel\.json|docker-compose\.yml|\.npmrc|tsconfig\.json)$/, reason: "build and deploy settings" },
+  // frontend/scripts/snapshot.mjs runs on every website build.
+  { test: /^[^/]+\/scripts\//, reason: "scripts that run on build or by hand" },
 ];
 
 // Never sent to the model or cached, whatever the folder.
@@ -36,7 +41,7 @@ export const isSecretPath = (path: string) => SECRET.test(path) && !path.endsWit
 /** Normalised repo-relative path, or null when it's outside the repo. */
 export function cleanPath(path: string) {
   const clean = path.trim().replace(/^\.?\/+/, "");
-  if (!clean || clean.includes("\\") || clean.split("/").some((part) => part === ".." || part === ".")) return null;
+  if (!clean || clean.includes("\\") || clean.split("/").some((part) => !part || part === ".." || part === ".")) return null;
   return clean;
 }
 
@@ -46,5 +51,10 @@ export const inEditableRoot = (path: string) => EDITABLE_ROOTS.some((root) => pa
 export function editBlockedReason(path: string): string | null {
   if (!inEditableRoot(path)) return "only frontend/, cms_gui/ and convex-backend/ can be edited";
   if (isSecretPath(path)) return "it holds secrets";
-  return PROTECTED.find((rule) => rule.test.test(path))?.reason ?? null;
+  // Case-insensitive, so a checkout on a case-insensitive disk can't be tricked.
+  return PROTECTED.find((rule) => new RegExp(rule.test.source, "i").test(path))?.reason ?? null;
 }
+
+/** Every file directly in convex/ can become a public API, so the agent can't add one. */
+export const newFileBlockedReason = (path: string) =>
+  /^convex-backend\/convex\//i.test(path) ? "a new backend file adds to the public API" : null;

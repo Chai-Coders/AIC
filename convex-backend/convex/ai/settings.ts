@@ -92,6 +92,10 @@ export const save = mutation({
         if (!p.model.trim() || !(p.inputPerMTok >= 0) || !(p.outputPerMTok >= 0)) {
           throw new ConvexError("Every price needs a model name and prices of 0 or more.");
         }
+        // A free model would never count towards the spend cap.
+        if (p.inputPerMTok === 0 && p.outputPerMTok === 0) {
+          throw new ConvexError(`Please enter a price for ${p.model}; its cost can't be tracked at 0.`);
+        }
       }
       patch.priceTable = args.priceTable.map((p) => ({ ...p, model: p.model.trim() }));
       patch.pricesUpdatedAt = Date.now();

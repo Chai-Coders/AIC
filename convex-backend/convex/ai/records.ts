@@ -60,7 +60,7 @@ const CATEGORIES = teamCategory.members.map((m) => m.value as string);
 
 /** The value to store for a text field, or throws a message for the model. */
 export function checkTextField(table: ContentTable, field: string, value: unknown) {
-  const rule = TEXT_FIELDS[table][field];
+  const rule = Object.hasOwn(TEXT_FIELDS[table], field) ? TEXT_FIELDS[table][field] : undefined;
   if (!rule) {
     throw new ConvexError(`"${field}" can't be edited on ${table}. Editable fields: ${textFieldsOf(table).join(", ")}.`);
   }

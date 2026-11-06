@@ -31,7 +31,7 @@ const cleanMessage = (message) =>
  */
 export function useBuildCheck({ draft, previewReady, navigate, report }) {
   const revision = draft?.status === 'building' ? draft.updatedAt : null;
-  const state = useRef({ revision: null, error: null, timer: null });
+  const state = useRef({ revision: null, error: null, timer: null, compiling: false });
   const reportRef = useRef(report);
   const navigateRef = useRef(navigate);
   useEffect(() => {
@@ -44,6 +44,8 @@ export function useBuildCheck({ draft, previewReady, navigate, report }) {
     clearTimeout(s.timer);
     if (s.revision === null) return;
     s.timer = setTimeout(() => {
+      // Running out of time isn't a pass: an error could still be on its way.
+      if (s.compiling) s.error = 'The preview took too long to build, so this change could not be checked.';
       const pages = s.error ? [] : (s.pages ?? []);
       const finish = () => {
         const done = s.revision;
@@ -70,7 +72,7 @@ export function useBuildCheck({ draft, previewReady, navigate, report }) {
     } else if (s.revision !== revision) {
       s.revision = revision;
       s.pages = [...new Set((draft.changeList ?? []).map((c) => c.page).filter(Boolean))];
-      settleAfter(QUIET_MS);
+      settleAfter(s.compiling ? COMPILING_MS : QUIET_MS);
     }
     // `draft` is only read when the revision changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,9 +92,13 @@ export function useBuildCheck({ draft, previewReady, navigate, report }) {
   return {
     onCompiling: useCallback(() => {
       state.current.error = null;
+      state.current.compiling = true;
       settleAfter(COMPILING_MS);
     }, [settleAfter]),
-    onCompiled: useCallback(() => settleAfter(AFTER_RESULT_MS), [settleAfter]),
+    onCompiled: useCallback(() => {
+      state.current.compiling = false;
+      settleAfter(AFTER_RESULT_MS);
+    }, [settleAfter]),
     onBuildError: onError,
     onRuntimeError: onError,
   };

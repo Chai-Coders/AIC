@@ -13,6 +13,7 @@ const table = z.enum(["gallery", "startups", "news", "teamMembers", "backgroundV
 const errorText = (e: unknown) => (e instanceof ConvexError ? String(e.data) : e instanceof Error ? e.message : String(e));
 
 type Env = { ctx: ActionCtx; changeSetId: Id<"changeSets">; userId?: Id<"users"> };
+type EditorEnv = Env & { runSeq: number };
 
 function define<S extends z.ZodType>(env: Env, name: string, description: string, inputSchema: S, run: (input: z.infer<S>) => Promise<unknown>) {
   return tool({
@@ -88,8 +89,8 @@ function readTools(env: Env) {
   };
 }
 
-export function editorTools(env: Env) {
-  const { ctx, changeSetId } = env;
+export function editorTools(env: EditorEnv) {
+  const { ctx, changeSetId, runSeq } = env;
   return {
     ...readTools(env),
     update_site_text: define(
@@ -97,14 +98,14 @@ export function editorTools(env: Env) {
       "update_site_text",
       "Change one website text by its key. Keep to its kind: a `list` has one item per line, and a `rich` text can use *italics* and **bold**. Pass value null to go back to the text written in the website's code.",
       z.object({ key: z.string(), value: z.string().nullable() }),
-      (args) => ctx.runMutation(internal.ai.drafts.updateSiteText, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.updateSiteText, { changeSetId, runSeq, ...args }),
     ),
     update_record: define(
       env,
       "update_record",
       "Change a text field on a gallery, startup, news, team or background-video record.",
       z.object({ table, id: z.string(), field: z.string(), value: z.string() }),
-      (args) => ctx.runMutation(internal.ai.drafts.updateRecord, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.updateRecord, { changeSetId, runSeq, ...args }),
     ),
     create_record: define(
       env,
@@ -115,28 +116,28 @@ export function editorTools(env: Env) {
         fields: z.record(z.string(), z.string()).describe("Text fields of the record, using the names from get_site_content."),
         imageId: z.string().optional(),
       }),
-      (args) => ctx.runMutation(internal.ai.drafts.createRecord, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.createRecord, { changeSetId, runSeq, ...args }),
     ),
     delete_record: define(
       env,
       "delete_record",
       "Ask to delete a record. This always pauses for the admin to confirm. End your turn after calling it.",
       z.object({ table, id: z.string(), reason: z.string().describe("One plain sentence for the admin.") }),
-      (args) => ctx.runMutation(internal.ai.drafts.queueDeleteRecord, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.queueDeleteRecord, { changeSetId, runSeq, ...args }),
     ),
     swap_media: define(
       env,
       "swap_media",
       "Point a record at a different existing picture from the library.",
       z.object({ table, id: z.string(), imageId: z.string() }),
-      (args) => ctx.runMutation(internal.ai.drafts.swapMedia, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.swapMedia, { changeSetId, runSeq, ...args }),
     ),
     reorder: define(
       env,
       "reorder",
       "Change the order of gallery items or startups. List the record ids in the new order, first shown first.",
       z.object({ table, ids: z.array(z.string()) }),
-      (args) => ctx.runMutation(internal.ai.drafts.reorder, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.reorder, { changeSetId, runSeq, ...args }),
     ),
     edit_file: define(
       env,
@@ -147,21 +148,21 @@ export function editorTools(env: Env) {
         replacements: z.array(z.object({ find: z.string(), replace: z.string() })).optional(),
         content: z.string().optional(),
       }),
-      (args) => ctx.runMutation(internal.ai.drafts.editFile, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.editFile, { changeSetId, runSeq, ...args }),
     ),
     create_file: define(
       env,
       "create_file",
       "Add a new file to the draft.",
       z.object({ path: z.string(), content: z.string() }),
-      (args) => ctx.runMutation(internal.ai.drafts.createFile, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.createFile, { changeSetId, runSeq, ...args }),
     ),
     delete_file: define(
       env,
       "delete_file",
       "Ask to delete a file. This always pauses for the admin to confirm. End your turn after calling it.",
       z.object({ path: z.string(), reason: z.string().describe("One plain sentence for the admin.") }),
-      (args) => ctx.runMutation(internal.ai.drafts.queueDeleteFile, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.queueDeleteFile, { changeSetId, runSeq, ...args }),
     ),
     describe_change: define(
       env,
@@ -175,7 +176,14 @@ export function editorTools(env: Env) {
         text: z.string().optional().describe("Text the changed element contains after the change, used to find it."),
         beforeText: z.string().optional().describe("Text it contained before, when different."),
       }),
-      (args) => ctx.runMutation(internal.ai.drafts.describeChange, { changeSetId, ...args }),
+      (args) => ctx.runMutation(internal.ai.drafts.describeChange, { changeSetId, runSeq, ...args }),
+    ),
+    remove_change: define(
+      env,
+      "remove_change",
+      "Take an item off the change list when it no longer applies, because the change was undone or replaced. Give its summary exactly as you wrote it.",
+      z.object({ summary: z.string() }),
+      (args) => ctx.runMutation(internal.ai.drafts.removeChange, { changeSetId, runSeq, ...args }),
     ),
   };
 }

@@ -98,7 +98,27 @@ export const finishRollback = internalMutation({
   handler: async (ctx, { userId, versionId, commitSha, parentCommitSha, files }): Promise<Id<"versions">> => {
     const version = (await ctx.db.get(versionId))!;
     const conflicts = await rollbackConflicts(ctx, version);
-    if (conflicts.length) throw new ConvexError(`The content couldn't be restored: ${conflicts.join("; ")}.`);
+    if (conflicts.length) {
+      const error = `The code was rolled back, but the content couldn't be restored: ${conflicts.join("; ")}.`;
+      // The revert commit is on the branch, so it must be recorded, or it can't be undone.
+      const failed = await ctx.db.insert("versions", {
+        changeSetId: version.changeSetId,
+        kind: "code",
+        summary: `Rolled back the code only: ${version.summary}`.slice(0, 500),
+        contentSnapshot: [],
+        commitSha,
+        parentCommitSha,
+        files,
+        revertOf: versionId,
+        status: "failed",
+        error,
+        publishedBy: userId,
+        publishedAt: Date.now(),
+      });
+      await ctx.db.patch(versionId, { revertedBy: failed });
+      await audit(ctx, { userId, changeSetId: version.changeSetId, action: "rollback.partial", detail: { versionId, failed, commitSha, error } });
+      return failed;
+    }
 
     const contentSnapshot = [];
     for (const { table, id, before, after } of version.contentSnapshot as { table: ContentTable | "siteText"; id: string; before: any; after: any }[]) {
@@ -169,7 +189,9 @@ export const rollback = action({
       });
       code = { commitSha, parentCommitSha: head, files };
     }
-    await ctx.runMutation(internal.ai.versions.finishRollback, { userId, versionId, ...code });
+    const newVersion: Id<"versions"> = await ctx.runMutation(internal.ai.versions.finishRollback, { userId, versionId, ...code });
     if (code) await ctx.runAction(internal.ai.repo.sync, { force: true }).catch(() => undefined);
+    const result: Doc<"versions"> | null = await ctx.runQuery(internal.ai.versions.getInternal, { versionId: newVersion });
+    if (result?.status === "failed") throw new ConvexError(result.error ?? "The rollback only partly finished.");
   },
 });

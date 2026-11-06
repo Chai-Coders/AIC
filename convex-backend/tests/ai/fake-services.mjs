@@ -19,7 +19,8 @@ const answer=(res,next)=>{
 http.createServer((req,res)=>{let b='';req.on('data',d=>b+=d);req.on('end',()=>{ const u=new URL(req.url,'http://x'); const j=b?JSON.parse(b):{};
  if(u.pathname==='/control/script'){state.script=j.script;state.calls=[];return respond(res,200,{ok:1});}
  if(u.pathname==='/control/state'){return respond(res,200,{head:state.head,calls:state.calls,commits:[...commits.entries()].map(([k,v])=>({sha:k,message:v.message,parents:v.parents})),remaining:state.script.length});}
- if(u.pathname==='/control/deploy'){state.statuses[j.sha]=j.state;return respond(res,200,{ok:1});}
+ if(u.pathname==='/control/deploy'){(state.statuses[j.sha]??=[]).push({state:j.state,context:j.context||'Vercel'});return respond(res,200,{ok:1});}
+ if(u.pathname==='/control/set'){Object.assign(state,j);return respond(res,200,{ok:1});}
  if(u.pathname==='/control/external-edit'){const t={...trees.get(commits.get(state.head).tree)};const s=sha1(j.content);blobs.set(s,j.content);t[j.path]=s;const id=treeId(t);trees.set(id,t);const c=crypto.randomBytes(20).toString('hex');commits.set(c,{tree:id,parents:[state.head],message:'external'});state.head=c;return respond(res,200,{head:c});}
  if(u.pathname==='/control/file'){const t=trees.get(commits.get(state.head).tree);const s=t[j.path];return respond(res,200,{content:s?blobs.get(s):null});}
  if(u.pathname==='/v1/messages'){ const next=state.script.shift(); if(next?.delay){return setTimeout(()=>answer(res,next),next.delay);} state.calls.push({bodyKeys:Object.keys(j),system:j.system,messages:j.messages,tools:(j.tools||[]).map(t=>t.name),key:req.headers['x-api-key'],model:j.model,tool_choice:j.tool_choice}); if(LOG)fs.appendFileSync(LOG,JSON.stringify(j)+'\n');
@@ -27,13 +28,13 @@ http.createServer((req,res)=>{let b='';req.on('data',d=>b+=d);req.on('end',()=>{
  const m=u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)$/); if(m){ const p=m[1]; if(req.headers.authorization!=='Bearer fake-token') return respond(res,401,{message:'bad'});
   let x; if((x=p.match(/^\/git\/ref\/heads\/(.+)$/))) return respond(res,200,{object:{sha:state.head}});
   if((x=p.match(/^\/git\/commits\/([0-9a-f]+)$/))) return respond(res,200,{tree:{sha:commits.get(x[1]).tree}});
-  if((x=p.match(/^\/git\/trees\/([0-9a-f]+)$/))){const t=trees.get(x[1]);return respond(res,200,{truncated:false,tree:Object.entries(t).map(([path,sha])=>({path,sha,type:'blob',size:Buffer.byteLength(blobs.get(sha))}))});}
+  if((x=p.match(/^\/git\/trees\/([0-9a-f]+)$/))){const t=trees.get(x[1]);return respond(res,200,{truncated:!!state.truncated,tree:Object.entries(t).map(([path,sha])=>({path,sha,type:'blob',size:Buffer.byteLength(blobs.get(sha))}))});}
   if((x=p.match(/^\/git\/blobs\/([0-9a-f]+)$/))) return respond(res,200,{encoding:'base64',content:Buffer.from(blobs.get(x[1])).toString('base64')});
   if(p==='/git/trees'&&req.method==='POST'){const t={...trees.get(j.base_tree)};for(const e of j.tree){if(e.sha===null)delete t[e.path];else{const s=sha1(e.content);blobs.set(s,e.content);t[e.path]=s;}}const id=treeId(t);trees.set(id,t);return respond(res,201,{sha:id});}
   if(p==='/git/commits'&&req.method==='POST'){const c=crypto.randomBytes(20).toString('hex');commits.set(c,{tree:j.tree,parents:j.parents,message:j.message});return respond(res,201,{sha:c});}
-  if((x=p.match(/^\/git\/refs\/heads\/(.+)$/))&&req.method==='PATCH'){if(j.force) return respond(res,422,{message:'no force expected'}); if(!commits.get(j.sha).parents.includes(state.head)) return respond(res,422,{message:'not fast forward'}); state.head=j.sha;return respond(res,200,{object:{sha:j.sha}});}
+  if((x=p.match(/^\/git\/refs\/heads\/(.+)$/))&&req.method==='PATCH'){if(j.force) return respond(res,422,{message:'no force expected'}); if(!commits.get(j.sha).parents.includes(state.head)) return respond(res,422,{message:'not fast forward'}); state.head=j.sha;return setTimeout(()=>respond(res,200,{object:{sha:j.sha}}),state.refDelay||0);}
   if((x=p.match(/^\/compare\/([0-9a-f]+)\.\.\.([0-9a-f]+)$/))){const a=trees.get(commits.get(x[1]).tree),c=trees.get(commits.get(x[2]).tree);const files=[...new Set([...Object.keys(a),...Object.keys(c)])].filter(k=>a[k]!==c[k]).map(filename=>({filename}));return respond(res,200,{files});}
-  if((x=p.match(/^\/commits\/([0-9a-f]+)\/status$/))){const s=state.statuses[x[1]];return respond(res,200,{statuses:s?[{state:s}]:[]});}
+  if((x=p.match(/^\/commits\/([0-9a-f]+)\/status$/))){return respond(res,200,{statuses:state.statuses[x[1]]||[]});}
   if((x=p.match(/^\/commits\/([0-9a-f]+)\/check-runs$/))) return respond(res,200,{check_runs:[]});
   return respond(res,404,{message:'nope '+p}); }
  respond(res,404,{});});}).listen(PORT,'127.0.0.1',()=>console.log('fake up'));

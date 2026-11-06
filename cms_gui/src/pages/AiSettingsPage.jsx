@@ -159,6 +159,11 @@ export default function AiSettingsPage() {
     .filter((m) => m.model.trim() && !prices.some((p) => p.provider === m.provider && p.model === m.model.trim()));
 
   const onSave = async () => {
+    // Number('') is 0, which would silently stop the assistant.
+    if (String(budget).trim() === '' || !(Number(budget) >= 0)) {
+      showToast('Please enter a monthly budget.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       await run(() =>

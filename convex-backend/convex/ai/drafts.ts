@@ -9,7 +9,7 @@ import { imageUrl } from "../images";
 import { checkSiteText } from "../siteText";
 import { findTextFields, textField, textKeyForValue } from "./textFields";
 import { applyTextOps, canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
-import { cleanPath, editBlockedReason, isSecretPath } from "./protected";
+import { cleanPath, editBlockedReason, isSecretPath, newFileBlockedReason } from "./protected";
 
 // A Convex document can hold 1 MiB and a draft keeps whole files.
 const MAX_DRAFT_CODE_CHARS = 800_000;
@@ -33,8 +33,10 @@ async function requireDraft(ctx: QueryCtx, changeSetId: Id<"changeSets">) {
   return cs;
 }
 
-async function requireDrafting(ctx: QueryCtx, changeSetId: Id<"changeSets">) {
+/** `runSeq` is the agent run making the edit: a stopped run can't write, even once a newer run is going. */
+async function requireDrafting(ctx: QueryCtx, changeSetId: Id<"changeSets">, runSeq: number) {
   const cs = await requireDraft(ctx, changeSetId);
+  if (cs.runSeq !== runSeq) throw new ConvexError("This step was stopped, so its edit wasn't made.");
   if (cs.status !== "drafting") {
     throw new ConvexError(
       cs.status === "needs_admin"
@@ -105,9 +107,9 @@ export const readSiteText = internalQuery({
 });
 
 export const updateSiteText = internalMutation({
-  args: { changeSetId: v.id("changeSets"), key: v.string(), value: v.union(v.string(), v.null()) },
-  handler: async (ctx, { changeSetId, key, value }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), key: v.string(), value: v.union(v.string(), v.null()) },
+  handler: async (ctx, { changeSetId, runSeq, key, value }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     checkSiteText(key, value);
     if (!textField(key)) throw new ConvexError(`There is no website text called "${key}". Find its key with get_site_text.`);
     const row = await ctx.db.query("siteText").withIndex("by_key", (q) => q.eq("key", key)).unique();
@@ -263,9 +265,9 @@ async function setField(ctx: MutationCtx, cs: Doc<"changeSets">, table: ContentT
 }
 
 export const updateRecord = internalMutation({
-  args: { changeSetId: v.id("changeSets"), table: contentTable, id: v.string(), field: v.string(), value: v.string() },
-  handler: async (ctx, { changeSetId, table, id, field, value }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, id: v.string(), field: v.string(), value: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, table, id, field, value }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     await setField(ctx, cs, table, id, field, checkTextField(table, field, value));
     return { ok: true };
   },
@@ -278,9 +280,9 @@ async function requireImageId(ctx: QueryCtx, imageId: string) {
 }
 
 export const createRecord = internalMutation({
-  args: { changeSetId: v.id("changeSets"), table: contentTable, fields: v.record(v.string(), v.string()), imageId: v.optional(v.string()) },
-  handler: async (ctx, { changeSetId, table, fields, imageId }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, fields: v.record(v.string(), v.string()), imageId: v.optional(v.string()) },
+  handler: async (ctx, { changeSetId, runSeq, table, fields, imageId }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const doc: Record<string, unknown> = createDefaults(table, Date.now());
     for (const [field, value] of Object.entries(fields)) {
       const checked = checkTextField(table, field, value);
@@ -298,9 +300,9 @@ export const createRecord = internalMutation({
 });
 
 export const swapMedia = internalMutation({
-  args: { changeSetId: v.id("changeSets"), table: contentTable, id: v.string(), imageId: v.string() },
-  handler: async (ctx, { changeSetId, table, id, imageId }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, id: v.string(), imageId: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, table, id, imageId }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const field = imageFieldOf(table);
     if (!field) throw new ConvexError(`${table} records don't have a picture to swap.`);
     await setField(ctx, cs, table, id, field, await requireImageId(ctx, imageId));
@@ -309,9 +311,9 @@ export const swapMedia = internalMutation({
 });
 
 export const reorder = internalMutation({
-  args: { changeSetId: v.id("changeSets"), table: contentTable, ids: v.array(v.string()) },
-  handler: async (ctx, { changeSetId, table, ids }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, ids: v.array(v.string()) },
+  handler: async (ctx, { changeSetId, runSeq, table, ids }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     if (!canReorder(table)) {
       throw new ConvexError(table === "news" ? "News is ordered by date; change publishedDate instead." : `${table} has no manual order.`);
     }
@@ -328,9 +330,9 @@ export const reorder = internalMutation({
 
 /** Pauses the draft: a delete only enters it once the admin has confirmed. */
 export const queueDeleteRecord = internalMutation({
-  args: { changeSetId: v.id("changeSets"), table: contentTable, id: v.string(), reason: v.string() },
-  handler: async (ctx, { changeSetId, table, id, reason }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, id: v.string(), reason: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, table, id, reason }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     if (id.startsWith("new:")) {
       // Never published, so nothing to confirm.
       await patchDraft(ctx, cs, { contentOps: cs.contentOps.filter((op) => !(op.op === "create" && op.id === id)) });
@@ -377,13 +379,13 @@ function editablePath(path: string) {
 /** Whole new contents, or exact replacements (cheaper for large files). */
 export const editFile = internalMutation({
   args: {
-    changeSetId: v.id("changeSets"),
+    changeSetId: v.id("changeSets"), runSeq: v.number(),
     path: v.string(),
     content: v.optional(v.string()),
     replacements: v.optional(v.array(v.object({ find: v.string(), replace: v.string() }))),
   },
-  handler: async (ctx, { changeSetId, path, content, replacements }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  handler: async (ctx, { changeSetId, runSeq, path, content, replacements }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const clean = editablePath(path);
     const current = await draftFile(ctx, cs, clean);
     if (current.content === null) throw new ConvexError(`${clean} doesn't exist. Use create_file, or read the file first.`);
@@ -402,21 +404,23 @@ export const editFile = internalMutation({
 });
 
 export const createFile = internalMutation({
-  args: { changeSetId: v.id("changeSets"), path: v.string(), content: v.string() },
-  handler: async (ctx, { changeSetId, path, content }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), path: v.string(), content: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, path, content }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const clean = editablePath(path);
     const current = await draftFile(ctx, cs, clean);
     if (current.content !== null || current.binary) throw new ConvexError(`${clean} already exists. Use edit_file.`);
+    const blocked = newFileBlockedReason(clean);
+    if (blocked) throw new ConvexError(`${clean} can't be edited by the AI Assistant: ${blocked}. Tell the admin a developer has to make this change.`);
     await writeFile(ctx, cs, clean, content);
     return { ok: true, path: clean };
   },
 });
 
 export const queueDeleteFile = internalMutation({
-  args: { changeSetId: v.id("changeSets"), path: v.string(), reason: v.string() },
-  handler: async (ctx, { changeSetId, path, reason }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), path: v.string(), reason: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, path, reason }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const clean = editablePath(path);
     const edit = cs.codeEdits.find((e) => e.path === clean);
     if (edit && edit.baseSha === null) {
@@ -451,7 +455,7 @@ export async function applyConfirmedDelete(ctx: MutationCtx, cs: Doc<"changeSets
 
 export const describeChange = internalMutation({
   args: {
-    changeSetId: v.id("changeSets"),
+    changeSetId: v.id("changeSets"), runSeq: v.number(),
     summary: v.string(),
     kind: v.union(v.literal("content"), v.literal("code")),
     page: v.optional(v.string()),
@@ -459,10 +463,25 @@ export const describeChange = internalMutation({
     text: v.optional(v.string()),
     beforeText: v.optional(v.string()),
   },
-  handler: async (ctx, { changeSetId, ...item }) => {
-    const cs = await requireDrafting(ctx, changeSetId);
+  handler: async (ctx, { changeSetId, runSeq, ...item }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
     await patchDraft(ctx, cs, { changeList: [...cs.changeList, item] });
     return { ok: true, changeNumber: cs.changeList.length + 1 };
+  },
+});
+
+/** For a change that no longer applies, so the walkthrough stays true. */
+export const removeChange = internalMutation({
+  args: { changeSetId: v.id("changeSets"), runSeq: v.number(), summary: v.string() },
+  handler: async (ctx, { changeSetId, runSeq, summary }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
+    // By its words: parallel tool calls can add items in any order, so numbers aren't reliable.
+    const changeList = cs.changeList.filter((item) => item.summary !== summary);
+    if (changeList.length === cs.changeList.length) {
+      throw new ConvexError(`No change is described as "${summary}". The list has: ${cs.changeList.map((item) => item.summary).join("; ") || "nothing yet"}.`);
+    }
+    await patchDraft(ctx, cs, { changeList });
+    return { ok: true, remaining: changeList.length };
   },
 });
 

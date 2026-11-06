@@ -9,7 +9,7 @@ import type { ContentOp, ContentTable } from "../schema";
 import { requireAdmin } from "../lib/access";
 import { audit } from "./audit";
 import { blobText, branchHead, commitFiles, commitTree, deployState, githubBranch, safeCommitMessage } from "./github";
-import { editBlockedReason } from "./protected";
+import { editBlockedReason, newFileBlockedReason } from "./protected";
 import { applyReorder, sameValue } from "./records";
 
 const POLL_MS = 20_000;
@@ -120,7 +120,7 @@ export const begin = internalMutation({
     }
     if (!cs.contentOps.length && !cs.codeEdits.length) throw new ConvexError("This draft has no changes to publish.");
     for (const edit of cs.codeEdits) {
-      const blocked = editBlockedReason(edit.path);
+      const blocked = editBlockedReason(edit.path) ?? (edit.baseSha === null ? newFileBlockedReason(edit.path) : null);
       if (blocked) throw new ConvexError(`${edit.path} can't be published: ${blocked}.`);
     }
     const conflicts = await contentConflicts(ctx, cs.contentOps);
@@ -304,7 +304,9 @@ export const publish = action({
     const userId = await requireAdmin(ctx);
     const cs: Doc<"changeSets"> = await ctx.runMutation(internal.ai.publish.begin, { userId, changeSetId, override: !!override });
     const previous = cs.status === "ready" ? ("ready" as const) : ("needs_admin" as const);
+    let stopped = false;
     const stopWith = async (notice: string) => {
+      stopped = true;
       await ctx.runMutation(internal.ai.publish.abort, { changeSetId, status: previous, notice });
       throw new ConvexError(notice);
     };
@@ -338,7 +340,8 @@ export const publish = action({
       const sha = await commitFiles({ parentSha: head, message, files: cs.codeEdits.map((e) => ({ path: e.path, content: e.content })) });
       commit = { sha, parent: head, files };
     } catch (e) {
-      if (e instanceof ConvexError) throw e;
+      if (stopped) throw e;
+      // Whatever went wrong, nothing was committed, so the draft must not stay in `publishing`.
       return await stopWith(`Publishing stopped before anything changed: ${errorText(e)}`);
     }
 
