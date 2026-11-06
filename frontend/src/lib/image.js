@@ -1,11 +1,11 @@
 // Pictures are served by the Convex backend at /img/<id> (a Convex document
-// id), which stores a few resized WebP copies of each upload (480, 960 and
-// 1920 px wide). Adding ?w=<width> returns the smallest copy at least that
-// wide, so pages never download a bigger file than they display. Other URLs
-// are returned unchanged.
+// id; /media/<id> when this site proxies them through its CDN), which stores
+// a few resized WebP copies of each upload (480, 960 and 1920 px wide). Adding
+// ?w=<width> returns the smallest copy at least that wide, so pages never
+// download a bigger file than they display. Other URLs are returned unchanged.
 
 function isResizable(url) {
-  return typeof url === 'string' && /\/img\/[a-z0-9]{16,}$/.test(url);
+  return typeof url === 'string' && /\/(img|media)\/[a-z0-9]{16,}$/.test(url);
 }
 
 /**

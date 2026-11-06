@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { auth } from "./auth";
 import { mcpOther, mcpPost, preflight } from "./mcp";
 import { authorizationServer, protectedResource, register, token } from "./oauth";
@@ -29,6 +29,27 @@ http.route({
       headers: {
         "Content-Type": blob.type || "image/webp",
         "Cache-Control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+  }),
+});
+
+// GET /content: everything the website shows (content:siteContent), for a CDN
+// in front of the site to cache. Browsers reuse it for a minute; a CDN keeps
+// it for a minute too and then, for up to a day, serves the last copy while
+// it fetches a fresh one, so visitors never wait for this server and edits
+// show within about a minute.
+http.route({
+  path: "/content",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    const content = await ctx.runQuery(api.content.siteContent, {});
+    return new Response(JSON.stringify(content), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60",
+        "CDN-Cache-Control": "public, max-age=60, stale-while-revalidate=86400",
         "Access-Control-Allow-Origin": "*",
       },
     });

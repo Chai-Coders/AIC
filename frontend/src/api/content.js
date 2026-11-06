@@ -4,6 +4,11 @@ import { getCached } from './cache';
 // convex/content.ts), called over plain HTTP: a read-only site needs no
 // WebSocket or Convex client. Responses keep the shape the Django API had.
 const CONVEX_URL = (import.meta.env.VITE_CONVEX_URL || '').replace(/\/+$/, '');
+// Set when the site is hosted with the CDN rewrites in vercel.ts: content and
+// pictures are then loaded from this site's own address (/content.json,
+// /media/<id>) and cached near visitors instead of fetched from the backend.
+const CONVEX_SITE_URL = (import.meta.env.VITE_CONVEX_SITE_URL || '').replace(/\/+$/, '');
+const VIA_CDN = Boolean(CONVEX_SITE_URL) && !import.meta.env.DEV;
 
 async function convexQuery(path, args = {}) {
   const res = await fetch(`${CONVEX_URL}/api/query`, {
@@ -32,13 +37,30 @@ function cached(key, fetcher) {
   return fn;
 }
 
+/** Picture addresses on the backend (<site>/img/<id>) as this site's /media/<id>. */
+function viaCdn(value) {
+  if (typeof value === 'string') {
+    return value.startsWith(`${CONVEX_SITE_URL}/img/`) ? `/media/${value.slice(CONVEX_SITE_URL.length + 5)}` : value;
+  }
+  if (Array.isArray(value)) return value.map(viaCdn);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, viaCdn(v)]));
+  return value;
+}
+
+async function loadSiteContent() {
+  if (!VIA_CDN) return convexQuery('content:siteContent');
+  const res = await fetch('/content.json');
+  if (!res.ok) return convexQuery('content:siteContent');
+  return viaCdn(await res.json());
+}
+
 /**
  * Everything the public site shows, in one cached request (content:siteContent).
  * Every list below reads from this, so loading any page loads them all and
  * switching pages never waits on the network.
  * Returns: { gallery, startups, news, team, background_video }
  */
-export const fetchSiteContent = cached('site', () => convexQuery('content:siteContent'));
+export const fetchSiteContent = cached('site', loadSiteContent);
 
 function fromSite(select) {
   const fn = () => fetchSiteContent().then(select);
