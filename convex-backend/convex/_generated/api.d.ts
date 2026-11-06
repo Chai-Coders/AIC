@@ -16,6 +16,8 @@ import type * as gallery from "../gallery.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_history from "../lib/history.js";
+import type * as lib_registry from "../lib/registry.js";
 import type * as lib_validate from "../lib/validate.js";
 import type * as migrate from "../migrate.js";
 import type * as mux from "../mux.js";
@@ -23,6 +25,7 @@ import type * as news from "../news.js";
 import type * as startups from "../startups.js";
 import type * as team from "../team.js";
 import type * as users from "../users.js";
+import type * as versions from "../versions.js";
 
 import type {
   ApiFromModules,
@@ -39,6 +42,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   images: typeof images;
   "lib/access": typeof lib_access;
+  "lib/history": typeof lib_history;
+  "lib/registry": typeof lib_registry;
   "lib/validate": typeof lib_validate;
   migrate: typeof migrate;
   mux: typeof mux;
@@ -46,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   startups: typeof startups;
   team: typeof team;
   users: typeof users;
+  versions: typeof versions;
 }>;
 
 /**

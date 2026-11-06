@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireAdmin } from "./lib/access";
 import { text } from "./lib/validate";
-import { deleteImage, requireImage } from "./images";
+import { requireImage } from "./images";
+import { recordCmsEdit } from "./lib/history";
 
 const fields = (args: { subtext?: string }) => ({
   subtext: text(args.subtext ?? "", "Caption", { max: 255 }),
@@ -12,11 +13,13 @@ export const create = mutation({
   args: { imageId: v.id("images"), subtext: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return await ctx.db.insert("gallery", {
+    const id = await ctx.db.insert("gallery", {
       ...fields(args),
       imageId: await requireImage(ctx, args.imageId),
       createdAt: Date.now(),
     });
+    await recordCmsEdit(ctx, "gallery", id, null, await ctx.db.get(id));
+    return id;
   },
 });
 
@@ -27,11 +30,10 @@ export const update = mutation({
     await requireAdmin(ctx);
     const doc = await ctx.db.get(id);
     if (!doc) return;
-    if (imageId && imageId !== doc.imageId) {
-      await requireImage(ctx, imageId);
-      await deleteImage(ctx, doc.imageId);
-    }
+    // The old picture is kept: the version history can put it back.
+    if (imageId && imageId !== doc.imageId) await requireImage(ctx, imageId);
     await ctx.db.patch(id, { ...fields(args), imageId: imageId ?? doc.imageId, createdAt: Date.now() });
+    await recordCmsEdit(ctx, "gallery", id, doc, await ctx.db.get(id));
   },
 });
 
@@ -42,6 +44,7 @@ export const remove = mutation({
     const doc = await ctx.db.get(id);
     if (!doc) return;
     await ctx.db.delete(id);
-    await deleteImage(ctx, doc.imageId);
+    // The picture is kept so the deletion can be undone from the history.
+    await recordCmsEdit(ctx, "gallery", id, doc, null);
   },
 });
