@@ -6,6 +6,7 @@ import {
   Users,
   Video,
   History,
+  Bot,
 } from 'lucide-react';
 
 // Public website address, shown as a "View website" link when configured.
@@ -166,4 +167,5 @@ export const ROUTES = [
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
   { path: '/versions', id: 'versions', name: 'Versions', icon: History },
+  { path: '/ai-connection', id: 'ai-connection', name: 'AI connection', icon: Bot },
 ];

@@ -23,8 +23,18 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
         top, force per field), reject (kept in history)
   - [x] Waiting for approval tab: tick/untick, edit AI value, use AI value anyway,
         upload missing pictures, approve and publish / reject all
-- [ ] 3. OAuth login, AI connection page
-- [ ] 4. Pictures: URL download, upload links, resizing on approve
+- [x] 3. OAuth login, AI connection page
+  - [x] Discovery (/.well-known/oauth-protected-resource[/mcp], oauth-authorization-server),
+        dynamic registration, CMS consent page /oauth/authorize (PKCE S256 only), /oauth/token
+        (code + refresh, rotating), 401 + WWW-Authenticate on /mcp
+  - [x] AI connection page: address + copy, per-app setup, how it works, examples,
+        connected apps + Disconnect, can / can't, sitting length setting
+  - [x] Login keeps the query string when returning (needed for the consent page)
+  - [x] cms_gui/vercel.json: SPA rewrites so /oauth/authorize and /upload/... load directly
+  - [x] Daily cleanup of expired codes / tokens / links and abandoned registrations
+- [x] 4. Pictures: URL download (https only, private hosts blocked, 10 MB, image/* only),
+        one-time upload links (/upload/<token>, 1 h), WebP copies made in the browser on approve,
+        cleanup keeps pictures used by history and pending drafts
 - [ ] 5. `find_content` across every field
 
 ## Log
@@ -34,3 +44,5 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
 - 2026-11-06: Versions UI done; checked with headless Chromium (desktop + phone).
 - 2026-11-06: MCP tested with curl (auth challenge, tools, validation, SSRF block, image via redirect);
   approve flow tested in headless browser (override kept, edited value, uploaded logo).
+- 2026-11-06: OAuth tested end to end (login round-trip, consent, PKCE, code/refresh reuse
+  rejected); upload link tested (upload, reuse blocked).
