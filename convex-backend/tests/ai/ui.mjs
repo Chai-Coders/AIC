@@ -30,13 +30,16 @@ await step('sidebar has AI Assistant first, page loads the site',async()=>{
   await shot('1-empty');
 });
 await step('the preview IS the real site: same images, buttons, links and text as the public website',async()=>{
-  const facts=()=>{const seen=(e)=>{const r=e.getBoundingClientRect();const c=getComputedStyle(e);return r.width>0&&r.height>0&&c.visibility!=='hidden'&&c.display!=='none'};const q=(s)=>[...document.querySelectorAll(s)].filter(seen);return {sources:[...document.querySelectorAll('img')].map(i=>i.getAttribute('src')).join(' '),imgs:q('img').length,broken:q('img').filter(i=>i.complete&&i.naturalWidth===0).length,buttons:q('button,.btn').length,links:q('a[href]').length,headings:q('h1,h2,h3').map(h=>h.innerText.trim().replace(/\s+/g,' ')),height:document.documentElement.scrollHeight,font:getComputedStyle(document.querySelector('h1')||document.body).fontFamily}};
-  const box=await page.locator('.aic-site-preview iframe').boundingBox();
-  const real=await (await browser.newContext({viewport:{width:Math.round(box.width),height:Math.round(box.height)}})).newPage();
+  const facts=()=>{const seen=(e)=>{const r=e.getBoundingClientRect();const c=getComputedStyle(e);return r.width>0&&r.height>0&&c.visibility!=='hidden'&&c.display!=='none'};const q=(s)=>[...document.querySelectorAll(s)].filter(seen);return {sources:[...document.querySelectorAll('img')].map(i=>i.getAttribute('src')).join(' '),imgs:q('img').length,broken:q('img').filter(i=>i.complete&&i.naturalWidth===0).length,buttons:q('button,.btn').length,links:q('a[href]').length,headings:q('h1,h2,h3').map(h=>h.innerText.trim().replace(/\s+/g,' ')),height:document.documentElement.scrollHeight,headerLinks:q('header a').length,headerButtons:q('header button').length,h1Size:getComputedStyle(document.querySelector('h1')||document.body).fontSize,columns:q('.grid,.split').map(g=>getComputedStyle(g).gridTemplateColumns.split(' ').length).join(','),font:getComputedStyle(document.querySelector('h1')||document.body).fontFamily}};
+  // Compare with the public site in a window the same size as this one, as the admin
+  // sees it. A window the same size as the pane would just hide a difference in layout.
+  const win=page.viewportSize();
+  const real=await (await browser.newContext({viewport:win})).newPage();
   await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
   const fr=page.frames().find(f=>f.url().includes('5174'));
   assert.ok(fr,'the frame loads the website itself');
   assert.ok(!page.frames().some(f=>f.url().includes('codesandbox')),'no sandbox');
+  assert.deepEqual(await fr.evaluate(()=>[innerWidth,innerHeight]),[win.width,win.height],'the preview is laid out as a window of the same size');
   for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
     await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
     await real.goto('http://localhost:5174'+path,{waitUntil:'load'});
@@ -49,6 +52,7 @@ await step('the preview IS the real site: same images, buttons, links and text a
     for(const k of ['sources','imgs','buttons','links','font'])assert.equal(b[k],a[k],`${path}: ${k} differ, preview ${b[k]} vs site ${a[k]}`);
     assert.deepEqual(b.headings,a.headings,`${path}: headings differ`);
     assert.ok(Math.abs(b.height-a.height)<=2,`${path}: page height ${b.height} vs ${a.height}`);
+    for(const k of ['headerLinks','headerButtons','h1Size','columns'])assert.deepEqual(b[k],a[k],`${path}: ${k} differ, preview ${JSON.stringify(b[k])} vs site ${JSON.stringify(a[k])}`);
   }
   await real.context().close();
   await fr.evaluate(()=>{history.pushState({},'','/');dispatchEvent(new PopStateEvent('popstate'))});
@@ -217,6 +221,8 @@ await step('browser frame, phone width, side by side, draggable panes',async()=>
   await page.waitForTimeout(400);
   const narrow=(await frame.boundingBox()).width;
   assert.ok(narrow<=400&&narrow<wide,`phone width: ${narrow}`);
+  const fp=page.frames().find(f=>f.url().includes('5174'));
+  assert.ok(await fp.evaluate(()=>innerWidth<=400),'Phone shows the phone layout, unscaled');
   await page.getByRole('button',{name:'desktop',exact:true}).click();
   await page.waitForTimeout(400);
   await page.locator('section[aria-label="Website preview"]').getByText('localhost:5174').waitFor();

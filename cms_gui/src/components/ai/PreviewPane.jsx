@@ -51,6 +51,7 @@ const PreviewPane = forwardRef(function PreviewPane(
   ref,
 ) {
   const [device, setDevice] = useState('desktop');
+  const [scale, setScale] = useState(1);
   const [codeWidth, setCodeWidth] = useStoredSize('aic-cms:ai-code-width', 460);
   const showActions = draft && draft.contentOps.length > 0;
 
@@ -99,8 +100,8 @@ const PreviewPane = forwardRef(function PreviewPane(
         )}
         {tab === 'split' && <SplitDivider label="Resize the changes" value={codeWidth} min={260} max={900} onChange={setCodeWidth} />}
         <div className={tab === 'changes' ? 'invisible absolute inset-0' : 'h-full min-w-0 flex-1'} aria-hidden={tab === 'changes'}>
-          <BrowserFrame path={location} device={device} onDeviceChange={setDevice} picking={picking} onDonePicking={onDonePicking}>
-            <SitePreview ref={ref} content={content} {...previewEvents} />
+          <BrowserFrame path={location} device={device} scale={scale} onDeviceChange={setDevice} picking={picking} onDonePicking={onDonePicking}>
+            <SitePreview ref={ref} content={content} device={device} onScale={setScale} {...previewEvents} />
           </BrowserFrame>
         </div>
         {tab === 'changes' && (

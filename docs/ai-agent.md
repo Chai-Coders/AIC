@@ -81,7 +81,8 @@ cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localho
 
 The right pane is the real website in a frame (`?cms-edit=1&cms-agent=1`), the same approach as the Site
 text page, so it looks exactly like the public site. `frontend/src/content/AgentBridge.jsx` runs only in
-that mode, and only exchanges messages with `VITE_CMS_URL`. The CMS sends it the draft; it's held in memory
+that mode, and only exchanges messages with `VITE_CMS_URL`. On Desktop the frame is laid out at the width of
+the admin's window and scaled down to fit the pane, since the site's layout changes with width. The CMS sends it the draft; it's held in memory
 and never written to the browser cache the public site reads. A draft applies without a reload.
 
 ## Known limits

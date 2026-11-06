@@ -12,6 +12,20 @@ import { SITE_URL } from '../routes';
 //   onLocation(path), onPicked(element), onPickEnded(), onReady()
 
 const READY_TIMEOUT_MS = 20000;
+// The site's layout depends on the window's size: width picks the layout, and height
+// sizes the big banners. So that the preview is exactly what visitors see, the frame on
+// Desktop is a whole window, the size of the admin's own, shrunk to fit the pane.
+const MIN_DESKTOP_WIDTH = 1280;
+const PHONE_BREAKPOINT = 768;
+
+/** The frame's real size, its scale, and where it sits, for a container of this size. */
+function fit(device, width, height) {
+  if (device === 'phone' || window.innerWidth < PHONE_BREAKPOINT || !width) return { width, height, scale: 1, left: 0 };
+  const windowWidth = Math.max(MIN_DESKTOP_WIDTH, window.innerWidth);
+  const windowHeight = window.innerHeight;
+  const scale = Math.min(1, width / windowWidth, height / windowHeight);
+  return { width: windowWidth, height: windowHeight, scale, left: Math.max(0, Math.round((width - windowWidth * scale) / 2)) };
+}
 
 const siteOrigin = (() => {
   try {
@@ -21,8 +35,30 @@ const siteOrigin = (() => {
   }
 })();
 
-const SitePreview = forwardRef(function SitePreview({ content, onLocation, onPicked, onPickEnded, onReady, className = '' }, ref) {
+const SitePreview = forwardRef(function SitePreview({ content, device = 'desktop', onScale, onLocation, onPicked, onPickEnded, onReady, className = '' }, ref) {
   const frameRef = useRef(null);
+  const boxRef = useRef(null);
+  const [box, setBox] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const measure = () => {
+      const el = boxRef.current;
+      if (el) setBox({ width: el.clientWidth, height: el.clientHeight });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(boxRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
+  const size = fit(device, box.width, box.height);
+  useEffect(() => {
+    onScale?.(size.scale);
+  }, [size.scale, onScale]);
   const [ready, setReady] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
   // Loaded once; after that it all goes by message, so nothing reloads.
@@ -113,8 +149,16 @@ const SitePreview = forwardRef(function SitePreview({ content, onLocation, onPic
       : null;
 
   return (
-    <div className={`aic-site-preview relative h-full w-full ${className}`}>
-      {src && <iframe ref={frameRef} src={src} title="Website preview" className="block h-full w-full border-0 bg-white" />}
+    <div ref={boxRef} className={`aic-site-preview relative h-full w-full overflow-hidden bg-muted ${className}`}>
+      {src && (
+        <iframe
+          ref={frameRef}
+          src={src}
+          title="Website preview"
+          className="block border-0 bg-white"
+          style={{ width: size.width || '100%', height: size.height || '100%', marginLeft: size.left, transform: size.scale < 1 ? `scale(${size.scale})` : undefined, transformOrigin: '0 0' }}
+        />
+      )}
       {!ready && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card p-6 text-center text-sm text-muted-foreground">
           {problem ? (

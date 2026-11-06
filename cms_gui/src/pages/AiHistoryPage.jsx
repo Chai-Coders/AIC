@@ -22,7 +22,7 @@ export default function AiHistoryPage() {
   const [busy, setBusy] = useState(null);
 
   const onRollback = async (v) => {
-    if (!window.confirm(`Undo this publish?\n\n${v.summary}`)) return;
+    if (!window.confirm(`${v.isRollback ? 'Undo this rollback' : 'Undo this publish'}?\n\n${v.summary}`)) return;
     setBusy(v.id);
     try {
       await run(() => rollback({ versionId: v.id }));
@@ -58,7 +58,7 @@ export default function AiHistoryPage() {
               {!v.rolledBack && (
                 <button type="button" onClick={() => onRollback(v)} disabled={busy !== null} className="btn-secondary shrink-0 px-3 py-1.5 text-xs">
                   {busy === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                  Roll back
+                  {v.isRollback ? 'Undo this rollback' : 'Roll back'}
                 </button>
               )}
             </li>
