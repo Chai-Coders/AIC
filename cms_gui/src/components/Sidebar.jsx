@@ -4,11 +4,15 @@ import { ExternalLink, LogOut, Moon, Sun, X } from 'lucide-react';
 import { ROUTES, SITE_URL } from '../routes';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useQuery } from 'convex/react';
+import { anyApi } from 'convex/server';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [signingOut, setSigningOut] = useState(false);
+  // Changes an AI app proposed, waiting on the Versions page.
+  const pendingCount = useQuery(anyApi.drafts.pendingCount) ?? 0;
 
   const close = () => setIsOpen(false);
 
@@ -68,7 +72,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
                 }
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" />
-                <span>{route.name}</span>
+                <span className="flex-1">{route.name}</span>
+                {route.id === 'versions' && pendingCount > 0 && (
+                  <span
+                    title={`${pendingCount} waiting for approval`}
+                    className="rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold leading-none text-primary-foreground"
+                  >
+                    {pendingCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}

@@ -2,6 +2,8 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
+import { mcpOther, mcpPost, preflight } from "./mcp";
+import { authorizationServer, protectedResource, register, token } from "./oauth";
 
 const http = httpRouter();
 
@@ -32,5 +34,25 @@ http.route({
     });
   }),
 });
+
+// The MCP server for AI apps (see mcp.ts).
+http.route({ path: "/mcp", method: "POST", handler: mcpPost });
+http.route({ path: "/mcp", method: "GET", handler: mcpOther });
+http.route({ path: "/mcp", method: "DELETE", handler: mcpOther });
+http.route({ path: "/mcp", method: "OPTIONS", handler: preflight });
+
+// OAuth for AI apps (see oauth.ts). The sign-in page itself is in the CMS.
+for (const path of ["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"]) {
+  http.route({ path, method: "GET", handler: protectedResource });
+  http.route({ path, method: "OPTIONS", handler: preflight });
+}
+for (const path of ["/.well-known/oauth-authorization-server", "/.well-known/oauth-authorization-server/mcp"]) {
+  http.route({ path, method: "GET", handler: authorizationServer });
+  http.route({ path, method: "OPTIONS", handler: preflight });
+}
+http.route({ path: "/oauth/register", method: "POST", handler: register });
+http.route({ path: "/oauth/register", method: "OPTIONS", handler: preflight });
+http.route({ path: "/oauth/token", method: "POST", handler: token });
+http.route({ path: "/oauth/token", method: "OPTIONS", handler: preflight });
 
 export default http;

@@ -3,7 +3,8 @@ import { mutation } from "./_generated/server";
 import { teamCategory, type TeamCategory } from "./schema";
 import { requireAdmin } from "./lib/access";
 import { text } from "./lib/validate";
-import { deleteImage, requireImage } from "./images";
+import { requireImage } from "./images";
+import { recordCmsEdit } from "./lib/history";
 
 const fieldArgs = {
   name: v.string(),
@@ -23,11 +24,13 @@ export const create = mutation({
   args: { ...fieldArgs, photoId: v.id("images") },
   handler: async (ctx, { photoId, ...args }) => {
     await requireAdmin(ctx);
-    return await ctx.db.insert("teamMembers", {
+    const id = await ctx.db.insert("teamMembers", {
       ...fields(args),
       photoId: await requireImage(ctx, photoId),
       createdAt: Date.now(),
     });
+    await recordCmsEdit(ctx, "teamMembers", id, null, await ctx.db.get(id));
+    return id;
   },
 });
 
@@ -38,11 +41,10 @@ export const update = mutation({
     await requireAdmin(ctx);
     const doc = await ctx.db.get(id);
     if (!doc) return;
-    if (photoId && photoId !== doc.photoId) {
-      await requireImage(ctx, photoId);
-      await deleteImage(ctx, doc.photoId);
-    }
+    // The old picture is kept: the version history can put it back.
+    if (photoId && photoId !== doc.photoId) await requireImage(ctx, photoId);
     await ctx.db.patch(id, { ...fields(args), photoId: photoId ?? doc.photoId, createdAt: Date.now() });
+    await recordCmsEdit(ctx, "teamMembers", id, doc, await ctx.db.get(id));
   },
 });
 
@@ -53,6 +55,7 @@ export const remove = mutation({
     const doc = await ctx.db.get(id);
     if (!doc) return;
     await ctx.db.delete(id);
-    await deleteImage(ctx, doc.photoId);
+    // The picture is kept so the deletion can be undone from the history.
+    await recordCmsEdit(ctx, "teamMembers", id, doc, null);
   },
 });

@@ -14,7 +14,13 @@ the Docker image in `docker-compose.yml`.
 
 | Path | What it does |
 |---|---|
-| `convex/schema.ts` | Tables: gallery, startups, news, team members, background video, website text, pictures, Mux uploads, sign-in |
+| `convex/schema.ts` | Tables: gallery, startups, news, team members, background video, website text, pictures, Mux uploads, sign-in, version history, AI drafts and AI sign-ins |
+| `convex/lib/registry.ts` | Every editable field with its label and rules. History, the Versions page and the AI tools all read it |
+| `convex/lib/history.ts`, `convex/versions.ts` | Version history: every edit is recorded; undo, put back one field, restore to a point |
+| `convex/drafts.ts` | The AI draft: proposals, review, approve (all at once, later edits stay on top) and reject |
+| `convex/mcp.ts` | The MCP server AI apps connect to, at `/mcp` |
+| `convex/oauth.ts` | Sign-in for AI apps (OAuth 2.1 with PKCE), connected apps, test tokens |
+| `convex/uploads.ts` | One-time links where the admin drops a picture into the AI draft |
 | `convex/content.ts` | Public read API. `siteContent` returns everything the website shows in one call |
 | `convex/gallery.ts`, `startups.ts`, `news.ts`, `team.ts` | Create / edit / delete, CMS admins only |
 | `convex/siteText.ts` | Publishes website text edited in the CMS's Site text page (the texts themselves are listed in `frontend/src/content/registry.js`) |
@@ -89,8 +95,37 @@ npx convex env set MUX_TOKEN_SECRET <secret>
 npx convex run admin:createAdmin '{"email":"…","password":"…","name":"…"}'
 ```
 
-Build the apps with `VITE_CONVEX_URL` set to the public API address (and `VITE_SITE_URL`
-for the CMS).
+Build the apps with these variables (no trailing slashes):
+
+| App | Variable | Value |
+|---|---|---|
+| `frontend`, `cms_gui` | `VITE_CONVEX_URL` | The public API address |
+| `cms_gui` | `VITE_SITE_URL` | The website's address ("View website" links, Site text preview) |
+| `frontend` | `VITE_CMS_URL` | The CMS address. Only this address may show the site in the Site text preview |
+
+The website saves a copy of the content when it is built (`frontend/scripts/snapshot.mjs`)
+and shows it until the live content arrives, so rebuild it after large content changes.
+
+## Hosting on Convex Cloud instead
+
+Convex's free plan also works (0.5 GB database, 1 GB files, 1 GB bandwidth a month;
+pictures are the main use of bandwidth). There is no server to run:
+
+```sh
+npx convex login
+npx convex deploy                                   # creates the project the first time
+node scripts/setup-auth-keys.mjs https://cms.example.com   # see note below
+npx convex run --prod admin:createAdmin '{"email":"…","password":"…","name":"…"}'
+```
+
+`setup-auth-keys.mjs` and `npx convex env set` act on the deployment in `.env.local`, which
+is the dev deployment after `npx convex dev`; add `--prod` to `npx convex env set` (or set
+`CONVEX_DEPLOY_KEY` from the dashboard) to reach production. Use
+`https://<name>.convex.cloud` as `VITE_CONVEX_URL`; AI apps connect to
+`https://<name>.convex.site/mcp`.
+
+To copy existing data across: `npx convex export --include-file-storage --path data.zip`
+on the old deployment, then `npx convex import --prod data.zip`.
 
 ## Deployment variables
 
@@ -100,9 +135,61 @@ Set with `npx convex env set NAME value`; list with `npx convex env list`.
 |---|---|
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Uploading background videos from the CMS |
 | `JWT_PRIVATE_KEY`, `JWKS` | Signing CMS sessions (set by `scripts/setup-auth-keys.mjs`) |
-| `SITE_URL` | The CMS address (set by `scripts/setup-auth-keys.mjs`) |
+| `SITE_URL` | The CMS address (set by `scripts/setup-auth-keys.mjs`). AI apps are sent to `<SITE_URL>/oauth/authorize` to sign in |
+| `PUBLIC_SITE_URL` | Optional. The site port's public address for AI apps when it differs from `CONVEX_SITE_URL`, e.g. a test tunnel (see below) |
 
 `CONVEX_SITE_URL` is provided by the server itself (from `CONVEX_SITE_ORIGIN`).
+
+## Version history
+
+Every change to gallery items, startups, news and team members is recorded as it
+is saved, in one line of versions (like git without branches). The CMS Versions
+page lists them, shows each field before and after, and can undo a version, put
+back a single field, or restore the website to how it was after a version. Undo
+and restore are saved as new versions, so they can be undone too. CMS edits are
+grouped into one version per sitting (30 minutes without an edit by default,
+set on the AI connection page; signing out also ends it).
+
+Pictures that were replaced or deleted are kept while the history mentions
+them, so undo can bring them back. The homepage video is not versioned.
+
+## AI connection (MCP)
+
+AI apps (Claude, ChatGPT, Claude Code, Cursor, ...) connect to
+`<CONVEX_SITE_URL>/mcp`. They can search and read the site and propose changes,
+which collect in one draft that only the admin can approve, on the Versions page.
+There is no tool to publish. The CMS's AI connection page has the address and
+step-by-step setup for each app.
+
+For apps on the internet (Claude.ai, ChatGPT) the site port (3211) must be
+reachable over **public HTTPS**, and `SITE_URL` must be the CMS address: the
+sign-in page AI apps open is `<SITE_URL>/oauth/authorize`. The CMS host must
+serve `index.html` for every path (`cms_gui/vercel.json` does this on Vercel).
+
+To test the MCP server without OAuth (MCP Inspector, curl, Claude Code):
+
+```sh
+npx convex run oauth:createTestToken '{"email":"<admin email>"}'
+claude mcp add --transport http aic-website http://127.0.0.1:3211/mcp --header "Authorization: Bearer <token>"
+```
+
+Test tokens last 30 days and appear under "Connected apps", where they can be
+disconnected.
+
+### Testing with Claude.ai or ChatGPT before the server is public
+
+Expose the local site port through a temporary HTTPS tunnel and tell the backend
+its public address:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:3211      # prints https://<random>.trycloudflare.com
+npx convex env set PUBLIC_SITE_URL https://<random>.trycloudflare.com
+```
+
+Add `https://<random>.trycloudflare.com/mcp` as a custom connector. The sign-in
+page still opens on the local CMS in your browser, which is fine. The address
+changes every time the tunnel restarts; afterwards run
+`npx convex env remove PUBLIC_SITE_URL`.
 
 ## CMS admins
 

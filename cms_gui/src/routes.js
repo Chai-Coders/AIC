@@ -5,6 +5,8 @@ import {
   Newspaper,
   Users,
   Video,
+  History,
+  Bot,
   Type,
 } from 'lucide-react';
 
@@ -167,4 +169,6 @@ export const ROUTES = [
   { path: '/site-text', id: 'site-text', name: 'Site text', icon: Type, fullBleed: true },
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
+  { path: '/versions', id: 'versions', name: 'Versions', icon: History },
+  { path: '/ai-connection', id: 'ai-connection', name: 'AI connection', icon: Bot },
 ];

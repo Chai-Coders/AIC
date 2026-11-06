@@ -14,7 +14,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fromPath = location.state?.from?.pathname || '/';
+  // Return to where the admin was going, including its query string (the AI
+  // app sign-in page carries its request there).
+  const from = location.state?.from;
+  const fromPath = from?.pathname ? `${from.pathname}${from.search ?? ''}` : '/';
 
   useEffect(() => {
     if (isAuthenticated) {

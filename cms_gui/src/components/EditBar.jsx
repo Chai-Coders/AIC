@@ -111,7 +111,7 @@ export default function EditBar({ section, item, onClose, onSaved, onDelete, sho
       const resource = api.endpoints[section.id];
       await resource.save(item?.id, trimmed, selectedFile);
       if (isEditing) {
-        showToast?.('Changes saved. They are now live on the website.', 'success');
+        showToast?.('Changes saved. They are now live on the website. You can undo them from Versions.', 'success');
       } else {
         showToast?.(`${capitalize(section.noun)} added to the website.`, 'success');
       }

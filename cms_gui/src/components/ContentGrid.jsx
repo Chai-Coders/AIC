@@ -333,8 +333,8 @@ export default function ContentGrid({ section, showToast }) {
         title={pendingDelete?.type === 'bulk' ? `Delete ${plural(pendingDelete.count, section.noun)}?` : `Delete this ${section.noun}?`}
         message={
           pendingDelete?.type === 'bulk'
-            ? 'They will be removed from the website. This can’t be undone.'
-            : 'It will be removed from the website. This can’t be undone.'
+            ? 'They will be removed from the website. You can bring them back later from Versions.'
+            : 'It will be removed from the website. You can bring it back later from Versions.'
         }
         confirmLabel={pendingDelete?.type === 'bulk' ? `Delete ${pendingDelete.count}` : 'Delete'}
         itemDetails={pendingDelete?.type === 'single' ? pendingDelete.item : null}

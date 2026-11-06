@@ -93,11 +93,18 @@ export const pickVariant = internalQuery({
   },
 });
 
+/** Adds every picture id in a history value (a field, or a whole record) to `into`. */
+function collectImageIds(value: unknown, into: Set<string>) {
+  if (typeof value === "string") into.add(value);
+  else if (value && typeof value === "object") for (const x of Object.values(value)) collectImageIds(x, into);
+}
+
 const CLEANUP_AFTER_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Deletes pictures nobody uses: uploads abandoned when an edit was cancelled
- * or failed. Anything younger than a day is kept, since it may be mid-save.
+ * or failed. Pictures the website no longer shows but the version history
+ * still mentions are kept. Anything younger than a day is kept, since it may be mid-save.
  * Runs daily (crons.ts).
  */
 export const cleanupUnused = internalMutation({
@@ -110,6 +117,16 @@ export const cleanupUnused = internalMutation({
     for (const row of await ctx.db.query("startups").collect()) used.add(row.logoId);
     for (const row of await ctx.db.query("news").collect()) used.add(row.thumbnailId);
     for (const row of await ctx.db.query("teamMembers").collect()) if (row.photoId) used.add(row.photoId);
+    // Pictures in the version history stay, so undoing a change can bring
+    // them back. Only rejected AI drafts let theirs go.
+    const rejected = new Set(
+      (await ctx.db.query("versions").withIndex("by_status", (q) => q.eq("status", "rejected")).collect()).map((x) => x._id),
+    );
+    for (const change of await ctx.db.query("changes").collect()) {
+      if (rejected.has(change.versionId)) continue;
+      collectImageIds(change.before, used);
+      collectImageIds(change.after, used);
+    }
 
     let images = 0;
     // Files that belong to a picture: kept, or already deleted along with it.
@@ -121,6 +138,9 @@ export const cleanupUnused = internalMutation({
         images++;
       }
     }
+
+    // Originals waiting in the AI draft.
+    for (const pending of await ctx.db.query("pendingImages").collect()) handled.add(pending.storageId);
 
     // Files uploaded but never registered as a picture.
     let files = 0;
