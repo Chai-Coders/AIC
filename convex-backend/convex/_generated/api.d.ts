@@ -19,6 +19,7 @@ import type * as images from "../images.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_history from "../lib/history.js";
 import type * as lib_registry from "../lib/registry.js";
+import type * as lib_siteText from "../lib/siteText.js";
 import type * as lib_tokens from "../lib/tokens.js";
 import type * as lib_validate from "../lib/validate.js";
 import type * as mcp from "../mcp.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/access": typeof lib_access;
   "lib/history": typeof lib_history;
   "lib/registry": typeof lib_registry;
+  "lib/siteText": typeof lib_siteText;
   "lib/tokens": typeof lib_tokens;
   "lib/validate": typeof lib_validate;
   mcp: typeof mcp;
