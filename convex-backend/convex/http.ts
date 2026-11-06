@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
+import { mcpOther, mcpPost, preflight } from "./mcp";
 
 const http = httpRouter();
 
@@ -32,5 +33,11 @@ http.route({
     });
   }),
 });
+
+// The MCP server for AI apps (see mcp.ts).
+http.route({ path: "/mcp", method: "POST", handler: mcpPost });
+http.route({ path: "/mcp", method: "GET", handler: mcpOther });
+http.route({ path: "/mcp", method: "DELETE", handler: mcpOther });
+http.route({ path: "/mcp", method: "OPTIONS", handler: preflight });
 
 export default http;

@@ -195,6 +195,8 @@ export default defineSchema({
   // One-time links where the admin drops a picture for the AI draft.
   uploadTokens: defineTable({
     tokenHash: v.string(),
+    // The AI app that asked for the link.
+    app: v.string(),
     entity,
     recordId: v.string(),
     field: v.string(),

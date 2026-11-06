@@ -14,7 +14,9 @@ Things decided or learned while building `idea.md`. Read before changing this ar
 - Fields changed again later are shown greyed with "Changed again on <date>" and are
   **unticked by default**; the admin can tick them to overwrite anyway.
 - An AI draft works like staged changes: approving appends it as the newest version.
-- All five build steps from `idea.md` are in scope.
+- All five build steps from `idea.md` are in scope, done in one sitting.
+- **This goes to production for real (non-technical) admins**: no known bugs, every
+  flow tested end to end, plain wording, forgiving UI. Review before calling it done.
 
 ## Design notes
 
