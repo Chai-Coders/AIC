@@ -192,13 +192,17 @@ export const readFile = internalQuery({
   },
 });
 
-async function searchFiles(ctx: QueryCtx, cs: Doc<"changeSets">, query: string, folder?: string) {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return [];
+async function draftFiles(ctx: QueryCtx, cs: Doc<"changeSets">) {
   const edits = new Map(cs.codeEdits.map((e) => [e.path, e.content]));
   const rows = await ctx.db.query("repoFiles").collect();
   const files = rows.filter((r) => !edits.has(r.path)).map((r) => ({ path: r.path, content: r.content }));
   for (const [path, content] of edits) files.push({ path, content });
+  return files;
+}
+
+function searchFiles(files: { path: string; content: string | null }[], query: string, folder?: string) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
   const hits: { path: string; line: number; text: string }[] = [];
   for (const file of files) {
     if (file.content === null || (folder && !file.path.startsWith(folder))) continue;
@@ -216,30 +220,34 @@ export const searchCode = internalQuery({
   handler: async (ctx, { changeSetId, query, folder }) => {
     const cs = await requireDraft(ctx, changeSetId);
     if (!(await ctx.db.query("repoCache").first())) return { error: "Code changes aren't set up: there is no copy of the repository on the server." };
-    const hits = await searchFiles(ctx, cs, query, folder);
+    const hits = searchFiles(await draftFiles(ctx, cs), query, folder);
     return { matches: hits, ...(hits.length >= SEARCH_LIMIT ? { note: `Only the first ${SEARCH_LIMIT} shown; search for something more specific.` } : {}) };
   },
 });
 
-/** The clicked element, with where it most likely lives in the source. */
-export const selectedElement = internalQuery({
+/** The clicked elements, each with where it most likely lives in the source. */
+export const selectedElements = internalQuery({
   args: { changeSetId: v.id("changeSets") },
   handler: async (ctx, { changeSetId }) => {
     const cs = await requireDraft(ctx, changeSetId);
-    const el = cs.selectedElement;
-    if (!el) return { error: "The admin hasn't pointed at anything." };
-    const candidates = [el.text, ...(el.classes ?? []), el.sectionHeading].filter((x) => typeof x === "string" && x.trim());
-    let nearestSource: { path: string; line: number; text: string }[] = [];
-    for (const candidate of candidates) {
-      // Long text wraps across JSX lines, so match on its first words.
-      const snippet = candidate.trim().split("\n")[0].slice(0, 60);
-      nearestSource = await searchFiles(ctx, cs, snippet, "frontend/src/");
-      if (nearestSource.length) break;
-    }
+    const elements = cs.selectedElements ?? [];
+    if (!elements.length) return { error: "The admin hasn't pointed at anything." };
+    const files = await draftFiles(ctx, cs);
     // Most wording is website text, edited with update_site_text, not in the source.
     const values = applyTextOps(await ctx.db.query("siteText").collect(), cs.contentOps);
-    const siteTextKey = typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
-    return { element: el, ...(siteTextKey ? { siteTextKey } : {}), nearestSource: nearestSource.slice(0, 5) };
+    return {
+      elements: elements.map((el) => {
+        const candidates = [el.text, ...(el.classes ?? []), el.sectionHeading].filter((x) => typeof x === "string" && x.trim());
+        let nearestSource: { path: string; line: number; text: string }[] = [];
+        for (const candidate of candidates) {
+          // Long text wraps across JSX lines, so match on its first words.
+          nearestSource = searchFiles(files, candidate.trim().split("\n")[0].slice(0, 60), "frontend/src/");
+          if (nearestSource.length) break;
+        }
+        const siteTextKey = typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
+        return { element: el, ...(siteTextKey ? { siteTextKey } : {}), nearestSource: nearestSource.slice(0, 5) };
+      }),
+    };
   },
 });
 

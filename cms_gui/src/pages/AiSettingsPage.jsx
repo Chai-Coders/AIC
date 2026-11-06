@@ -66,6 +66,9 @@ function ProviderKey({ provider, onSaved }) {
         <p className="text-xs text-muted-foreground">
           {provider.configured ? `Key ending ${provider.last4} · saved ${formatDate(provider.updatedAt)}` : 'No key saved'}
         </p>
+        {provider.name === 'google' && (
+          <p className="mt-1 max-w-56 text-xs text-muted-foreground">Has a free plan with low limits. Google may use free-plan content to improve its products.</p>
+        )}
       </div>
       <input
         type="password"

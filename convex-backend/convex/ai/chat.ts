@@ -13,6 +13,10 @@ import { loadSettings } from "./settings";
 
 const OPEN: Doc<"changeSets">["status"][] = ["drafting", "building", "reviewing", "needs_admin", "ready", "publishing"];
 const MAX_PROMPT_CHARS = 8000;
+const MAX_POINTED = 10;
+const MAX_POINTED_CHARS = 20_000;
+// Chat messages go to the provider and the activity log, so keys must not get in.
+const LOOKS_LIKE_A_KEY = /\b(AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/;
 
 async function openDraft(ctx: QueryCtx, threadId: string) {
   const rows = await ctx.db.query("changeSets").withIndex("by_threadId", (q) => q.eq("threadId", threadId)).order("desc").take(5);
@@ -91,12 +95,18 @@ export const newThread = mutation({
 });
 
 export const send = mutation({
-  args: { threadId: v.optional(v.string()), prompt: v.string(), selectedElement: v.optional(v.any()) },
-  handler: async (ctx, { threadId: given, prompt, selectedElement }) => {
+  args: { threadId: v.optional(v.string()), prompt: v.string(), selectedElements: v.optional(v.array(v.any())) },
+  handler: async (ctx, { threadId: given, prompt, selectedElements = [] }) => {
     const userId = await requireAdmin(ctx);
     const clean = prompt.trim();
     if (!clean) throw new ConvexError("Please type a message.");
     if (clean.length > MAX_PROMPT_CHARS) throw new ConvexError(`Please keep messages under ${MAX_PROMPT_CHARS} characters.`);
+    if (LOOKS_LIKE_A_KEY.test(clean)) {
+      throw new ConvexError("That looks like an API key, so it wasn't sent. Add keys on the AI settings page, where they're stored encrypted.");
+    }
+    if (selectedElements.length > MAX_POINTED || JSON.stringify(selectedElements).length > MAX_POINTED_CHARS) {
+      throw new ConvexError(`Please point at no more than ${MAX_POINTED} things at a time.`);
+    }
 
     const threadId = given ?? (await createThread(ctx, components.agent, { userId, title: "AI Assistant" }));
     if (given) await requireOwnThread(ctx, given, userId);
@@ -117,7 +127,8 @@ export const send = mutation({
         reviewerModel: settings.reviewerModel,
         // What the review checks against: everything the admin has asked for.
         title: `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS),
-        ...(selectedElement ? { selectedElement } : {}),
+        // Only what this message points at.
+        selectedElements,
       });
       cs = (await ctx.db.get(cs._id))!;
     } else {
@@ -133,7 +144,7 @@ export const send = mutation({
         buildAttempts: 0,
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
-        ...(selectedElement ? { selectedElement } : {}),
+        selectedElements,
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
@@ -141,9 +152,10 @@ export const send = mutation({
       cs = (await ctx.db.get(id))!;
     }
 
-    const text = selectedElement ? `${clean}\n\n(The admin pointed at an element in the preview. Call get_selected_element.)` : clean;
+    const count = selectedElements.length;
+    const text = count ? `${clean}\n\n(The admin pointed at ${count === 1 ? "an element" : `${count} elements`} in the preview. Call get_selected_element.)` : clean;
     const { messageId } = await saveMessage(ctx, components.agent, { threadId, userId, prompt: text });
-    await audit(ctx, { userId, changeSetId: cs._id, action: "prompt", detail: { prompt: clean, selectedElement } });
+    await audit(ctx, { userId, changeSetId: cs._id, action: "prompt", detail: { prompt: clean, selectedElements } });
     await startEditor(ctx, cs, messageId);
     return { threadId, changeSetId: cs._id };
   },

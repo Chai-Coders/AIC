@@ -41,7 +41,7 @@ function Message({ message }) {
     );
   }
   if (message.role === 'user') {
-    const text = message.text.split('\n\n(The admin pointed at an element')[0];
+    const text = message.text.split('\n\n(The admin pointed at')[0];
     return (
       <div className="flex justify-end px-4">
         <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm whitespace-pre-wrap text-primary-foreground">{text}</p>
@@ -129,7 +129,7 @@ function ModelPicker({ settings, onError }) {
   );
 }
 
-export default function ChatPane({ threadId, draft, closedNotice, messages, selected, onClearSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
+export default function ChatPane({ threadId, draft, closedNotice, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
   const settings = useQuery(api.settings.get);
   const stop = useMutation(api.chat.stop);
   const [text, setText] = useState('');
@@ -246,17 +246,22 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
         </p>
       ) : (
         <form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border p-3">
-          {selected && (
-            <div className="flex items-center gap-2 rounded-lg bg-accent px-2.5 py-1.5 text-xs text-accent-foreground">
-              <Crosshair className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate">
-                Pointing at: {selected.text?.split('\n')[0] || selected.tag} ({selected.path})
-              </span>
-              <button type="button" onClick={onClearSelected} aria-label="Stop pointing at this" className="shrink-0">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+          {selected.length > 0 && (
+            <ul aria-label="What you're pointing at" className="max-h-28 space-y-1 overflow-y-auto">
+              {selected.map((item, i) => (
+                <li key={`${item.path} ${item.selector}`} className="flex items-center gap-2 rounded-lg bg-accent px-2.5 py-1.5 text-xs text-accent-foreground">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {item.text?.split('\n')[0] || item.tag} <span className="opacity-70">({item.path})</span>
+                  </span>
+                  <button type="button" onClick={() => onRemoveSelected(item)} aria-label={`Stop pointing at item ${i + 1}`} className="shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
+          {picking && <p className="text-xs text-muted-foreground">Click each thing in the preview; click again to remove it. Ctrl-click follows a link to another page.</p>}
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -271,7 +276,7 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
           />
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={onTogglePick} aria-pressed={picking} className={`btn-secondary px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}>
-              <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Click something in the preview' : 'Point at something'}
+              <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
             </button>
             {draft?.running || draft?.status === 'building' ? (
               <button type="button" onClick={onStop} className="btn-secondary px-3 py-1.5 text-xs">

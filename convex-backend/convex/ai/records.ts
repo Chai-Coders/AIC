@@ -166,6 +166,6 @@ export function describeOp(op: ContentOp) {
     case "reorder":
       return `${op.table}: reorder to ${op.ids.join(", ")}`;
     case "text":
-      return `website text ${op.key}: from ${JSON.stringify(op.from)} to ${op.to === null ? "the text written in the website's code" : JSON.stringify(op.to)}`;
+      return `website text ${op.key}: from ${op.from === null ? "the text written in the website's code" : JSON.stringify(op.from)} to ${op.to === null ? "the text written in the website's code" : JSON.stringify(op.to)}`;
   }
 }

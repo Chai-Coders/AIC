@@ -8,13 +8,27 @@ import type { Doc } from "../_generated/dataModel";
 import { requireAdmin } from "../lib/access";
 import { modelRef, providerName, type ModelRef, type ProviderName } from "../schema";
 import { decrypt, encrypt } from "./crypto";
-import { DEFAULT_BUDGET_USD, DEFAULT_MODEL, DEFAULT_PRICES, PROVIDER_LABELS } from "./models";
+import { DEFAULT_BUDGET_USD, DEFAULT_MODEL, DEFAULT_PRICES, PROVIDER_DEFAULT_MODEL, PROVIDER_LABELS } from "./models";
 import { audit } from "./audit";
+
+/**
+ * Fills in what a saved row can lack: default prices for a provider with none yet,
+ * and a model the saved keys can actually use. Otherwise saving only a Gemini key
+ * would leave the assistant on Claude, failing for want of a Claude key.
+ */
+function withUsableModels<T extends Pick<Doc<"aiSettings">, "providers" | "editorModel" | "reviewerModel" | "priceTable">>(row: T): T {
+  const priceTable = [...row.priceTable, ...DEFAULT_PRICES.filter((d) => !row.priceTable.some((p) => p.provider === d.provider))];
+  const usable = (ref: ModelRef) => {
+    if (row.providers.length === 0 || row.providers.some((p) => p.name === ref.provider)) return ref;
+    return row.providers.map((p) => PROVIDER_DEFAULT_MODEL[p.name]).find(Boolean) ?? ref;
+  };
+  return { ...row, priceTable, editorModel: usable(row.editorModel), reviewerModel: usable(row.reviewerModel) };
+}
 
 /** The settings row, or the defaults when none has been saved yet. */
 export async function loadSettings(ctx: QueryCtx): Promise<Omit<Doc<"aiSettings">, "_id" | "_creationTime">> {
   const row = await ctx.db.query("aiSettings").first();
-  if (row) return row;
+  if (row) return withUsableModels(row);
   return {
     providers: [],
     editorModel: DEFAULT_MODEL,

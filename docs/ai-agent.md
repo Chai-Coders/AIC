@@ -27,7 +27,12 @@ Set these on the Convex deployment with `npx convex env set NAME value`:
 | `GITHUB_BRANCH` | Optional. The branch the agent reads and Publish commits to. Default: `migrations-johny`. |
 | `GITHUB_DEPLOY_CHECK` | Optional. Pattern for the commit check that means the website deployed. Default: `vercel`. |
 
-Then, in the CMS, open **AI settings**, add a provider key, and check the model and budget.
+Then, in the CMS, open **AI settings**, add a provider key, and check the model and budget. Saving a key is enough
+to start: if the chosen model's provider has no key, the assistant uses a default from a provider that has one.
+
+**Testing for free:** a Google AI Studio key works on Google's free plan. The default, `gemini-3.5-flash-lite`, has
+been run for real from this page. Free plans have low limits, and Google may use free-plan content to improve its
+products, so use the paid plan for anything private. The meter counts paid rates, so it reads high on the free plan.
 Without the GitHub variables the content path still works, and the preview uses the
 copy of `frontend/` bundled into the CMS.
 
@@ -76,6 +81,8 @@ Access). Allow it. This doesn't apply in production.
 
 ## Known limits
 
+- **Busy models and limits:** when a provider is overloaded or a limit is hit, the assistant waits and retries up to
+  4 times (a notice says so), then stops and keeps the draft. Each model call has a 3-minute time limit.
 - **Spend:** cost is tokens × the price table on the settings page. Cached tokens are counted
   at the full input price and no prompt caching is requested, so the meter errs high and
   long chats cost more than they could. Haiku 5.5 charges more above 100K-token prompts

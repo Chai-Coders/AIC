@@ -8,8 +8,8 @@
 //    API. When content.json is null the live API is used.
 // 2. Talks to the CMS over postMessage (messages are tagged `aic:`):
 //      in:  navigate {path}, highlight {selector?, text?, label?}, clearHighlight,
-//           pick {on}
-//      out: ready, location {path}, picked {...}, highlightResult {found}, error {message}
+//           pick {on}, marks {items}
+//      out: ready, location {path}, picked {...}, pickEnded, highlightResult {found}, error {message}
 // 3. Skips the first-visit splash screen and old cached content.
 
 import draftContent from './content.json';
@@ -87,6 +87,7 @@ function placeOutline(el, label) {
   const rect = el.getBoundingClientRect();
   const box = document.createElement('div');
   box.id = OUTLINE_ID;
+  box.dataset.aic = '1';
   Object.assign(box.style, {
     position: 'absolute',
     left: `${rect.left + window.scrollX - 6}px`,
@@ -104,6 +105,7 @@ function placeOutline(el, label) {
   if (label) {
     const tag = document.createElement('div');
     tag.id = LABEL_ID;
+    tag.dataset.aic = '1';
     tag.textContent = label;
     Object.assign(tag.style, {
       position: 'absolute',
@@ -141,7 +143,7 @@ function findElement({ selector, text }) {
       const node = walker.currentNode;
       if (node.textContent.toLowerCase().includes(needle)) {
         const el = node.parentElement;
-        if (el && el.getClientRects().length && !el.closest(`#${OUTLINE_ID}`)) {
+        if (el && el.getClientRects().length && !el.closest('[data-aic]')) {
           best = el;
           break;
         }
@@ -198,14 +200,17 @@ let hoverEl = null;
 
 function cssPath(el) {
   const parts = [];
-  for (let node = el; node && node.nodeType === 1 && node !== document.body && parts.length < 5; node = node.parentElement) {
+  for (let node = el; node && node.nodeType === 1 && node !== document.body && parts.length < 6; node = node.parentElement) {
     let part = node.tagName.toLowerCase();
     if (node.id) {
-      parts.unshift(`${part}#${node.id}`);
+      parts.unshift(`${part}#${CSS.escape(node.id)}`);
       break;
     }
     const cls = [...node.classList].filter((c) => !c.startsWith('is-') && !c.startsWith('reveal')).slice(0, 2);
-    if (cls.length) part += `.${cls.join('.')}`;
+    if (cls.length) part += `.${cls.map((c) => CSS.escape(c)).join('.')}`;
+    // Tells repeated things, like the cards in a grid, apart.
+    const same = node.parentElement ? [...node.parentElement.children].filter((c) => c.tagName === node.tagName) : [];
+    if (same.length > 1) part += `:nth-of-type(${same.indexOf(node) + 1})`;
     parts.unshift(part);
   }
   return parts.join(' > ');
@@ -234,12 +239,18 @@ function onPickMove(e) {
 
 function onPickClick(e) {
   if (!picking) return;
+  // Ctrl/Cmd-click still follows links, to point at things on another page.
+  if (e.ctrlKey || e.metaKey) return;
   e.preventDefault();
   e.stopPropagation();
-  const info = describeElement(e.target);
-  setPicking(false);
-  placeOutline(e.target, 'Selected');
-  send('picked', { element: info });
+  send('picked', { element: describeElement(e.target) });
+}
+
+function onPickKey(e) {
+  if (picking && e.key === 'Escape') {
+    setPicking(false);
+    send('pickEnded');
+  }
 }
 
 function setPicking(on) {
@@ -247,10 +258,63 @@ function setPicking(on) {
   document.documentElement.style.cursor = on ? 'crosshair' : '';
   if (!on) {
     hoverEl = null;
-    if (!window.__aicOutlined || window.__aicOutlined.label !== 'Selected') clearHighlight();
+    clearHighlight();
   }
 }
 
+// Numbered boxes on everything the admin has pointed at, on the page showing now.
+let marks = [];
+let marksDrawn = '';
+
+function drawMarks() {
+  const here = location.pathname + location.hash;
+  const boxes = marks
+    .filter((m) => m.path === here)
+    .map((m) => ({ n: m.n, el: findElement(m) }))
+    .filter((m) => m.el)
+    .map((m) => ({ ...m, key: outlineKey(m.el) }));
+  const drawn = boxes.map((b) => `${b.n}@${b.key}`).join('|');
+  if (drawn === marksDrawn) return;
+  marksDrawn = drawn;
+  document.querySelectorAll('[data-aic-mark]').forEach((node) => node.remove());
+  for (const { n, el } of boxes) {
+    const r = el.getBoundingClientRect();
+    const box = document.createElement('div');
+    box.dataset.aic = '1';
+    box.dataset.aicMark = String(n);
+    Object.assign(box.style, {
+      position: 'absolute',
+      left: `${r.left + window.scrollX - 3}px`,
+      top: `${r.top + window.scrollY - 3}px`,
+      width: `${r.width + 6}px`,
+      height: `${r.height + 6}px`,
+      border: `2px solid ${ACCENT}`,
+      borderRadius: '6px',
+      background: 'rgba(47, 127, 216, 0.10)',
+      pointerEvents: 'none',
+      zIndex: 2147483645,
+    });
+    const badge = document.createElement('div');
+    badge.textContent = String(n);
+    Object.assign(badge.style, {
+      position: 'absolute',
+      left: '-10px',
+      top: '-10px',
+      width: '20px',
+      height: '20px',
+      borderRadius: '50%',
+      background: ACCENT,
+      color: '#fff',
+      font: '700 11px/20px system-ui, sans-serif',
+      textAlign: 'center',
+    });
+    box.appendChild(badge);
+    document.body.appendChild(box);
+  }
+}
+setInterval(drawMarks, 300);
+
+document.addEventListener('keydown', onPickKey, true);
 document.addEventListener('mousemove', onPickMove, true);
 document.addEventListener('click', onPickClick, true);
 
@@ -273,6 +337,11 @@ window.addEventListener('message', (event) => {
       break;
     case 'aic:pick':
       setPicking(!!msg.on);
+      break;
+    case 'aic:marks':
+      marks = Array.isArray(msg.items) ? msg.items : [];
+      marksDrawn = null;
+      drawMarks();
       break;
     default:
   }

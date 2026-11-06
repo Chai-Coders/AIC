@@ -23,6 +23,11 @@ http.createServer((req,res)=>{let b='';req.on('data',d=>b+=d);req.on('end',()=>{
  if(u.pathname==='/control/set'){Object.assign(state,j);return respond(res,200,{ok:1});}
  if(u.pathname==='/control/external-edit'){const t={...trees.get(commits.get(state.head).tree)};const s=sha1(j.content);blobs.set(s,j.content);t[j.path]=s;const id=treeId(t);trees.set(id,t);const c=crypto.randomBytes(20).toString('hex');commits.set(c,{tree:id,parents:[state.head],message:'external'});state.head=c;return respond(res,200,{head:c});}
  if(u.pathname==='/control/file'){const t=trees.get(commits.get(state.head).tree);const s=t[j.path];return respond(res,200,{content:s?blobs.get(s):null});}
+ const gm=u.pathname.match(/^\/v1beta\/models\/([^:]+):generateContent$/);
+ if(gm){ const next=state.script.shift(); state.calls.push({provider:'google',model:gm[1],contents:j.contents,tools:j.tools,hasKey:!!req.headers['x-goog-api-key']});
+   if(next?.status) return respond(res,next.status,{error:{code:next.status,message:next.message||'boom',status:'RESOURCE_EXHAUSTED'}});
+   const parts=next?.tools?next.tools.map(([name,args],i)=>({functionCall:{name,args},...(i===0?{thoughtSignature:next.signature||'gem-sig-1'}:{})})):[{text:next?.text||'(script empty)'}];
+   return respond(res,200,{candidates:[{content:{role:'model',parts},finishReason:'STOP'}],usageMetadata:{promptTokenCount:1000,candidatesTokenCount:200,totalTokenCount:1200}}); }
  if(u.pathname==='/v1/messages'){ const next=state.script.shift(); if(next?.delay){return setTimeout(()=>answer(res,next),next.delay);} state.calls.push({bodyKeys:Object.keys(j),system:j.system,messages:j.messages,tools:(j.tools||[]).map(t=>t.name),key:req.headers['x-api-key'],model:j.model,tool_choice:j.tool_choice}); if(LOG)fs.appendFileSync(LOG,JSON.stringify(j)+'\n');
    return answer(res,next); }
  const m=u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)$/); if(m){ const p=m[1]; if(req.headers.authorization!=='Bearer fake-token') return respond(res,401,{message:'bad'});

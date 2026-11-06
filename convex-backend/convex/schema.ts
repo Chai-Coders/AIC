@@ -234,8 +234,12 @@ export default defineSchema({
     // The admin message the editor is answering, and model calls made for it.
     promptMessageId: v.optional(v.string()),
     stepCount: v.optional(v.number()),
-    // The element the admin clicked in the preview.
+    // The elements the admin clicked in the preview.
+    selectedElements: v.optional(v.array(v.any())),
+    // Older drafts hold a single clicked element here. Nothing reads it now.
     selectedElement: v.optional(v.any()),
+    // Times this run has waited out the provider's rate limit.
+    rateLimitWaits: v.optional(v.number()),
     versionId: v.optional(v.id("versions")),
     createdBy: v.id("users"),
     createdAt: v.number(),

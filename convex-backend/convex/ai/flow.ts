@@ -21,6 +21,7 @@ export async function startEditor(ctx: MutationCtx, cs: Doc<"changeSets">, promp
     runSeq,
     promptMessageId,
     stepCount: 0,
+    rateLimitWaits: 0,
     notice: undefined,
     updatedAt: Date.now(),
   });
@@ -55,7 +56,7 @@ export async function finishEditing(ctx: MutationCtx, cs: Doc<"changeSets">) {
 
 export async function startReview(ctx: MutationCtx, cs: Doc<"changeSets">) {
   const runSeq = (cs.runSeq ?? 0) + 1;
-  await ctx.db.patch(cs._id, { status: "reviewing", running: true, runSeq, buildError: undefined, updatedAt: Date.now() });
+  await ctx.db.patch(cs._id, { status: "reviewing", running: true, runSeq, rateLimitWaits: 0, notice: undefined, buildError: undefined, updatedAt: Date.now() });
   await ctx.scheduler.runAfter(0, internal.ai.agent.reviewStep, { changeSetId: cs._id, runSeq });
 }
 
@@ -81,11 +82,11 @@ export async function afterEditorStep(
       await haltForAdmin(ctx, cs._id, "The assistant took too many steps and stopped. Your draft is kept. Tell it how to continue, or discard the draft.");
       return;
     }
-    await ctx.db.patch(cs._id, { stepCount, updatedAt: Date.now() });
+    await ctx.db.patch(cs._id, { stepCount, rateLimitWaits: 0, notice: undefined, updatedAt: Date.now() });
     await ctx.scheduler.runAfter(0, internal.ai.agent.editorStep, { changeSetId: cs._id, runSeq: cs.runSeq ?? 0 });
     return;
   }
-  await ctx.db.patch(cs._id, { stepCount });
+  await ctx.db.patch(cs._id, { stepCount, rateLimitWaits: 0, notice: undefined });
   if (finishReason === "stop") {
     await finishEditing(ctx, { ...cs, stepCount });
     return;

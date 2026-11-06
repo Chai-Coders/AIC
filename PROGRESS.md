@@ -34,7 +34,7 @@ Numbered 0–7 here; the design doc numbers them 1–8.
 | 4 | Code path | ✅ against a fake GitHub. ⚠️ Not yet run against the real API |
 | 5 | Review agent | ✅ |
 | 6 | Click to point | ✅ |
-| 7 | Hardening | ✅ `tests/ai`: 25 backend checks and 10 browser scenarios, on the merged code |
+| 7 | Hardening | ✅ `tests/ai`: 29 backend checks and 11 browser scenarios, on the merged code |
 
 ## Where the build differs from the design doc
 
@@ -61,18 +61,25 @@ undo flow, overlapping the ChangeSet and rollback flow here. Merging conflicts i
   agent can still add exports to existing `convex/*.ts` files, and `registry.js` being plain data is checked only by
   the review agent. A real fix is making `convex-backend/` read-only for the agent and importing the registry as JSON.
 
+## Verified against real services
+
+- Gemini (`gemini-3.5-flash-lite`, free plan), 2026-11-07: a real content edit from the AI Assistant page, including
+  pointing at two things, review, publish and rollback.
+
 ## Not verified yet
 
-All tests use a scripted fake model and a fake GitHub. Nothing has run against a real provider
-or the real GitHub API, because that needs your keys and would spend money or commit to a public repo.
-Try next, in order:
+The other tests use a scripted fake model and a fake GitHub. Still to try for real, in order:
 
-1. A real provider key, with a content edit. Then check the spend meter against the provider's own usage page.
-2. A real `GITHUB_TOKEN`, with a small `frontend/` edit, publish and rollback on a scratch branch (`GITHUB_BRANCH`).
-3. A mixed change, to see whether Vercel's checks report on the branch. If nothing deploys it, use Apply content.
-4. OpenAI and Gemini: same code path, but only Anthropic's request shape was checked, and they have no default prices.
+1. A `GITHUB_TOKEN` with a small `frontend/` edit, publish and rollback on a scratch branch (`GITHUB_BRANCH`).
+2. A mixed change, to see whether Vercel's checks report on the branch. If nothing deploys it, use Apply content.
+3. Claude and OpenAI. Claude's request shape was checked against a fake. OpenAI has no default prices.
+4. Gemini on a long code task: free-plan limits may be hit, and `gemini-3.8-flash` was returning 503 (high demand)
+   on 2026-11-07. `gemini-2.5-flash-lite` returns 404 for new users, though Google's pricing page still lists it.
 
 ## Choices beyond the design doc
+
+- Pointing takes several elements at once (up to 10), numbered in the preview. The doc describes a single element.
+- The right pane copies the Site text page's browser frame, with Desktop/Phone, draggable panes and a side-by-side view.
 
 - Protected list also covers `schema.ts`, `admin.ts`, `http.ts`, `crons.ts`, `AuthContext`, `LoginPage`,
   `services/convex.js`, the CMS's `main.jsx` and `index.html`, `package.json` and lockfiles, build and deploy

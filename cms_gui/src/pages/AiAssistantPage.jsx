@@ -7,6 +7,8 @@ import { buildSandboxFiles, sandboxDependencies } from '../preview/sandbox';
 import { loadLocalSources } from '../preview/localSources';
 import ChatPane from '../components/ai/ChatPane';
 import PreviewPane from '../components/ai/PreviewPane';
+import SplitDivider from '../components/ai/SplitDivider';
+import { useStoredSize } from '../components/ai/useStoredSize';
 import { useBuildCheck } from '../components/ai/useBuildCheck';
 
 const api = anyApi.ai;
@@ -15,6 +17,8 @@ const env = { VITE_CONVEX_URL: import.meta.env.VITE_CONVEX_URL };
 const assetOrigin = (import.meta.env.VITE_SITE_URL || '').replace(/\/+$/, '');
 const OPEN_DRAFT = ['drafting', 'building', 'reviewing', 'needs_admin', 'ready', 'publishing'];
 const FRONTEND = 'frontend/';
+const MAX_POINTED = 10; // Same limit as convex-backend/convex/ai/chat.ts.
+const sameElement = (a, b) => a.path === b.path && a.selector === b.selector;
 
 export default function AiAssistantPage() {
   const { showToast } = useOutletContext();
@@ -80,7 +84,20 @@ export default function AiAssistantPage() {
   const [location, setLocation] = useState('/');
   const [tab, setTab] = useState('preview');
   const [picking, setPicking] = useState(false);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [chatWidth, setChatWidth] = useStoredSize('aic-cms:ai-chat-width', 384);
+
+  useEffect(() => {
+    preview.current?.marks(selected.map((item, i) => ({ n: i + 1, path: item.path, selector: item.selector, text: item.text })));
+  }, [selected]);
+
+  const onPicked = (element) => {
+    if (selected.length >= MAX_POINTED && !selected.some((s) => sameElement(s, element))) {
+      showToast(`You can point at up to ${MAX_POINTED} things at a time.`, 'error');
+      return;
+    }
+    setSelected((items) => (items.some((s) => sameElement(s, element)) ? items.filter((s) => !sameElement(s, element)) : [...items, element]));
+  };
 
   const build = useBuildCheck({
     draft: openDraft,
@@ -148,9 +165,10 @@ export default function AiAssistantPage() {
   // ---- Actions ---------------------------------------------------------------
 
   const onSend = async (prompt) => {
-    const result = await run(() => send({ prompt, ...(threadId ? { threadId } : {}), ...(selected ? { selectedElement: selected } : {}) }));
+    const result = await run(() => send({ prompt, ...(threadId ? { threadId } : {}), ...(selected.length ? { selectedElements: selected } : {}) }));
     setChosenThread(result.threadId);
-    setSelected(null);
+    setSelected([]);
+    if (picking) togglePick();
     setMode('after');
     preview.current?.clearHighlight();
   };
@@ -158,7 +176,7 @@ export default function AiAssistantPage() {
   const onNewChat = async () => {
     try {
       setChosenThread(await run(() => newThread({})));
-      setSelected(null);
+      setSelected([]);
       setMode('after');
       setTab('preview');
       preview.current?.clearHighlight();
@@ -214,15 +232,16 @@ export default function AiAssistantPage() {
     }
   };
 
+  // On a phone the two panes share the screen, one at a time.
+  const [phonePane, setPhonePane] = useState('chat');
+
   const togglePick = () => {
     const next = !picking;
     setPicking(next);
-    setTab('preview');
+    if (next && tab === 'changes') setTab('preview');
     preview.current?.pick(next);
+    if (next) setPhonePane('site');
   };
-
-  // On a phone the two panes share the screen, one at a time.
-  const [phonePane, setPhonePane] = useState('chat');
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -240,18 +259,15 @@ export default function AiAssistantPage() {
           </button>
         ))}
       </div>
-      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)]">
-        <div className={`min-h-0 border-border md:block md:border-r ${phonePane === 'chat' ? '' : 'hidden'}`}>
+      <div className="flex min-h-0 flex-1" style={{ '--aic-chat-width': `${chatWidth}px` }}>
+        <div className={`min-h-0 w-full md:block md:w-[var(--aic-chat-width)] md:shrink-0 ${phonePane === 'chat' ? '' : 'hidden'}`}>
           <ChatPane
             threadId={threadId}
             draft={openDraft}
             closedNotice={draft && !openDraft ? draft.notice : null}
             messages={messages}
             selected={selected}
-            onClearSelected={() => {
-              setSelected(null);
-              preview.current?.clearHighlight();
-            }}
+            onRemoveSelected={(item) => setSelected((items) => items.filter((s) => !sameElement(s, item)))}
             picking={picking}
             onTogglePick={togglePick}
             onSend={onSend}
@@ -259,7 +275,10 @@ export default function AiAssistantPage() {
             showToast={showToast}
           />
         </div>
-        <div className={`min-h-0 min-w-0 md:block ${phonePane === 'site' ? '' : 'hidden'}`}>
+        <div className="hidden md:block">
+          <SplitDivider label="Resize the chat" value={chatWidth} min={300} max={640} onChange={setChatWidth} />
+        </div>
+        <div className={`min-h-0 min-w-0 flex-1 md:block ${phonePane === 'site' ? '' : 'hidden'}`}>
           <PreviewPane
             ref={preview}
             tab={tab}
@@ -282,11 +301,10 @@ export default function AiAssistantPage() {
             onAbandonContent={onAbandonContent}
             onReady={() => setPreviewReady(true)}
             onLocation={setLocation}
-            onPicked={(element) => {
-              setSelected(element);
-              setPicking(false);
-              setPhonePane('chat');
-            }}
+            picking={picking}
+            onDonePicking={togglePick}
+            onPicked={onPicked}
+            onPickEnded={() => setPicking(false)}
             onCompiling={build.onCompiling}
             onCompiled={build.onCompiled}
             onBuildError={build.onBuildError}

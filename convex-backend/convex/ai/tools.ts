@@ -82,9 +82,9 @@ function readTools(env: Env) {
     get_selected_element: define(
       env,
       "get_selected_element",
-      "The element the admin clicked in the preview: its page, text and CSS selector, and the most likely source locations.",
+      "The elements the admin clicked in the preview, in order: each one's page, text and CSS selector, its website text key if it has one, and the most likely source locations.",
       z.object({}),
-      () => ctx.runQuery(internal.ai.drafts.selectedElement, { changeSetId }),
+      () => ctx.runQuery(internal.ai.drafts.selectedElements, { changeSetId }),
     ),
   };
 }
@@ -113,10 +113,12 @@ export function editorTools(env: EditorEnv) {
       "Add a new text record (a news post, startup, gallery item or team member) that uses an existing picture. Find the picture with search_media; you can't upload one.",
       z.object({
         table,
-        fields: z.record(z.string(), z.string()).describe("Text fields of the record, using the names from get_site_content."),
+        // A list, not a free-form object: not every provider accepts open-ended object schemas.
+        fields: z.array(z.object({ name: z.string(), value: z.string() })).describe("Text fields of the record, using the names from get_site_content."),
         imageId: z.string().optional(),
       }),
-      (args) => ctx.runMutation(internal.ai.drafts.createRecord, { changeSetId, runSeq, ...args }),
+      ({ fields, ...args }) =>
+        ctx.runMutation(internal.ai.drafts.createRecord, { changeSetId, runSeq, ...args, fields: Object.fromEntries(fields.map((f) => [f.name, f.value])) }),
     ),
     delete_record: define(
       env,

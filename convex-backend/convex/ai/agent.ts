@@ -19,6 +19,34 @@ import { editorTools, reviewerTools } from "./tools";
 const MAX_OUTPUT_TOKENS = 16000;
 const MAX_REVIEW_STEPS = 10;
 
+// Providers refuse calls for a while when a free tier's limit is reached or a model
+// is overloaded. Their client has already retried for a few seconds by the time we
+// see it, so wait, then carry on. A model call also gets a time limit, so a slow
+// provider can't look like an assistant that has silently died.
+const RATE_LIMIT_WAIT_MS = 65_000;
+const BUSY_WAIT_MS = 30_000;
+const MAX_WAITS = 4;
+const MODEL_CALL_TIMEOUT_MS = 180_000;
+
+function statusOf(e: unknown) {
+  const error = e as { statusCode?: number; lastError?: { statusCode?: number } };
+  return error?.statusCode ?? error?.lastError?.statusCode;
+}
+const messageOf = (e: unknown) => String((e as { message?: string })?.message ?? e);
+
+function isRateLimit(e: unknown) {
+  return statusOf(e) === 429 || /\b429\b|rate.?limit|resource.?exhausted|quota/i.test(messageOf(e));
+}
+
+/** Worth trying again: overloaded, or the call ran out of time. */
+function isBusy(e: unknown) {
+  const status = statusOf(e);
+  return (
+    status === 500 || status === 502 || status === 503 || status === 504 || status === 529 ||
+    /high demand|overloaded|unavailable|aborted|timed? ?out/i.test(messageOf(e))
+  );
+}
+
 const errorText = (e: unknown) => (e instanceof ConvexError ? String(e.data) : e instanceof Error ? e.message : String(e));
 
 async function recordUsage(
@@ -60,6 +88,39 @@ export const haltRun = internalMutation({
   },
 });
 
+/** Waits for the provider to come back, or gives up and hands over to the admin. */
+export const waitForProvider = internalMutation({
+  args: {
+    changeSetId: v.id("changeSets"),
+    runSeq: v.number(),
+    step: v.union(v.literal("editor"), v.literal("reviewer")),
+    reason: v.union(v.literal("limit"), v.literal("busy")),
+  },
+  handler: async (ctx, { changeSetId, runSeq, step, reason }) => {
+    const cs = await ctx.db.get(changeSetId);
+    if (!cs || cs.runSeq !== runSeq || !cs.running) return;
+    const rateLimitWaits = (cs.rateLimitWaits ?? 0) + 1;
+    if (rateLimitWaits > MAX_WAITS) {
+      await audit(ctx, { userId: cs.createdBy, changeSetId, action: "agent.providerUnavailable", detail: { reason, rateLimitWaits } });
+      await haltForAdmin(
+        ctx,
+        changeSetId,
+        reason === "limit"
+          ? "The AI provider's usage limit was reached, so the assistant stopped. Your draft is kept. On a free plan this can be a daily limit: try again later, or pick another model."
+          : "This AI model is too busy right now, so the assistant stopped. Your draft is kept. Send a message to try again, or pick another model first.",
+      );
+      return;
+    }
+    const notice =
+      reason === "limit"
+        ? "The AI provider's limit for this minute was reached. Trying again shortly…"
+        : "This AI model is very busy right now. Trying again shortly…";
+    await ctx.db.patch(changeSetId, { rateLimitWaits, notice, updatedAt: Date.now() });
+    const fn = step === "editor" ? internal.ai.agent.editorStep : internal.ai.agent.reviewStep;
+    await ctx.scheduler.runAfter(reason === "limit" ? RATE_LIMIT_WAIT_MS : BUSY_WAIT_MS, fn, { changeSetId, runSeq });
+  },
+});
+
 export const editorStep = internalAction({
   args: { changeSetId: v.id("changeSets"), runSeq: v.number() },
   handler: async (ctx, { changeSetId, runSeq }): Promise<void> => {
@@ -98,10 +159,14 @@ export const editorStep = internalAction({
       const result = await agent.generateText(
         ctx,
         { threadId: cs.threadId },
-        { promptMessageId: cs.promptMessageId, stopWhen: stepCountIs(1), maxOutputTokens: MAX_OUTPUT_TOKENS } as any,
+        { promptMessageId: cs.promptMessageId, stopWhen: stepCountIs(1), maxOutputTokens: MAX_OUTPUT_TOKENS, abortSignal: AbortSignal.timeout(MODEL_CALL_TIMEOUT_MS) } as any,
       );
       await ctx.runMutation(internal.ai.agent.saveEditorStep, { changeSetId, runSeq, finishReason: String(result.finishReason) });
     } catch (e) {
+      if (!(e instanceof ConvexError) && (isRateLimit(e) || isBusy(e))) {
+        await ctx.runMutation(internal.ai.agent.waitForProvider, { changeSetId, runSeq, step: "editor", reason: isRateLimit(e) ? "limit" : "busy" });
+        return;
+      }
       const text = errorText(e);
       await ctx.runMutation(internal.ai.agent.haltRun, {
         changeSetId,
@@ -138,7 +203,7 @@ export const saveVerdict = internalMutation({
     const review = { verdict: approved ? ("approved" as const) : ("rejected" as const), reasons, at: now };
     await audit(ctx, { userId: cs.createdBy, changeSetId, action: approved ? "review.approved" : "review.rejected", detail: { reasons } });
     if (approved) {
-      await ctx.db.patch(changeSetId, { status: "ready", running: false, review, updatedAt: now });
+      await ctx.db.patch(changeSetId, { status: "ready", running: false, review, notice: undefined, updatedAt: now });
       return;
     }
     const reviewAttempts = cs.reviewAttempts + 1;
@@ -198,6 +263,7 @@ export const reviewStep = internalAction({
           verdict = result;
         }) as any,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
+        abortSignal: AbortSignal.timeout(MODEL_CALL_TIMEOUT_MS),
         stopWhen: [
           stepCountIs(MAX_REVIEW_STEPS),
           hasToolCall("approve"),
@@ -231,6 +297,10 @@ export const reviewStep = internalAction({
         await ctx.runMutation(internal.ai.agent.noVerdict, { changeSetId, runSeq, reason: "The review agent finished without giving a verdict, so this draft hasn't been passed." });
       }
     } catch (e) {
+      if (!(e instanceof ConvexError) && (isRateLimit(e) || isBusy(e))) {
+        await ctx.runMutation(internal.ai.agent.waitForProvider, { changeSetId, runSeq, step: "reviewer", reason: isRateLimit(e) ? "limit" : "busy" });
+        return;
+      }
       const text = errorText(e);
       await ctx.runMutation(internal.ai.agent.haltRun, {
         changeSetId,

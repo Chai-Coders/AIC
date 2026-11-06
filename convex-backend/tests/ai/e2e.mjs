@@ -606,6 +606,94 @@ const tests = {
     await c.mutation(api.gallery.update, { id: item.id, subtext: item.subtext });
   },
 
+  async 'Gemini: works with only a Google key, keeps thought signatures, valid tool schemas'() {
+    const before = await c.query(api.ai.settings.get, {});
+    assert.ok(before.providers.find((p) => p.name === 'google').configured, 'needs a Google key saved in this deployment');
+    await c.mutation(api.ai.settings.removeProviderKey, { provider: 'anthropic' });
+    try {
+      const s = await c.query(api.ai.settings.get, {});
+      assert.equal(s.editorModel.provider, 'google', 'follows the only saved key');
+      assert.ok(s.priceTable.some((p) => p.provider === 'google' && p.model === s.editorModel.model), 'and it has a price');
+      const item = (await live()).news[2];
+      await script([
+        { signature: 'gem-sig-A', tools: [['get_site_content', { table: 'news' }], ['get_site_text', { query: 'find that page' }]] },
+        { signature: 'gem-sig-B', tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'From Gemini' }]] },
+        { text: 'Done.' },
+        { tools: [['approve', {}]] },
+      ]);
+      const { threadId, changeSetId } = await say('Edit with Gemini');
+      const d = await inState(threadId, 'ready', 'needs_admin');
+      assert.equal(d.status, 'ready', d.notice);
+      assert.equal(d.contentOps[0].to, 'From Gemini');
+      const { calls } = await control('state');
+      assert.ok(calls.every((x) => x.provider === 'google' && x.hasKey), 'every call goes to Google');
+      const history = JSON.stringify(calls[2].contents);
+      assert.ok(history.includes('gem-sig-A') && history.includes('gem-sig-B'), `thought signatures were dropped: ${history.slice(0, 500)}`);
+      const declarations = calls[0].tools.flatMap((t) => t.functionDeclarations ?? []);
+      assert.ok(declarations.some((f) => f.name === 'update_site_text'));
+      const empty = [];
+      const visit = (schema, name) => {
+        if (!schema || typeof schema !== 'object') return;
+        if (schema.type === 'object' && !Object.keys(schema.properties ?? {}).length) empty.push(name);
+        Object.values(schema.properties ?? {}).forEach((x) => visit(x, name));
+        visit(schema.items, name);
+      };
+      declarations.forEach((f) => visit(f.parameters, f.name));
+      assert.deepEqual(empty, [], 'Gemini rejects object schemas with no properties');
+      const log = await c.query(api.ai.audit.list, { changeSetId });
+      assert.ok(log.some((row) => row.action === 'model.editor' && row.costUsd > 0), 'Gemini spend is counted');
+      await c.mutation(api.ai.chat.discard, { changeSetId });
+    } finally {
+      await c.action(api.ai.settings.setProviderKey, { provider: 'anthropic', apiKey: 'sk-ant-fake-key-1234' });
+    }
+  },
+
+  async 'a rate limit waits and carries on, without losing the draft'() {
+    const item = (await live()).news[2];
+    const limited = { status: 429, message: 'Resource has been exhausted' };
+    await script([
+      { tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'Before the limit' }]] },
+      limited, limited, limited,
+      DONE,
+      OK,
+    ]);
+    const { threadId, changeSetId } = await say('Edit');
+    await until('the wait notice', async () => /limit for this minute/.test((await draftOf(threadId)).notice ?? ''));
+    const waiting = await draftOf(threadId);
+    assert.ok(waiting.running && waiting.status === 'drafting', 'still running while it waits');
+    const d = await until('it carries on', async () => {
+      const x = await draftOf(threadId);
+      return x.status === 'ready' ? x : null;
+    }, 90000);
+    assert.equal(d.contentOps[0].to, 'Before the limit');
+    assert.ok(!d.notice, 'the notice clears');
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'a busy model waits and carries on, and gives up clearly'() {
+    const item = (await live()).news[2];
+    const busy = { status: 503, message: 'This model is currently experiencing high demand.' };
+    await script([{ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'Before the rush' }]] }, busy, busy, busy, DONE, OK]);
+    const { threadId, changeSetId } = await say('Edit');
+    await until('the busy notice', async () => /very busy/.test((await draftOf(threadId)).notice ?? ''));
+    const d = await until('it carries on', async () => {
+      const x = await draftOf(threadId);
+      return x.status === 'ready' ? x : null;
+    }, 60000);
+    assert.equal(d.contentOps[0].to, 'Before the rush');
+    assert.ok(!d.notice, 'the notice clears');
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'an API key pasted in the chat is refused and never stored'() {
+    const secret = `AIza${'x'.repeat(30)}`;
+    await script([DONE]);
+    const before = (await control('state')).calls.length;
+    await rejects(() => say(`here is my key ${secret}`), /looks like an API key/);
+    assert.equal((await control('state')).calls.length, before);
+    assert.ok(!JSON.stringify(await c.query(api.ai.audit.list, { limit: 20 })).includes(secret));
+  },
+
   async 'a model priced at zero is refused'() {
     await rejects(
       () => c.mutation(api.ai.settings.save, { priceTable: [{ provider: 'openai', model: 'gpt-x', inputPerMTok: 0, outputPerMTok: 0 }] }),
@@ -617,14 +705,15 @@ const tests = {
     await script([{ tools: [['get_selected_element', {}]] }, { text: 'Got it.' }]);
     const { threadId, changeSetId } = await c.mutation(api.ai.chat.send, {
       prompt: 'Make this bigger',
-      selectedElement: { path: '/nope', tag: 'a', text: 'Go to home page', classes: ['btn'], selector: 'a.btn' },
+      selectedElements: [{ path: '/nope', tag: 'a', text: 'Go to home page', classes: ['btn'], selector: 'a.btn' }, { path: '/', tag: 'h1', text: 'No such words here', classes: [], selector: 'h1' }],
     });
     await inState(threadId, 'drafting');
     const { calls } = await control('state');
-    assert.ok(JSON.stringify(calls[0].messages).includes('get_selected_element'), 'the agent is told to look');
+    assert.ok(JSON.stringify(calls[0].messages).includes('2 elements'), 'the agent is told how many');
     const results = toolResults(calls[1]);
     assert.ok(results.includes('notFound.hero.home'), 'it gets the website text key');
     assert.ok(results.includes('registry.js'), 'it gets the source location');
+    assert.ok(results.includes('No such words here'), 'it gets every element');
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 };

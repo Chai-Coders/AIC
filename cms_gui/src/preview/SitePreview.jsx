@@ -5,9 +5,9 @@ import { SANDBOX_ENTRY } from './sandbox';
 
 // The public website rendered in the admin's browser by Sandpack, with the
 // draft applied (see sandbox.js). The parent controls it through the ref:
-//   navigate(path), highlight({ path, selector, text, label }), clearHighlight(), pick(on)
+//   navigate(path), highlight({ path, selector, text, label }), clearHighlight(), pick(on), marks(items)
 // and hears back through the callbacks:
-//   onLocation(path), onPicked(element), onBuildError(message), onReady(),
+//   onLocation(path), onPicked(element), onPickEnded(), onBuildError(message), onReady(),
 //   onCompiling() when the bundler starts on a change, onCompiled() when it ends
 //
 // This drives the Sandpack client directly rather than through SandpackProvider:
@@ -28,7 +28,7 @@ function toSetup(files, dependencies) {
 }
 
 const SitePreview = forwardRef(function SitePreview(
-  { files, dependencies, onLocation, onPicked, onBuildError, onCompiling, onCompiled, onReady, onRuntimeError, className = '' },
+  { files, dependencies, onLocation, onPicked, onPickEnded, onBuildError, onCompiling, onCompiled, onReady, onRuntimeError, className = '' },
   ref,
 ) {
   const frameRef = useRef(null);
@@ -36,13 +36,15 @@ const SitePreview = forwardRef(function SitePreview(
   const [ready, setReady] = useState(false);
   const callbacks = useRef({});
   useLayoutEffect(() => {
-    callbacks.current = { onLocation, onPicked, onBuildError, onCompiling, onCompiled, onReady, onRuntimeError };
+    callbacks.current = { onLocation, onPicked, onPickEnded, onBuildError, onCompiling, onCompiled, onReady, onRuntimeError };
   });
   // Sandpack puts the frame back on "/" when it reloads, so the page and the
   // outlined element are put back when the bridge next says it's ready.
   const lastPath = useRef('/');
   const lastHighlight = useRef(null);
   const lastCompile = useRef(0);
+  const lastMarks = useRef([]);
+  const picking = useRef(false);
   const latestSetup = useRef(null);
   const sentSetup = useRef(null);
 
@@ -128,10 +130,16 @@ const SitePreview = forwardRef(function SitePreview(
       if (msg.type === 'aic:location' && (msg.path !== '/' || Date.now() - lastCompile.current > RELOAD_SETTLE_MS)) lastPath.current = msg.path;
       if (msg.type === 'aic:location') cb.onLocation?.(msg.path);
       if (msg.type === 'aic:picked') cb.onPicked?.(msg.element);
+      if (msg.type === 'aic:pickEnded') {
+        picking.current = false;
+        cb.onPickEnded?.();
+      }
       if (msg.type === 'aic:ready') {
         setReady(true);
         if (lastHighlight.current) post({ type: 'aic:highlight', ...lastHighlight.current });
         else if (lastPath.current !== '/') post({ type: 'aic:navigate', path: lastPath.current });
+        post({ type: 'aic:marks', items: lastMarks.current });
+        if (picking.current) post({ type: 'aic:pick', on: true });
         cb.onReady?.();
       }
       if (msg.type === 'aic:error') cb.onRuntimeError?.(msg.message);
@@ -156,7 +164,14 @@ const SitePreview = forwardRef(function SitePreview(
         lastHighlight.current = null;
         post({ type: 'aic:clearHighlight' });
       },
-      pick: (on) => post({ type: 'aic:pick', on }),
+      pick: (on) => {
+        picking.current = on;
+        post({ type: 'aic:pick', on });
+      },
+      marks: (items) => {
+        lastMarks.current = items;
+        post({ type: 'aic:marks', items });
+      },
     }),
     [post],
   );
