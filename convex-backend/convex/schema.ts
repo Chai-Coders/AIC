@@ -56,6 +56,9 @@ export const contentOp = v.union(
   v.object({ op: v.literal("create"), table: contentTable, id: v.string(), doc: v.any() }),
   v.object({ op: v.literal("delete"), table: contentTable, id: v.string(), label: v.string() }),
   v.object({ op: v.literal("reorder"), table: contentTable, ids: v.array(v.string()) }),
+  // Website text (the `siteText` table), by key. `null` means the text written
+  // in frontend/src/content/registry.js, with no row in the table.
+  v.object({ op: v.literal("text"), key: v.string(), from: v.union(v.string(), v.null()), to: v.union(v.string(), v.null()) }),
 );
 export type ContentOp = Infer<typeof contentOp>;
 
@@ -179,6 +182,16 @@ export default defineSchema({
     updatedAt: v.number(),
   }),
 
+  // Website text edited in the CMS's "Site text" page. Only edited texts have a
+  // row: everything else shows the text written in the website's code
+  // (frontend/src/content/registry.js), which is also what a deleted row means.
+  // `key` names the text, like "home.hero.title".
+  siteText: defineTable({
+    key: v.string(),
+    value: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   // Videos uploaded from the CMS that Mux is still processing. Once Mux has a
   // playback id the upload replaces the background video (see mux.ts).
   muxUploads: defineTable({
@@ -240,7 +253,8 @@ export default defineSchema({
     // Previous values of every touched record: `before` null = the publish
     // created it; `after` null = the publish deleted it.
     contentSnapshot: v.array(
-      v.object({ table: contentTable, id: v.string(), before: v.any(), after: v.any() }),
+      // For `siteText`, `id` is the text's key.
+      v.object({ table: v.union(contentTable, v.literal("siteText")), id: v.string(), before: v.any(), after: v.any() }),
     ),
     // Code: the commit made, the one it was made on, and previous contents.
     commitSha: v.optional(v.string()),

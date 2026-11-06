@@ -2,81 +2,48 @@ import React from 'react';
 import PageLayout from '../components/common/PageLayout';
 import { Callout, CtaBanner, InfoCard } from '../components/sections/ProgramContent';
 import { formatDate } from '../lib/format';
+import { useList } from '../content/useText';
+import { Text } from '../content/Text';
 
-const CAREERS_EMAILS = ['shajulin@iiitkottayam.ac.in', 'incubate@iiitkottayam.ac.in'];
+// Each position's texts are careers.positions.<i>.title / .type / .summary.
+const POSITIONS = [{ pdf: '/pdfs/CEO-Position.pdf', deadline: '2025-12-25' }, {}];
 
-const POSITIONS = [
-  {
-    title: 'Chief Executive Officer (CEO)',
-    type: 'Full time',
-    summary: 'Lead the incubation centre, its programmes and its startup portfolio.',
-    pdf: '/pdfs/CEO-Position.pdf',
-    deadline: '2025-12-25',
-  },
-  {
-    title: 'Non-stipendiary internship',
-    type: 'Internship · 2-3+ months',
-    summary: 'Open to MCA, MSc (Comp/IT), BE/BTech students and recent graduates.',
-  },
-];
-
-const INTERNSHIP_CARDS = [
-  {
-    icon: 'fa-bullseye',
-    title: 'Objectives',
-    items: [
-      'Work on the day-to-day activities of the Atal Incubation Centre alongside real product development',
-      'Hands-on development in Java, web / JavaScript frameworks, Python, machine learning, Android, IoT and blockchain',
-    ],
-  },
-  {
-    icon: 'fa-graduation-cap',
-    title: 'Qualification & eligibility',
-    items: [
-      'Students doing final-semester projects: MCA / MSc (Comp/IT) / BE / BTech (CSE, IT, EEE, EC)',
-      'Recent graduates passionate about innovation, technology and startup ecosystems',
-    ],
-  },
-  {
-    icon: 'fa-tasks',
-    title: 'Responsibilities & skills',
-    items: [
-      'Active product development across front-end, back-end, IoT and AI projects',
-      'Good communication, fast learning, mentoring and technical documentation',
-    ],
-  },
-  {
-    icon: 'fa-star',
-    title: 'Perks & benefits',
-    accent: true,
-    items: [
-      'Official internship experience certificate from AIC-IIITKottayam',
-      'Flexible working hours with hands-on exposure to live startup projects',
-      'Networking with tech mentors and industry leaders',
-    ],
-  },
-];
+// Card titles and points are the texts careers.cards.<i>.title / .items.
+const INTERNSHIP_CARDS = [{ icon: 'fa-bullseye' }, { icon: 'fa-graduation-cap' }, { icon: 'fa-tasks' }, { icon: 'fa-star', accent: true }];
 
 const isPast = (date) => date && new Date(`${date}T23:59:59`) < new Date();
 
-const PositionCard = ({ position }) => {
+const PositionCard = ({ position, index }) => {
   const closed = isPast(position.deadline);
+  const k = (field) => `careers.positions.${index}.${field}`;
   return (
     <article className="card position-card">
       <div className="position-card__head">
-        <span className="chip">{position.type}</span>
+        <span className="chip">
+          <Text k={k('type')} />
+        </span>
         {position.deadline && (
           <span className={`chip ${closed ? '' : 'chip--accent'}`}>
-            {closed ? 'Closed' : `Apply by ${formatDate(position.deadline)}`}
+            {closed ? (
+              <Text k="careers.positions.closed" />
+            ) : (
+              <>
+                <Text k="careers.positions.applyBy" /> {formatDate(position.deadline)}
+              </>
+            )}
           </span>
         )}
       </div>
-      <h3 className="card__title">{position.title}</h3>
-      <p className="card__text">{position.summary}</p>
+      <h3 className="card__title">
+        <Text k={k('title')} />
+      </h3>
+      <p className="card__text">
+        <Text k={k('summary')} />
+      </p>
       {position.pdf && (
         <div className="card__footer">
           <a className="text-link" href={position.pdf} target="_blank" rel="noopener noreferrer">
-            <i className="fa fa-file-pdf-o" aria-hidden="true" /> Position details (PDF)
+            <i className="fa fa-file-pdf-o" aria-hidden="true" /> <Text k="careers.positions.pdf" />
           </a>
         </div>
       )}
@@ -84,54 +51,51 @@ const PositionCard = ({ position }) => {
   );
 };
 
-const CareersPage = () => (
-  <PageLayout
-    title="Careers"
-    hero={{
-      eyebrow: 'Careers',
-      title: 'Work with AIC-IIITKottayam',
-      description:
-        'Help run the incubation centre, or intern with us and build real products alongside our startups.',
-      breadcrumbs: [{ label: 'Careers' }],
-    }}
-  >
-    <section className="section">
-      <div className="container stack">
-        <h2 className="section-title section-title--sm">Open positions</h2>
-        <div className="grid grid--2">
-          {POSITIONS.map((p) => (
-            <PositionCard key={p.title} position={p} />
-          ))}
+const CareersPage = () => {
+  const emails = useList()('careers.cta.emails');
+  return (
+    <PageLayout title="Careers" hero={{ prefix: 'careers.hero', breadcrumbs: [{ label: 'Careers' }] }}>
+      <section className="section">
+        <div className="container stack">
+          <h2 className="section-title section-title--sm">
+            <Text k="careers.positions.title" />
+          </h2>
+          <div className="grid grid--2">
+            {POSITIONS.map((p, i) => (
+              <PositionCard key={i} position={p} index={i} />
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section className="section section--white">
-      <div className="container stack">
-        <h2 className="section-title section-title--sm">Internship programme</h2>
-        <Callout icon="fa-clock-o">
-          Interns should be available for at least 2 to 3 months, full time (Monday to Friday).
-        </Callout>
-        <div className="info-grid">
-          {INTERNSHIP_CARDS.map((card) => (
-            <InfoCard key={card.title} {...card} />
-          ))}
+      <section className="section section--white">
+        <div className="container stack">
+          <h2 className="section-title section-title--sm">
+            <Text k="careers.internship.title" />
+          </h2>
+          <Callout icon="fa-clock-o">
+            <Text k="careers.internship.note" />
+          </Callout>
+          <div className="info-grid">
+            {INTERNSHIP_CARDS.map((card, i) => (
+              <InfoCard key={i} prefix={`careers.cards.${i}`} {...card} />
+            ))}
+          </div>
+          <CtaBanner
+            prefix="careers.cta"
+            action={
+              <a
+                className="btn btn--accent"
+                href={`mailto:${emails.join(',')}?subject=${encodeURIComponent('Application for career / internship at AIC-IIITK')}`}
+              >
+                <Text k="careers.cta.button" /> <i className="fa fa-envelope" aria-hidden="true" />
+              </a>
+            }
+          />
         </div>
-        <CtaBanner
-          title="Interested in joining or interning at AIC?"
-          text={`Send your resume to ${CAREERS_EMAILS.join(' and ')}.`}
-          action={
-            <a
-              className="btn btn--accent"
-              href={`mailto:${CAREERS_EMAILS.join(',')}?subject=${encodeURIComponent('Application for career / internship at AIC-IIITK')}`}
-            >
-              Email your resume <i className="fa fa-envelope" aria-hidden="true" />
-            </a>
-          }
-        />
-      </div>
-    </section>
-  </PageLayout>
-);
+      </section>
+    </PageLayout>
+  );
+};
 
 export default CareersPage;

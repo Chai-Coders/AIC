@@ -74,7 +74,8 @@ const MemberCard = ({ member, className = '', boardLayout = false }) => {
   );
 };
 
-const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
+// `heading` (defaults to `title`) is shown above the carousel; `title` also names it for screen readers.
+const MemberCarousel = ({ members, title, heading, tone = 'light', variant = '' }) => {
   const shouldLoop = members.length > 4;
   const displayMembers = shouldLoop ? [...members, ...members] : members;
   const variantClass = variant ? `member-carousel-section--${variant}` : '';
@@ -172,7 +173,7 @@ const MemberCarousel = ({ members, title, tone = 'light', variant = '' }) => {
     <section className={`member-carousel-section ${tone === 'grey' ? 'member-carousel-section--grey' : ''} ${variantClass}`.trim()}>
       <div className="container">
         <header className="member-carousel-heading">
-          <h2 className="section-title">{title}</h2>
+          <h2 className="section-title">{heading ?? title}</h2>
         </header>
       </div>
       <div className={`member-carousel ${shouldLoop ? 'member-carousel--loop' : 'member-carousel--static'}`} tabIndex="0" aria-label={`${title} carousel`}>

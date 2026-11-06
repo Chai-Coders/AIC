@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
+import { ROUTES } from '../routes';
 
 export default function DashboardLayout() {
   const { isAuthenticated } = useAuth();
@@ -32,10 +33,8 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuOpen]);
 
-  // The AI Assistant uses the whole window for its chat and preview panes.
-  const fullBleed = location.pathname === '/ai';
-
   const outletContext = useMemo(() => ({ showToast: addToast }), [addToast]);
+  const fullBleed = ROUTES.some((r) => r.fullBleed && r.path === location.pathname);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -48,7 +47,7 @@ export default function DashboardLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenMenu={() => setMenuOpen(true)} />
         {fullBleed ? (
-          <main className="min-h-0 flex-1">
+          <main className="flex min-h-0 flex-1 flex-col">
             <Outlet context={outletContext} />
           </main>
         ) : (

@@ -5,6 +5,14 @@ of the public site on the right. The agent edits CMS records (content path) and 
 files (code path). Everything goes into a draft; nothing goes live until the review
 agent has passed it and the admin presses Publish. Every publish can be rolled back.
 
+The content path has two parts: **records** (gallery, startups, news, team, background
+video) and **website text**, the wording on the pages. Website text is defined with its
+defaults in `frontend/src/content/registry.js`, and edits are rows in the `siteText` table,
+which override the defaults. The CMS's Site text page edits the same rows by hand. So the
+agent changes existing wording with `update_site_text`, never by editing the registry or
+a component, because a row would override that code edit and it might not show. New wording
+for a new section does go in the code, under a new key.
+
 The design is in `AIC CMS AI Agent — Design Doc.md`; progress is in `PROGRESS.md`.
 
 ## Setup
@@ -26,7 +34,7 @@ Local development:
 
 ```sh
 cd convex-backend && NODE_OPTIONS=--dns-result-order=ipv4first CONVEX_AGENT_MODE=anonymous npx convex dev --typecheck disable
-cd frontend && VITE_CONVEX_URL=http://127.0.0.1:3210 npx vite --port 5174
+cd frontend && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_CMS_URL=http://localhost:5175 npx vite --port 5174
 cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localhost:5174 npx vite --port 5175
 ```
 
@@ -73,7 +81,12 @@ Access). Allow it. This doesn't apply in production.
   Changes tab, are reviewed more strictly, and need a developer to deploy after Publish.
 - **Build check coverage:** it compiles every edited website file and opens pages named in the
   change list. A broken export used by a page it didn't open is only caught by review.
+- **Website text keys:** the backend bundles `registry.js` to know which texts exist, so a key
+  added there can be edited by the agent once the backend is redeployed. A container build
+  of `convex-backend/` will need `frontend/src/content/registry.js` in its build context.
 - **Draft size:** a draft holds up to about 800 KB of file contents.
+- **Dev server:** after pulling new `frontend/` files, restart the CMS dev server. Without a
+  GitHub token the preview uses a file list Vite doesn't refresh for folders outside the CMS.
 - **Preview host:** the sandbox runs on CodeSandbox's hosted bundler, so draft site code and
   content reach that origin in the admin's browser. Self-host the bundler to avoid it
   (`bundlerURL` in `SitePreview.jsx`).

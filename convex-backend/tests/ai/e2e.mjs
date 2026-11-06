@@ -132,6 +132,98 @@ const tests = {
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 
+  async 'website text: finds it, drafts it, publishes over the registry, rolls back'() {
+    const KEY = 'notFound.hero.title';
+    const textOf = (content, key = KEY) => content.text?.find((t) => t.key === key)?.value;
+    const draftTo = (value) => ({ tools: [['update_site_text', { key: KEY, value }], describe('Changed the heading', { page: '/page-not-found', text: value ?? 'We couldn' })] });
+
+    await script([{ tools: [['get_site_text', { query: 'find that page' }]] }, draftTo('Lost page'), DONE, OK]);
+    let { threadId, changeSetId } = await say('Change the not found heading');
+    let d = await inState(threadId, 'ready');
+    assert.deepEqual(d.contentOps[0], { op: 'text', key: KEY, from: null, to: 'Lost page' });
+    assert.equal(d.codeEdits.length, 0, 'wording is content, not a code edit');
+    const { calls } = await control('state');
+    assert.ok(toolResults(calls[1]).includes(KEY), 'search finds the key from the words on the page');
+    assert.ok(toolResults(calls[1]).includes('Page not found'), 'and says which page it is on');
+    assert.ok(calls[3].messages[0].content[0].text.includes('Lost page'), 'the reviewer sees the edit');
+
+    assert.equal(textOf(await live()), undefined, 'live text changed before Publish');
+    const preview = await c.query(api.ai.preview.siteContentPreview, { changeSetId });
+    assert.equal(textOf(preview), 'Lost page');
+
+    await c.action(api.ai.publish.publish, { changeSetId });
+    assert.equal(textOf(await live()), 'Lost page');
+
+    // A second publish over it, then going back to the code's text with null.
+    await script([draftTo('Lost again'), DONE, OK]);
+    ({ threadId, changeSetId } = await say('Reword it'));
+    d = await inState(threadId, 'ready');
+    assert.equal(d.contentOps[0].from, 'Lost page');
+    await c.action(api.ai.publish.publish, { changeSetId });
+    await script([draftTo(null), DONE, OK]);
+    ({ threadId, changeSetId } = await say('Back to the original'));
+    await inState(threadId, 'ready');
+    await c.action(api.ai.publish.publish, { changeSetId });
+    assert.equal(textOf(await live()), undefined, 'null removes the edit');
+
+    // Rollbacks restore each state: no row, then the earlier value.
+    let [newest, previous] = await c.query(api.ai.versions.list, {});
+    await c.action(api.ai.versions.rollback, { versionId: newest.id });
+    assert.equal(textOf(await live()), 'Lost again');
+    await c.action(api.ai.versions.rollback, { versionId: previous.id });
+    assert.equal(textOf(await live()), 'Lost page');
+    const list = await c.query(api.ai.versions.list, {});
+    const first = list.find((v) => !v.isRollback && !v.rolledBack);
+    await c.action(api.ai.versions.rollback, { versionId: first.id });
+    assert.equal(textOf(await live()), undefined, 'back to the text in the code');
+  },
+
+  async 'website text: stops on conflicts with the Site text page, refuses bad keys'() {
+    const KEY = 'notFound.hero.desc';
+    await script([{ tools: [['update_site_text', { key: KEY, value: 'Agent words' }]] }, DONE, OK]);
+    let { threadId, changeSetId } = await say('Change the description');
+    await inState(threadId, 'ready');
+    await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: 'Admin words' }] });
+    await rejects(() => c.action(api.ai.publish.publish, { changeSetId }), /has changed/);
+    assert.equal((await live()).text.find((t) => t.key === KEY).value, 'Admin words');
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+
+    // A later Site text edit also blocks rolling back over it.
+    await script([{ tools: [['update_site_text', { key: KEY, value: 'Agent words' }]] }, DONE, OK]);
+    ({ threadId, changeSetId } = await say('Change it again'));
+    await inState(threadId, 'ready');
+    await c.action(api.ai.publish.publish, { changeSetId });
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: 'Admin again' }] });
+    await rejects(() => c.action(api.ai.versions.rollback, { versionId: version.id }), /changed after this publish/);
+    await c.mutation(api.siteText.publish, { changes: [{ key: KEY, value: null }] });
+
+    await script([
+      {
+        tools: [
+          ['update_site_text', { key: 'no.such.key', value: 'x' }],
+          ['update_site_text', { key: '../bad key', value: 'x' }],
+          ['update_site_text', { key: KEY, value: 'x'.repeat(5001) }],
+        ],
+      },
+      { text: 'Could not.' },
+    ]);
+    ({ threadId, changeSetId } = await say('Bad edits'));
+    const d = await inState(threadId, 'drafting');
+    assert.equal(d.contentOps.length, 0);
+    const results = toolResults((await control('state')).calls[1]);
+    assert.ok(/no website text called/.test(results) && /not a valid text name/.test(results) && /at most 5000/.test(results), results.slice(0, 400));
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'Site text page backend still works alongside the agent'() {
+    await rejects(() => anon.mutation(api.siteText.publish, { changes: [] }), /session/i);
+    await c.mutation(api.siteText.publish, { changes: [{ key: 'notFound.hero.home', value: 'Home please' }] });
+    assert.equal((await live()).text.find((t) => t.key === 'notFound.hero.home').value, 'Home please');
+    await c.mutation(api.siteText.publish, { changes: [{ key: 'notFound.hero.home', value: null }] });
+    assert.ok(!(await live()).text.some((t) => t.key === 'notFound.hero.home'));
+  },
+
   async 'rollback refuses to overwrite a later edit'() {
     const item = (await live()).startups[0];
     await script([{ tools: [['update_record', { table: 'startups', id: item.id, field: 'name', value: 'Agent Name' }]] }, DONE, OK]);
@@ -426,7 +518,9 @@ const tests = {
     await inState(threadId, 'drafting');
     const { calls } = await control('state');
     assert.ok(JSON.stringify(calls[0].messages).includes('get_selected_element'), 'the agent is told to look');
-    assert.ok(toolResults(calls[1]).includes('NotFoundPage.jsx'), 'it gets the source location');
+    const results = toolResults(calls[1]);
+    assert.ok(results.includes('notFound.hero.home'), 'it gets the website text key');
+    assert.ok(results.includes('registry.js'), 'it gets the source location');
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 };

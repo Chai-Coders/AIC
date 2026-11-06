@@ -225,7 +225,7 @@ export default function AiAssistantPage() {
   const [phonePane, setPhonePane] = useState('chat');
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <div role="tablist" aria-label="Pane" className="flex shrink-0 border-b border-border bg-card md:hidden">
         {['chat', 'site'].map((pane) => (
           <button

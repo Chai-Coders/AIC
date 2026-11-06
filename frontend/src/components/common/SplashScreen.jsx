@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import './SplashScreen.css';
+import { EDIT_MODE } from '../../content/editMode';
 
 // First-visit splash: the AIC logo fills with liquid while the page loads.
 
@@ -37,7 +38,8 @@ const SplashScreen = () => {
   // Decided once: only the very first landing on the home page gets the splash,
   // and never when the visitor asked for reduced motion.
   const [show] = useState(() =>
-    window.location.pathname === '/'
+    !EDIT_MODE
+    && window.location.pathname === '/'
     && !seenThisSession()
     && !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const [leaving, setLeaving] = useState(false);

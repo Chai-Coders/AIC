@@ -2,20 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import useApi from '../../hooks/useApi';
 import { fetchBackgroundVideo } from '../../api/content';
 import { APPLY_URL } from '../../data/site';
+import { useText } from '../../content/useText';
+import { Text } from '../../content/Text';
 
 // Each slide has a full-size and a phone-size copy (see public/img/site).
+// Captions are the texts home.hero.caption.<i>.
 const SLIDES = [
-  { name: 'campus', width: 1500, caption: 'IIIT Kottayam campus, Valavoor' },
-  { name: 'hero-1', width: 2000, caption: 'The incubation floor at AIC' },
-  { name: 'pitch', width: 2000, caption: 'A startup review session' },
+  { name: 'campus', width: 1500 },
+  { name: 'hero-1', width: 2000 },
+  { name: 'pitch', width: 2000 },
 ];
 
-const STATS = [
-  { value: '₹50L', label: 'Seed funding per startup, via SISFS' },
-  { value: '42', label: 'Startups supported' },
-  { value: '141', label: 'Jobs created' },
-  { value: '11', label: 'IPs generated' },
-];
+// Values and labels are the texts home.stats.<i>.value / .label.
+const STAT_COUNT = 4;
 
 // Background video is a nice-to-have: skip it for visitors who asked for less
 // motion or less data, or who are on a very slow connection.
@@ -107,6 +106,7 @@ const HeroVideo = ({ playbackId }) => {
 };
 
 const HomeSlider = () => {
+  const t = useText();
   const { data: video } = useApi(fetchBackgroundVideo, null);
   const [allowVideo] = useState(canAutoplayBackgroundVideo);
   const playbackId = allowVideo ? video?.mux_playback_id : null;
@@ -141,20 +141,21 @@ const HomeSlider = () => {
       </div>
 
       <div className="container home-hero__content">
-        <p className="home-hero__eyebrow">Atal Incubation Centre &middot; IIIT Kottayam</p>
+        <p className="home-hero__eyebrow">
+          <Text k="home.hero.eyebrow" />
+        </p>
         <h1 id="home-hero-title" className="home-hero__title">
-          From first prototype to a <em>funded company.</em>
+          <Text k="home.hero.title" />
         </h1>
         <p className="home-hero__desc">
-          We back early-stage founders in IoT, cloud, AI and societal technology with mentors, labs and seed
-          capital, from inside an Institute of National Importance.
+          <Text k="home.hero.desc" />
         </p>
         <div className="btn-row">
           <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
-            Apply for incubation <i className="fa fa-arrow-right" aria-hidden="true" />
+            <Text k="home.hero.apply" /> <i className="fa fa-arrow-right" aria-hidden="true" />
           </a>
           <a className="btn btn--ghost-light" href="#programmes">
-            Explore programmes
+            <Text k="home.hero.explore" />
           </a>
         </div>
 
@@ -166,23 +167,29 @@ const HomeSlider = () => {
                   key={slide.name}
                   type="button"
                   className={i === current ? 'is-active' : ''}
-                  aria-label={`Show image ${i + 1}: ${slide.caption}`}
+                  aria-label={`Show image ${i + 1}: ${t(`home.hero.caption.${i}`)}`}
                   aria-pressed={i === current}
                   onClick={() => setCurrent(i)}
                 />
               ))}
             </div>
-            <p className="home-hero__caption" aria-hidden="true">{SLIDES[current].caption}</p>
+            <p className="home-hero__caption" aria-hidden="true">
+              <Text k={`home.hero.caption.${current}`} />
+            </p>
           </div>
         )}
       </div>
 
       <div className="home-hero__facts">
         <dl className="container home-hero__stats">
-          {STATS.map((stat, i) => (
-            <div key={stat.label} className="home-hero__stat" style={{ '--i': i }}>
-              <dt>{stat.label}</dt>
-              <dd>{stat.value}</dd>
+          {Array.from({ length: STAT_COUNT }, (_, i) => (
+            <div key={i} className="home-hero__stat" style={{ '--i': i }}>
+              <dt>
+                <Text k={`home.stats.${i}.label`} />
+              </dt>
+              <dd>
+                <Text k={`home.stats.${i}.value`} />
+              </dd>
             </div>
           ))}
         </dl>

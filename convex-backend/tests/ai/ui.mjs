@@ -61,13 +61,12 @@ await step('content edit shows in the preview only, Before/After flips, Publish,
   await page.getByRole('button',{name:'New chat'}).click();
 });
 await step('build check: a real compile error goes back to the editor, then passes',async()=>{
-  const headline="We couldn’t find that page";
   await site().locator('body').waitFor({timeout:60000});
   await control('script',{script:[
     {tools:[['read_file',{path:FILE}]]},
     {tools:[['edit_file',{path:FILE,replacements:[{find:"const NotFoundPage = () => (",replace:"const NotFoundPage = () => ((("}]}],['describe_change',{summary:'Changed the not found heading',kind:'code',page:'/definitely-missing',text:'Lost page'}]]},
     DONE,
-    {tools:[['edit_file',{path:FILE,replacements:[{find:"const NotFoundPage = () => (((",replace:"const NotFoundPage = () => ("},{find:headline,replace:'Lost page'}]}]]},
+    {tools:[['edit_file',{path:FILE,replacements:[{find:"const NotFoundPage = () => (((",replace:"const NotFoundPage = () => ("},{find:'title="Page not found"',replace:'title="Lost page"'}]}]]},
     DONE, OK]});
   await say('Change the not found heading');
   await publishEnabled().waitFor({timeout:120000});
@@ -79,6 +78,29 @@ await step('build check: a real compile error goes back to the editor, then pass
   await shot('5-changes');
   await page.getByRole('tab',{name:'Preview'}).click();
   await page.getByRole('button',{name:'Discard'}).click();
+});
+await step('website text edit: draft shows on the page, Before/After, publish, rollback',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  const KEY='notFound.hero.title', OLD='We couldn’t find that page', NEW='Draft lost page heading';
+  await control('script',{script:[{tools:[['get_site_text',{query:'find that page'}]]},{tools:[['update_site_text',{key:KEY,value:NEW}],['describe_change',{summary:'Changed the not found heading',kind:'content',page:'/page-not-found',text:NEW,beforeText:OLD}]]},{text:'Changed the heading. This is website text.'},OK]});
+  await say('Change the not found heading');
+  await publishEnabled().waitFor({timeout:30000});
+  await site().getByRole('heading',{name:NEW}).waitFor({timeout:30000});
+  await page.waitForTimeout(1500); await shot('12-text-draft');
+  assert.ok(!(await live()).text.some(t=>t.key===KEY),'live text changed before Publish');
+  await page.getByRole('button',{name:'before',exact:true}).click();
+  await site().getByRole('heading',{name:OLD}).waitFor({timeout:30000});
+  await page.getByRole('button',{name:'after',exact:true}).click();
+  await site().getByRole('heading',{name:NEW}).waitFor({timeout:30000});
+  await publishEnabled().click();
+  await page.getByText('Published.').waitFor({timeout:15000});
+  assert.equal((await live()).text.find(t=>t.key===KEY).value,NEW);
+  await page.locator('nav a',{hasText:'AI history'}).click();
+  await page.getByRole('button',{name:'Roll back'}).first().click();
+  await page.getByText('Rolled back.').waitFor({timeout:15000});
+  assert.ok(!(await live()).text.some(t=>t.key===KEY));
+  await page.locator('nav a',{hasText:'AI Assistant'}).click(); await page.waitForURL('**/ai');
+  await site().locator('body').waitFor({timeout:60000});
 });
 await step('runtime crash in the draft is caught too',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();
@@ -124,6 +146,27 @@ await step('backend change: no build check needed, shown as a diff with a warnin
   await page.getByText("can't be shown in the preview").waitFor({timeout:5000}).catch(async()=>{await page.getByRole('tab',{name:'Changes'}).click();await page.getByText("can't be shown in the").waitFor({timeout:5000});});
   await page.waitForTimeout(300); await shot('9-backend');
   await page.getByRole('button',{name:'Discard'}).click();
+});
+await step("Abhijith's Site text page: click to edit, live preview, publish",async()=>{
+  await page.locator('nav a',{hasText:'Site text'}).click(); await page.waitForURL('**/site-text');
+  const frame=page.frameLocator('iframe[title="Website preview"]');
+  const target=frame.locator('h1 [data-cms-key]').first();
+  await target.waitFor({timeout:30000});
+  await target.click();
+  const key=await target.getAttribute('data-cms-key');
+  const field=page.locator('section[aria-label="Editor"]').locator('input[type=text]:focus,textarea:focus').or(page.locator('section[aria-label="Editor"] input[type=text],section[aria-label="Editor"] textarea').first()).first();
+  await field.waitFor({timeout:10000});
+  const usedKey=key; const before=await field.inputValue();
+  await field.fill(before+' edited');
+  await frame.getByText(before+' edited',{exact:false}).first().waitFor({timeout:10000});
+  await shot('13-site-text');
+  const publish=page.locator('button:has(span:text-is("Publish"))'); await publish.click();
+  await page.getByText(/Published 1 change/).waitFor({timeout:15000});
+  const row=(await live()).text.find(t=>t.value===before+' edited'); assert.ok(row,`no published row for ${usedKey}`);
+  await field.fill(before); await publish.click();
+  await page.getByText(/Published 1 change/).first().waitFor({timeout:15000});
+  await page.waitForTimeout(500);
+  assert.ok(!(await live()).text.some(t=>t.value===before+' edited'));
 });
 await step('settings page and phone width',async()=>{
   await page.locator('nav a',{hasText:'AI settings'}).click();

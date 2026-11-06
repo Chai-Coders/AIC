@@ -29,6 +29,11 @@ export const summaryOf = (cs: Doc<"changeSets">) => cs.changeList.map((c) => c.s
 export async function contentConflicts(ctx: MutationCtx, ops: ContentOp[]) {
   const conflicts: string[] = [];
   for (const op of ops) {
+    if (op.op === "text") {
+      const row = await ctx.db.query("siteText").withIndex("by_key", (q) => q.eq("key", op.key)).unique();
+      if ((row?.value ?? null) !== op.from) conflicts.push(`the website text ${op.key} has changed`);
+      continue;
+    }
     if (op.op !== "update") continue;
     const id = ctx.db.normalizeId(op.table, op.id);
     const doc = id ? ((await ctx.db.get(id)) as Record<string, unknown> | null) : null;
@@ -38,7 +43,19 @@ export async function contentConflicts(ctx: MutationCtx, ops: ContentOp[]) {
   return conflicts;
 }
 
-export type SnapshotEntry = { table: ContentTable; id: string; before: unknown; after: unknown };
+export type SnapshotEntry = { table: ContentTable | "siteText"; id: string; before: unknown; after: unknown };
+
+/** Sets or (with null) removes one website text. Returns its value as { key, value }. */
+export async function writeSiteText(ctx: MutationCtx, key: string, value: string | null) {
+  const row = await ctx.db.query("siteText").withIndex("by_key", (q) => q.eq("key", key)).unique();
+  if (value === null) {
+    if (row) await ctx.db.delete(row._id);
+    return null;
+  }
+  if (row) await ctx.db.patch(row._id, { value, updatedAt: Date.now() });
+  else await ctx.db.insert("siteText", { key, value, updatedAt: Date.now() });
+  return { key, value };
+}
 
 /** Applies typed ops in one transaction, returning what each record looked like. */
 async function applyContentOps(ctx: MutationCtx, ops: ContentOp[]) {
@@ -60,7 +77,10 @@ async function applyContentOps(ctx: MutationCtx, ops: ContentOp[]) {
   };
 
   for (const op of ops) {
-    if (op.op === "update") {
+    if (op.op === "text") {
+      const entry = { table: "siteText" as const, id: op.key, before: op.from === null ? null : { key: op.key, value: op.from } };
+      snapshot.set(`text:${op.key}`, { ...entry, after: await writeSiteText(ctx, op.key, op.to) });
+    } else if (op.op === "update") {
       const found = await touch(op.table, op.id);
       if (!found) continue;
       await ctx.db.patch(found.id, { [op.field]: op.to ?? undefined } as any);

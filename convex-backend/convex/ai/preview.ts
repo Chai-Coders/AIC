@@ -5,7 +5,7 @@ import { requireAdmin } from "../lib/access";
 import { toBackgroundVideo, toGallery, toNews, toStartup, toTeamMember } from "../content";
 import { loadTables } from "./drafts";
 import { lineDiff } from "./diff";
-import { applyOps, describeOp } from "./records";
+import { applyOps, applyTextOps, describeOp } from "./records";
 
 /** Site content in the shape of content:siteContent, with a draft applied. */
 export const siteContentPreview = query({
@@ -23,6 +23,7 @@ export const siteContentPreview = query({
       news: [...t.news].sort((a, b) => String(b.publishedDate).localeCompare(String(a.publishedDate)) || tie(a, b)).map((d) => toNews(d as any)),
       team: [...t.teamMembers].sort((a, b) => String(a.name) < String(b.name) ? -1 : String(a.name) > String(b.name) ? 1 : -tie(a, b)).map((d) => toTeamMember(d as any)),
       background_video: t.backgroundVideo[0] ? toBackgroundVideo(t.backgroundVideo[0] as any) : null,
+      text: Object.entries(applyTextOps(await ctx.db.query("siteText").collect(), cs?.contentOps ?? [])).map(([key, value]) => ({ key, value })),
     };
   },
 });

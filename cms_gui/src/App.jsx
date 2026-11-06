@@ -11,6 +11,7 @@ import BackgroundVideoPage from './pages/BackgroundVideoPage';
 import AiAssistantPage from './pages/AiAssistantPage';
 import AiHistoryPage from './pages/AiHistoryPage';
 import AiSettingsPage from './pages/AiSettingsPage';
+import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 
@@ -47,6 +48,9 @@ export default function App() {
 
                 {/* Home / Overview */}
                 <Route index element={<HomePage />} />
+
+                {/* Website text editor */}
+                <Route path="site-text" element={<SiteTextPage />} />
 
                 {/* Gallery Items Routes */}
                 <Route path="gallery" element={<GalleryPage />} />

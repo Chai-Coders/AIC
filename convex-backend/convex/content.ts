@@ -72,17 +72,19 @@ export const toBackgroundVideo = (doc: Doc<"backgroundVideo">) => ({
 
 /**
  * Everything the public site shows, in one call: gallery, startups and news
- * (newest first), team members (by name) and the background video or null.
+ * (newest first), team members (by name), the background video or null, and
+ * the website text edited in the CMS as { key, value } pairs.
  */
 export const siteContent = query({
   args: {},
   handler: async (ctx) => {
-    const [gallery, startups, news, team, video] = await Promise.all([
+    const [gallery, startups, news, team, video, text] = await Promise.all([
       ctx.db.query("gallery").withIndex("by_createdAt").order("desc").collect(),
       ctx.db.query("startups").withIndex("by_createdAt").order("desc").collect(),
       ctx.db.query("news").withIndex("by_publishedDate").order("desc").collect(),
       ctx.db.query("teamMembers").withIndex("by_name").collect(),
       ctx.db.query("backgroundVideo").first(),
+      ctx.db.query("siteText").collect(),
     ]);
     return {
       gallery: gallery.map(toGallery),
@@ -90,6 +92,7 @@ export const siteContent = query({
       news: news.map(toNews),
       team: team.map(toTeamMember),
       background_video: video ? toBackgroundVideo(video) : null,
+      text: text.map((row) => ({ key: row.key, value: row.value })),
     };
   },
 });

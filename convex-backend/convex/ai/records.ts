@@ -114,6 +114,7 @@ export function applyOps(base: Tables, ops: ContentOp[]): Tables {
     Object.entries(base).map(([table, docs]) => [table, docs.map((d) => ({ ...d }))]),
   ) as Tables;
   for (const op of ops) {
+    if (op.op === "text") continue;
     const docs = out[op.table];
     if (op.op === "update") {
       const doc = docs.find((d) => d._id === op.id);
@@ -142,6 +143,17 @@ export function applyReorder(docs: Doc[], ids: string[]) {
   return moving.map((d) => ({ id: d._id as string, createdAt: d.createdAt as number }));
 }
 
+/** Published website text with the draft applied, as { key: value }. */
+export function applyTextOps(rows: { key: string; value: string }[], ops: ContentOp[]) {
+  const values: Record<string, string> = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  for (const op of ops) {
+    if (op.op !== "text") continue;
+    if (op.to === null) delete values[op.key];
+    else values[op.key] = op.to;
+  }
+  return values;
+}
+
 /** One line for the admin and the review agent. */
 export function describeOp(op: ContentOp) {
   switch (op.op) {
@@ -153,5 +165,7 @@ export function describeOp(op: ContentOp) {
       return `${op.table}: delete ${op.id} (${op.label})`;
     case "reorder":
       return `${op.table}: reorder to ${op.ids.join(", ")}`;
+    case "text":
+      return `website text ${op.key}: from ${JSON.stringify(op.from)} to ${op.to === null ? "the text written in the website's code" : JSON.stringify(op.to)}`;
   }
 }

@@ -8,6 +8,7 @@ import type { ContentTable } from "../schema";
 import { requireAdmin } from "../lib/access";
 import { audit } from "./audit";
 import { blobText, branchHead, changedSince, commitFiles, commitTree, safeCommitMessage } from "./github";
+import { writeSiteText } from "./publish";
 import { sameValue } from "./records";
 
 const SYSTEM = new Set(["_id", "_creationTime"]);
@@ -22,6 +23,11 @@ function changedFields(before: Record<string, unknown>, after: Record<string, un
 async function rollbackConflicts(ctx: QueryCtx, version: Doc<"versions">) {
   const conflicts: string[] = [];
   for (const { table, id, before, after } of version.contentSnapshot) {
+    if (table === "siteText") {
+      const row = await ctx.db.query("siteText").withIndex("by_key", (q) => q.eq("key", id)).unique();
+      if ((row?.value ?? null) !== (after?.value ?? null)) conflicts.push(`the website text ${id} changed after this publish`);
+      continue;
+    }
     const docId = ctx.db.normalizeId(table, id);
     const current = docId ? ((await ctx.db.get(docId)) as Record<string, unknown> | null) : null;
     if (after === null) {
@@ -95,7 +101,11 @@ export const finishRollback = internalMutation({
     if (conflicts.length) throw new ConvexError(`The content couldn't be restored: ${conflicts.join("; ")}.`);
 
     const contentSnapshot = [];
-    for (const { table, id, before, after } of version.contentSnapshot as { table: ContentTable; id: string; before: any; after: any }[]) {
+    for (const { table, id, before, after } of version.contentSnapshot as { table: ContentTable | "siteText"; id: string; before: any; after: any }[]) {
+      if (table === "siteText") {
+        contentSnapshot.push({ table, id, before: after, after: await writeSiteText(ctx, id, before?.value ?? null) });
+        continue;
+      }
       const docId = ctx.db.normalizeId(table, id);
       if (after === null) {
         const newId = await ctx.db.insert(table, contentOf(before) as any);

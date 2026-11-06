@@ -44,6 +44,13 @@ const NO_VIDEO = {
 
 export const api = {
   endpoints: {
+    siteText: {
+      name: 'Site text',
+      /** Texts published from this page, by key. Texts never edited are not included. */
+      published: async () => Object.fromEntries(((await siteContent()).text ?? []).map((t) => [t.key, t.value])),
+      /** `changes`: [{ key, value }], where `value: null` goes back to the website's own text. */
+      publish: (changes) => run(() => convex.mutation(backend.siteText.publish, { changes })),
+    },
     gallery: section('gallery', 'Gallery', backend.gallery),
     startups: section('startups', 'Startups', backend.startups),
     news: section('news', 'News Updates', backend.news),

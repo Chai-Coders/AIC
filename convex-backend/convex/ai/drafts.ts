@@ -6,7 +6,9 @@ import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from
 import type { Doc, Id } from "../_generated/dataModel";
 import { contentTable, type ContentOp, type ContentTable } from "../schema";
 import { imageUrl } from "../images";
-import { canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
+import { checkSiteText } from "../siteText";
+import { findTextFields, textField, textKeyForValue } from "./textFields";
+import { applyTextOps, canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
 import { cleanPath, editBlockedReason, isSecretPath } from "./protected";
 
 // A Convex document can hold 1 MiB and a draft keeps whole files.
@@ -81,6 +83,39 @@ export const readContent = internalQuery({
       total: matches.length,
       records: matches.slice(0, 50).map((d) => summarizeDoc(d, false)),
     };
+  },
+});
+
+const TEXT_RESULT_LIMIT = 40;
+
+/** Website text: what each text shows now, with the draft applied. */
+export const readSiteText = internalQuery({
+  args: { changeSetId: v.id("changeSets"), query: v.optional(v.string()), page: v.optional(v.string()) },
+  handler: async (ctx, { changeSetId, query, page }) => {
+    const cs = await requireDraft(ctx, changeSetId);
+    const rows = await ctx.db.query("siteText").collect();
+    const values = applyTextOps(rows, cs.contentOps);
+    const fields = findTextFields(values, { query, page });
+    return {
+      total: fields.length,
+      texts: fields.slice(0, TEXT_RESULT_LIMIT),
+      ...(fields.length > TEXT_RESULT_LIMIT ? { note: `Only the first ${TEXT_RESULT_LIMIT} shown; search for something more specific.` } : {}),
+    };
+  },
+});
+
+export const updateSiteText = internalMutation({
+  args: { changeSetId: v.id("changeSets"), key: v.string(), value: v.union(v.string(), v.null()) },
+  handler: async (ctx, { changeSetId, key, value }) => {
+    const cs = await requireDrafting(ctx, changeSetId);
+    checkSiteText(key, value);
+    if (!textField(key)) throw new ConvexError(`There is no website text called "${key}". Find its key with get_site_text.`);
+    const row = await ctx.db.query("siteText").withIndex("by_key", (q) => q.eq("key", key)).unique();
+    const from = row?.value ?? null;
+    const rest = cs.contentOps.filter((op) => !(op.op === "text" && op.key === key));
+    const contentOps: ContentOp[] = from === value ? rest : [...rest, { op: "text", key, from, to: value }];
+    await patchDraft(ctx, cs, { contentOps });
+    return { ok: true };
   },
 });
 
@@ -199,7 +234,10 @@ export const selectedElement = internalQuery({
       nearestSource = await searchFiles(ctx, cs, snippet, "frontend/src/");
       if (nearestSource.length) break;
     }
-    return { element: el, nearestSource: nearestSource.slice(0, 5) };
+    // Most wording is website text, edited with update_site_text, not in the source.
+    const values = applyTextOps(await ctx.db.query("siteText").collect(), cs.contentOps);
+    const siteTextKey = typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
+    return { element: el, ...(siteTextKey ? { siteTextKey } : {}), nearestSource: nearestSource.slice(0, 5) };
   },
 });
 

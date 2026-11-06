@@ -11,6 +11,8 @@ const api = anyApi.ai;
 // What the agent is doing, in the admin's words.
 const TOOL_LABELS = {
   get_site_content: 'Read the site content',
+  get_site_text: 'Read the website text',
+  update_site_text: 'Edited the website text in the draft',
   search_media: 'Looked through the media library',
   search_code: 'Searched the website code',
   read_file: 'Read part of the website code',

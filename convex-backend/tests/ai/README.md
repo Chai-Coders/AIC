@@ -25,6 +25,8 @@ npx convex run admin:createAdmin '{"email":"test@aic.local","password":"<at leas
 # Backend checks (needs sample content in the deployment)
 TEST_EMAIL=test@aic.local TEST_PASSWORD=... node tests/ai/e2e.mjs [name filter]
 
+# The fake GitHub reads the repo when it starts: restart it after pulling or merging.
+
 # Browser checks: also run the website on :5174 and the CMS on :5175
 # (see docs/ai-agent.md), then
 npm i --no-save playwright-core
