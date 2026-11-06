@@ -13,6 +13,9 @@ const TIMEOUT_MS = 30_000;
 
 const env = loadEnv('production', process.cwd(), '');
 const base = (env.VITE_CONVEX_URL || '').replace(/\/+$/, '');
+// With the CDN rewrites in vercel.ts, pictures load from this site's /media/<id>
+// (src/api/content.js does the same for content fetched in the browser).
+const site = (env.VITE_CONVEX_SITE_URL || '').replace(/\/+$/, '');
 
 async function main() {
   if (!/^https?:\/\//.test(base)) {
@@ -30,7 +33,7 @@ async function main() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     if (body.status !== 'success') throw new Error(body.errorMessage);
-    const data = body.value;
+    const data = site ? JSON.parse(JSON.stringify(body.value).replaceAll(`${site}/img/`, '/media/')) : body.value;
     await writeFile(OUTPUT, JSON.stringify({ site: { data, time: Date.now() } }));
     const counts = ['gallery', 'startups', 'news', 'team'].map((k) => `${data[k]?.length ?? 0} ${k}`);
     console.log(`[snapshot] Saved ${counts.join(', ')}.`);
