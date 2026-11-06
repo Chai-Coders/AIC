@@ -136,7 +136,7 @@ function SittingSetting({ showToast }) {
   return (
     <Section
       title="Grouping your own edits"
-      description="Edits you save in the CMS go live at once. In History they are grouped into one version per sitting, so you can undo a whole sitting together. A sitting ends when you sign out, or after this long without saving anything."
+      description="Edits you save in the CMS are published at once. In History they are grouped into one version per sitting, so you can undo a whole sitting together. A sitting ends when you sign out, or after this long without saving anything."
     >
       <form onSubmit={handleSave} className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">

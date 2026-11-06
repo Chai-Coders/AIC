@@ -225,7 +225,7 @@ export default function SiteTextPage() {
       await api.endpoints.siteText.publish(changes);
       setDraft({});
       setCodeVersion((v) => v + 1);
-      showToast?.(`Published ${plural(changes.length, 'change')}. Visitors will see it within a minute. You can undo it from Versions.`, 'success');
+      showToast?.(`Published ${plural(changes.length, 'change')}. Visitors will see it within a minute or two. You can undo it from Versions.`, 'success');
     } catch (err) {
       showToast?.(err.message || 'Publishing failed. Please try again.', 'error');
     } finally {
