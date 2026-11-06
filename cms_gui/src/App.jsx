@@ -8,6 +8,9 @@ import StartupsPage from './pages/StartupsPage';
 import NewsPage from './pages/NewsPage';
 import TeamPage from './pages/TeamPage';
 import BackgroundVideoPage from './pages/BackgroundVideoPage';
+import VersionsPage from './pages/VersionsPage';
+import VersionDetailPage from './pages/VersionDetailPage';
+import RestorePage from './pages/RestorePage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 
@@ -61,6 +64,11 @@ export default function App() {
                 <Route path="backgroundvideo" element={<Navigate to="/background-video" replace />} />
                 <Route path="api/backgroundvideo" element={<Navigate to="/background-video" replace />} />
                 <Route path="api/background-video" element={<Navigate to="/background-video" replace />} />
+
+                {/* Version history: compare, undo, restore */}
+                <Route path="versions" element={<VersionsPage />} />
+                <Route path="versions/:versionId" element={<VersionDetailPage />} />
+                <Route path="versions/:versionId/restore" element={<RestorePage />} />
               </Route>
 
               {/* Fallback Catch-All Route */}

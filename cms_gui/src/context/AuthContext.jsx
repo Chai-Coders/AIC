@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useMemo } from 'react';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { useConvexAuth, useQuery } from 'convex/react';
+import { useConvexAuth, useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 
 const AuthContext = createContext();
@@ -17,7 +17,16 @@ export function AuthProvider({ children }) {
     [signIn]
   );
 
-  const logout = useCallback(() => signOut(), [signOut]);
+  // Signing out ends the CMS sitting, so the next edits start a new version.
+  const closeSitting = useMutation(anyApi.versions.closeSitting);
+  const logout = useCallback(async () => {
+    try {
+      await closeSitting();
+    } catch (err) {
+      console.error('Could not close the editing session:', err);
+    }
+    await signOut();
+  }, [closeSitting, signOut]);
 
   const value = useMemo(
     () => ({

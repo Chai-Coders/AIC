@@ -103,7 +103,13 @@ export async function describeChange(ctx: QueryCtx, change: Doc<"changes">, vers
 
   const field = def.fields.find((f) => f.key === change.field)!;
   const currentRaw = doc ? (doc[change.field] ?? null) : null;
-  const lastAt = doc ? await lastEditAt(ctx, change.entity, recordId, change.field) : undefined;
+  // A record that was deleted and put back counts as changed in every field.
+  const lastAt = doc
+    ? Math.max(
+        (await lastEditAt(ctx, change.entity, recordId, change.field)) ?? 0,
+        (await lastEditAt(ctx, change.entity, recordId, "")) ?? 0,
+      ) || undefined
+    : undefined;
   return {
     ...base,
     field: change.field,
@@ -152,10 +158,13 @@ async function summarize(ctx: QueryCtx, version: Doc<"versions">, sittingMinutes
       item.op = change.op;
     }
   }
-  const undoneBy = await ctx.db
+  // Later versions that undid this one, or restored the website to it.
+  const pointedAtBy = await ctx.db
     .query("versions")
     .withIndex("by_reverts", (q) => q.eq("revertsVersionId", version._id))
     .collect();
+  const undoneBy = pointedAtBy.filter((u) => u.rollbackKind !== "restore");
+  const restoredBy = pointedAtBy.filter((u) => u.rollbackKind === "restore");
   const reverts = version.revertsVersionId ? await ctx.db.get(version.revertsVersionId) : null;
   return {
     id: version._id,
@@ -174,6 +183,7 @@ async function summarize(ctx: QueryCtx, version: Doc<"versions">, sittingMinutes
     overriddenCount: changes.filter((c) => c.overridden).length,
     reverts: reverts ? { id: reverts._id, createdAt: reverts.createdAt, source: reverts.source } : null,
     undoneBy: undoneBy.map((u) => ({ id: u._id, createdAt: u.createdAt, kind: u.rollbackKind ?? null })),
+    restoredBy: restoredBy.map((u) => ({ id: u._id, createdAt: u.createdAt })),
   };
 }
 
