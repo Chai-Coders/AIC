@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { MAP_EMBED_URL, MAP_URL, telHref } from '../../data/site';
-import { cmsKey, useList } from '../../content/useText';
+import { MAP_EMBED_URL, telHref } from '../../data/site';
+import { cmsKey, useList, useText } from '../../content/useText';
 import { Editable, Text } from '../../content/Text';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMPTY = { name: '', email: '', message: '' };
 
 const HomeContact = () => {
+  const t = useText();
   const list = useList();
   const emails = list('contact.emails');
   const [form, setForm] = useState(EMPTY);
@@ -87,7 +88,7 @@ const HomeContact = () => {
               </dt>
               <dd>
                 <Editable k="contact.address">{list('contact.address').join(' ')}</Editable>{' '}
-                <a href={MAP_URL} target="_blank" rel="noopener noreferrer" className="text-link">
+                <a href={t('links.map')} target="_blank" rel="noopener noreferrer" className="text-link">
                   <Text k="home.contact.directions" /> <i className="fa fa-external-link" aria-hidden="true" />
                 </a>
               </dd>

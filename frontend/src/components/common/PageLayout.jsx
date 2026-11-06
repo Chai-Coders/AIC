@@ -4,6 +4,7 @@ import { useText } from '../../content/useText';
 import Header from './Header';
 import Footer from './Footer';
 import PageHero from './PageHero';
+import PageSections from '../../content/PageSections';
 
 /**
  * Standard inner-page shell: header, title band, content, footer.
@@ -17,8 +18,10 @@ const PageLayout = ({ hero, title, children }) => {
     <>
       <Header />
       <main id="main-content">
-        {hero && <PageHero {...hero} />}
-        {children}
+        <PageSections>
+          {hero && <PageHero {...hero} />}
+          {children}
+        </PageSections>
       </main>
       <Footer />
     </>

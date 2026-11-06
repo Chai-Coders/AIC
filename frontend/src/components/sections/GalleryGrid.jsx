@@ -4,6 +4,7 @@ import Lightbox from '../common/Lightbox';
 import useApi from '../../hooks/useApi';
 import { fetchAllGallery } from '../../api/content';
 import { cdnImageProps } from '../../lib/image';
+import { Text } from '../../content/Text';
 
 /**
  * Responsive photo grid with a lightbox. `limit` shows only the first N items
@@ -18,7 +19,7 @@ const GalleryGrid = ({ limit, featured = false }) => {
     <AsyncState
       state={gallery}
       skeleton={<SkeletonGrid count={limit || 9} className="gallery-grid" media={false} />}
-      empty={<EmptyState icon="fa-picture-o" title="No photos yet">Check back soon for photos from our events.</EmptyState>}
+      empty={<EmptyState icon="fa-picture-o" title={<Text k="words.noPhotos" />}><Text k="words.noPhotosHint" /></EmptyState>}
     >
       {(all) => {
         const items = limit ? all.slice(0, limit) : all;

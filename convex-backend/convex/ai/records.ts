@@ -4,10 +4,11 @@
 import { ConvexError } from "convex/values";
 import { optionalUrl, text } from "../lib/validate";
 import { teamCategory, type ContentOp, type ContentTable } from "../schema";
+import { pagesWithParts, partsOfPage } from "./textFields";
 
 type Doc = Record<string, any>;
 
-type TextRule = { label: string; required?: boolean; max?: number; kind?: "url" | "date" | "category" };
+type TextRule = { label: string; required?: boolean; max?: number; kind?: "url" | "link" | "date" | "category" | "background" };
 
 // Text fields by table. Anything else (image ids, Mux ids, dates of creation)
 // can't be set through update_record.
@@ -39,6 +40,17 @@ const TEXT_FIELDS: Record<ContentTable, Record<string, TextRule>> = {
   backgroundVideo: {
     videoName: { label: "Video name", required: true, max: 200 },
   },
+  pageSections: {
+    page: { label: "Page", required: true, max: 60 },
+    after: { label: "Place on the page", required: true, max: 60 },
+    eyebrow: { label: "Small line above the heading", max: 120 },
+    heading: { label: "Heading", required: true, max: 200 },
+    body: { label: "Text", required: true, max: 5000 },
+    altText: { label: "Alt text", max: 300 },
+    buttonLabel: { label: "Button text", max: 80 },
+    buttonUrl: { label: "Button address", kind: "link" },
+    background: { label: "Background", kind: "background" },
+  },
 };
 
 const IMAGE_FIELD: Partial<Record<ContentTable, string>> = {
@@ -46,11 +58,12 @@ const IMAGE_FIELD: Partial<Record<ContentTable, string>> = {
   startups: "logoId",
   news: "thumbnailId",
   teamMembers: "photoId",
+  pageSections: "imageId",
 };
 
 // Only these tables have a manual order. News is ordered by date and the team
 // by name, so their order comes from those fields.
-const REORDERABLE: ContentTable[] = ["gallery", "startups"];
+const REORDERABLE: ContentTable[] = ["gallery", "startups", "pageSections"];
 
 export const imageFieldOf = (table: ContentTable) => IMAGE_FIELD[table];
 export const canReorder = (table: ContentTable) => REORDERABLE.includes(table);
@@ -66,6 +79,20 @@ export function checkTextField(table: ContentTable, field: string, value: unknow
   }
   if (typeof value !== "string") throw new ConvexError(`"${rule.label}" must be text.`);
   if (rule.kind === "url") return optionalUrl(value, rule.label);
+  // A page on this site, or a full address.
+  if (rule.kind === "link") {
+    const link = value.trim();
+    if (!link.startsWith("/")) return optionalUrl(link, rule.label);
+    // "//host" is another website, and a page that doesn't exist helps nobody.
+    const path = link.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
+    if (link.startsWith("//") || link.startsWith("/\\") || !(partsOfPage(path) || path.startsWith("/news/"))) {
+      throw new ConvexError(`"${rule.label}" must be a page on this site (${pagesWithParts().join(", ")}) or a full web address.`);
+    }
+    return link;
+  }
+  if (rule.kind === "background" && !["default", "white"].includes(value)) {
+    throw new ConvexError(`"${rule.label}" must be default or white.`);
+  }
   if (rule.kind === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
     throw new ConvexError(`"${rule.label}" must look like 2026-11-06.`);
   }
@@ -81,7 +108,7 @@ export function missingForCreate(table: ContentTable, doc: Doc) {
   const missing = Object.keys(rules).filter((field) => rules[field].required && !doc[field]);
   const imageField = IMAGE_FIELD[table];
   // Team members may have no photo: the board imported from the old site doesn't.
-  if (imageField && table !== "teamMembers" && !doc[imageField]) missing.push(imageField);
+  if (imageField && table !== "teamMembers" && table !== "pageSections" && !doc[imageField]) missing.push(imageField);
   return missing;
 }
 
@@ -93,9 +120,12 @@ export function createDefaults(table: ContentTable, now: number): Doc {
     case "startups":
       return { createdAt: now };
     case "news":
-      return { subtitle: "", publishedDate: new Date(now).toISOString().slice(0, 10) };
+      // Today in India, where the site's readers and admin are.
+      return { subtitle: "", publishedDate: new Date(now + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) };
     case "teamMembers":
       return { bio: "", createdAt: now };
+    case "pageSections":
+      return { createdAt: now };
     default:
       throw new ConvexError(`New ${table} records can't be created by the AI Assistant.`);
   }
@@ -124,19 +154,21 @@ export function applyOps(base: Tables, ops: ContentOp[]): Tables {
     } else if (op.op === "delete") {
       out[op.table] = docs.filter((d) => d._id !== op.id);
     } else if (op.op === "reorder") {
-      applyReorder(docs, op.ids);
+      applyReorder(docs, op.ids, op.table);
     }
   }
   return out;
 }
 
 /**
- * Gives the listed records the same `createdAt` values they already hold,
- * newest first in the order asked for. Order is by `createdAt` descending.
+ * Gives the listed records the same `createdAt` values they already hold, in the
+ * order asked for. Lists show newest first; added sections show oldest first, so a
+ * new one lands below the others.
  */
-export function applyReorder(docs: Doc[], ids: string[]) {
+export function applyReorder(docs: Doc[], ids: string[], table?: ContentTable) {
   const moving = ids.map((id) => docs.find((d) => d._id === id)).filter((d): d is Doc => !!d);
-  const slots = moving.map((d) => d.createdAt as number).sort((x, y) => y - x);
+  const direction = table === "pageSections" ? 1 : -1;
+  const slots = moving.map((d) => d.createdAt as number).sort((x, y) => (x - y) * direction);
   moving.forEach((d, i) => {
     d.createdAt = slots[i];
   });

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
-import { AlertTriangle, Bot, Crosshair, Loader2, Plus, Send, Square, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Bot, Crosshair, ImagePlus, Loader2, Plus, Send, Square, Trash2, X } from 'lucide-react';
 import { run } from '../../services/convex';
+import { uploadImage } from '../../lib/upload';
 import SpendMeter from './SpendMeter';
 
 const api = anyApi.ai;
@@ -16,7 +17,13 @@ const TOOL_LABELS = {
   search_media: 'Looked through the media library',
   get_selected_element: 'Looked at the element you pointed to',
   update_record: 'Edited a record in the draft',
-  create_record: 'Added a record to the draft',
+  get_page_sections: 'Looked at the parts of the page',
+  add_person: 'Added a person to the draft',
+  add_startup: 'Added a startup to the draft',
+  add_news: 'Added a news post to the draft',
+  add_gallery_photo: 'Added a photo to the draft',
+  add_section: 'Added a section to the draft',
+  remove_change: 'Corrected the list of changes',
   delete_record: 'Asked to delete a record',
   swap_media: 'Swapped a picture in the draft',
   reorder: 'Changed the order in the draft',
@@ -35,7 +42,7 @@ function Message({ message }) {
     );
   }
   if (message.role === 'user') {
-    const text = message.text.split('\n\n(The admin pointed at')[0];
+    const text = message.text.split('\n\n(The admin ')[0];
     return (
       <div className="flex justify-end px-4">
         <p className="max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm whitespace-pre-wrap text-primary-foreground">{text}</p>
@@ -128,6 +135,9 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
   const stop = useMutation(api.chat.stop);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [pictures, setPictures] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef(null);
   const endRef = useRef(null);
 
   const lastId = messages?.at(-1)?.id;
@@ -138,7 +148,23 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
 
   const busy = !!draft && (draft.running || draft.status === 'reviewing');
   const noKey = settings && !settings.providers.some((p) => p.configured);
-  const canType = !busy && !sending && !draft?.pendingConfirm && !noKey;
+  const canType = !busy && !sending && !uploading && !draft?.pendingConfirm && !noKey;
+
+  const attach = async (e) => {
+    const files = [...e.target.files];
+    e.target.value = '';
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const imageId = await uploadImage(file);
+        setPictures((list) => [...list, { imageId, name: file.name }]);
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -147,7 +173,8 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
     setSending(true);
     setText('');
     try {
-      await onSend(prompt);
+      await onSend(prompt, pictures);
+      setPictures([]);
     } catch (err) {
       setText(prompt);
       showToast(err.message, 'error');
@@ -248,6 +275,19 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
               ))}
             </ul>
           )}
+          {pictures.length > 0 && (
+            <ul aria-label="Attached pictures" className="space-y-1">
+              {pictures.map((p, i) => (
+                <li key={p.imageId} className="flex items-center gap-2 rounded-lg bg-muted px-2.5 py-1.5 text-xs text-foreground">
+                  <ImagePlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  <button type="button" onClick={() => setPictures((list) => list.filter((_, j) => j !== i))} aria-label={`Remove ${p.name}`} className="shrink-0">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {picking && <p className="text-xs text-muted-foreground">Click each thing in the preview; click again to remove it. Ctrl-click follows a link to another page.</p>}
           <textarea
             value={text}
@@ -262,9 +302,15 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
             className="field resize-none"
           />
           <div className="flex items-center justify-between gap-2">
-            <button type="button" onClick={onTogglePick} aria-pressed={picking} className={`btn-secondary px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}>
-              <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
-            </button>
+            <div className="flex min-w-0 gap-1.5">
+              <button type="button" onClick={onTogglePick} aria-pressed={picking} className={`btn-secondary px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}>
+                <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
+              </button>
+              <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={attach} aria-label="Attach pictures" />
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading || !canType} title="Attach a picture" aria-label="Attach a picture" className="btn-secondary px-2 py-1.5">
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+              </button>
+            </div>
             {draft?.running ? (
               <button type="button" onClick={onStop} className="btn-secondary px-3 py-1.5 text-xs">
                 <Square className="h-3.5 w-3.5" /> Stop

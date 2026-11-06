@@ -25,7 +25,7 @@ TEST_EMAIL=test@aic.local TEST_PASSWORD=... node tests/ai/e2e.mjs [name filter]
 # Browser checks: also run the website on :5174 and the CMS on :5175
 # (see docs/ai-agent.md), then
 npm i --no-save playwright-core
-TEST_EMAIL=test@aic.local TEST_PASSWORD=... SHOTS_DIR=/tmp node tests/ai/ui.mjs
+TEST_EMAIL=test@aic.local TEST_PASSWORD=... SHOTS_DIR=/tmp REPO="$(cd ../ && pwd)" node tests/ai/ui.mjs
 ```
 
 **Afterwards remove `ANTHROPIC_BASE_URL` and `GOOGLE_BASE_URL`** (`npx convex env

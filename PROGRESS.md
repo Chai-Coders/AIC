@@ -14,6 +14,8 @@ All commits for this feature go to `migrations-johny` only.
 - Convex backend and the CMS run locally for now. Containers come later.
 - **Changes are saved to Convex only. The agent doesn't touch source code or GitHub** (Johnston, 2026-11-07).
 - **The preview is the real website in a frame**, as on the Site text page, not a Sandpack sandbox (2026-11-07).
+- **Scope: data only** (Johnston, 2026-11-07): text anywhere, new sections, people, startups, news, contact details.
+  Styling, layout and a design catalogue are left out for now.
 - Budget currency: USD.
 - Align with Abhijith's Site text work. Sanjay's later work on `migrations` is deliberately not looked at or merged.
 
@@ -29,7 +31,11 @@ The design doc is frozen and stays as it was approved. These differences are rec
 - **Hardcoded text.** The doc says it stays in code for v1. Abhijith's work moved it into `registry.js` with a `siteText`
   override table, and the agent edits those rows with `get_site_text` and `update_site_text`.
 - **Pointing** takes up to 10 elements at once. The doc describes one.
-- **Tools.** `get_site_text`, `update_site_text` and `remove_change` are additions; the code tools are removed.
+- **Media.** The doc says no uploads. Pictures can be attached in the chat, because new startups and news need one and
+  the alternative was reusing unrelated pictures.
+- **New sections** come from one built-in shape stored in `pageSections`, not new code.
+- **Tools.** `get_site_text`, `update_site_text`, `get_page_sections`, `add_person`, `add_startup`, `add_news`,
+  `add_gallery_photo`, `add_section` and `remove_change` are additions; the code tools and `create_record` are gone.
 
 ## Phases
 
@@ -48,15 +54,18 @@ Numbered 0–7 here; the design doc numbers them 1–8.
 
 ## Verified against real services
 
-Gemini (`gemini-3.5-flash-lite`, free plan): content edits from the AI Assistant page, including pointing, review,
-publish and rollback. Other tests use a scripted fake model. Claude's request shape was checked against a fake; OpenAI
-has no default prices. On 2026-11-07 `gemini-3.8-flash` was returning 503 (high demand), and `gemini-2.5-flash-lite`
-returned 404 for new users though Google's pricing page still lists it.
+Gemini (`gemini-3.5-flash-lite`, free plan), from plain-English requests: website text, removing text, contact details, a
+link, a new governor, mentor and team member, a startup and a news post with an attached picture, and a new section. A section
+and a governor were published and checked on the public site. A startup with no logo correctly asks for one.
+
+Other tests use a scripted fake model. Claude's request shape was checked against a fake; OpenAI has no default prices. On
+2026-11-07 `gemini-3.8-flash` was returning 503 (high demand), and `gemini-2.5-flash-lite` returned 404 for new users though
+Google's pricing page still lists it.
 
 ## Open
 
-- Should the agent be able to change styling or layout? It could only do so through data the site reads from Convex
-  (for example theme colours or showing and hiding sections), which needs site support first.
+- The agent can't change styling or layout, which the doc's goals include. Left out for now by decision.
+- Sections have no CMS page of their own: they are added, changed and removed through the assistant.
 
 ## Follow-ups
 

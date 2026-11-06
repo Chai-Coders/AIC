@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { APPLY_URL } from '../../data/site';
 import { Text } from '../../content/Text';
+import { useText } from '../../content/useText';
 
 // Labels and descriptions are the texts nav.<id>.label and nav.<id>.<i>.label / .desc.
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
 ];
 
 const Header = ({ transparent = false }) => {
+  const t = useText();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState(null);
@@ -133,7 +134,7 @@ const Header = ({ transparent = false }) => {
             </Link>
             <a
               className={`btn btn--sm ${solid ? 'btn--primary' : 'btn--accent'}`}
-              href={APPLY_URL}
+              href={t('links.apply')}
               target="_blank"
               rel="noopener noreferrer"
             >

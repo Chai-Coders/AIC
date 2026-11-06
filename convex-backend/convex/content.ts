@@ -70,21 +70,38 @@ export const toBackgroundVideo = (doc: Doc<"backgroundVideo">) => ({
   updated_at: iso(doc.updatedAt),
 });
 
+export const toPageSection = (doc: Doc<"pageSections">) => ({
+  id: doc._id,
+  page: doc.page,
+  after: doc.after,
+  eyebrow: doc.eyebrow ?? "",
+  heading: doc.heading,
+  body: doc.body,
+  image: imageUrl(doc.imageId),
+  alt_text: doc.altText ?? "",
+  button_label: doc.buttonLabel ?? "",
+  button_url: doc.buttonUrl ?? "",
+  background: doc.background ?? "default",
+  created_at: iso(doc.createdAt),
+});
+
 /**
  * Everything the public site shows, in one call: gallery, startups and news
  * (newest first), team members (by name), the background video or null, and
- * the website text edited in the CMS as { key, value } pairs.
+ * the website text edited in the CMS as { key, value } pairs, and the sections
+ * added to pages.
  */
 export const siteContent = query({
   args: {},
   handler: async (ctx) => {
-    const [gallery, startups, news, team, video, text] = await Promise.all([
+    const [gallery, startups, news, team, video, text, sections] = await Promise.all([
       ctx.db.query("gallery").withIndex("by_createdAt").order("desc").collect(),
       ctx.db.query("startups").withIndex("by_createdAt").order("desc").collect(),
       ctx.db.query("news").withIndex("by_publishedDate").order("desc").collect(),
       ctx.db.query("teamMembers").withIndex("by_name").collect(),
       ctx.db.query("backgroundVideo").first(),
       ctx.db.query("siteText").collect(),
+      ctx.db.query("pageSections").collect(),
     ]);
     return {
       gallery: gallery.map(toGallery),
@@ -93,6 +110,7 @@ export const siteContent = query({
       team: team.map(toTeamMember),
       background_video: video ? toBackgroundVideo(video) : null,
       text: text.map((row) => ({ key: row.key, value: row.value })),
+      sections: sections.map(toPageSection),
     };
   },
 });

@@ -12,15 +12,27 @@ The design is in `AIC CMS AI Agent — Design Doc.md`; `PROGRESS.md` records whe
 
 ## What it can change
 
-- **Website text**, the wording on the pages. Defaults are in `frontend/src/content/registry.js`,
-  and edits are rows in the `siteText` table, which override them. The Site text page edits the
-  same rows by hand. The backend bundles `registry.js` to know which texts exist, so a key added
-  there can be edited once the backend is redeployed.
-- **Records**: gallery, startups, news, team members and the background video.
-- **Existing pictures and videos**: swap and reorder. No uploads or image editing.
+- **Website text**, anywhere on the pages. Defaults are in `frontend/src/content/registry.js`, and edits
+  are rows in the `siteText` table, which override them. The Site text page edits the same rows by hand.
+  Setting a text to empty removes it from the page, and the original can be put back.
+- **Contact details and links.** The address, emails and phone numbers are website text (`contact.*`). So
+  are social media, form and map links (`links.*`), which must be full web addresses. Only the social links
+  can be blank, which takes their icon off the footer.
+- **Records**: new and changed team members, governors and mentors, startups, news, gallery photos and
+  the background video.
+- **New sections**, anywhere between the parts of a page, stored in the `pageSections` table: heading, text,
+  and optionally a small line above the heading, a picture, a button and a white background. They use the
+  site's own styles. `frontend/src/content/sectionMap.js` lists where they can go on each page.
+- **Pictures**: attach them in the chat. New items can only use an attached picture, which the server
+  enforces, because a model left to choose put other people's photos on new people. So a new startup or
+  news post asks for one. A new person or section doesn't need one. Existing records can swap to a library
+  picture when asked. No image editing.
 
-It can't change layout, styling or colours, or add new sections. It tells the admin a developer
-has to make those changes.
+The backend bundles `registry.js` and `sectionMap.js` to know which texts and places exist, so one added there
+can be used once the backend is redeployed.
+
+It can't change layout, styling or colours, remove a built-in section (only empty its text), or add new kinds
+of feature. It says so.
 
 ## Setup
 
@@ -58,6 +70,8 @@ cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localho
 - **Review:** a rejection goes back to the editor up to twice, then the admin decides and can "Publish
   anyway" (logged). A review with no verdict counts as an objection.
 - **Deletes** pause for the admin before they enter the draft.
+- **Pictures** in open drafts, on sections, or restorable by a rollback are kept by the daily cleanup of unused
+  pictures. Attached pictures that end up unused go after a day.
 - **Publish** is one Convex transaction, so it either all happens or none of it does. It stops if a text or
   record changed since the draft was made.
 - **Rollback** (AI history) restores only the fields that publish changed, and stops if they were edited

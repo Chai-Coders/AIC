@@ -112,6 +112,12 @@ export const fetchBackgroundVideo = fromSite((site) => site.background_video);
  */
 export const fetchSiteText = fromSite((site) => Object.fromEntries((site.text ?? []).map((t) => [t.key, t.value])));
 
+/**
+ * Sections added to pages from the CMS (see src/content/PageSections.jsx).
+ * Returns: Array<{ id, page, after, heading, body, image, alt_text, button_label, button_url, background, created_at }>
+ */
+export const fetchPageSections = fromSite((site) => site.sections ?? []);
+
 const newsItemFetchers = {};
 
 /**

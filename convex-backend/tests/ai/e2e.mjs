@@ -2,6 +2,7 @@
 // a scripted fake model and a fake GitHub (fake-services.mjs). They never call a
 // real provider or the real repo. See tests/ai/README.md.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { ConvexHttpClient } from 'convex/browser';
 import { anyApi as api } from 'convex/server';
 
@@ -45,6 +46,22 @@ const rejects = async (fn, pattern) => {
 };
 const spent = async () => (await c.query(api.ai.usage.meter, {})).spentUsd;
 
+// A 1x1 PNG, stored the way the CMS stores pictures.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+async function upload() {
+  const url = await c.mutation(api.images.generateUploadUrl, {});
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: PNG });
+  const { storageId } = await res.json();
+  return c.mutation(api.images.create, { variants: [{ width: 1, storageId }], width: 1, height: 1 });
+}
+const wouldClean = () => {
+  const out = execFileSync('npx', ['convex', 'run', 'images:cleanupUnused', '{"keepNewerThanMs":0,"dryRun":true}'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    env: { ...process.env, NODE_OPTIONS: '--dns-result-order=ipv4first', CONVEX_AGENT_MODE: 'anonymous' },
+  });
+  return JSON.parse(out);
+};
 const describe = (summary, extra = {}) => ['describe_change', { summary, ...extra }];
 const OK = { tools: [['approve', {}]] };
 const DONE = { text: 'Done.' };
@@ -409,6 +426,211 @@ const tests = {
     await rejects(() => c.mutation(api.ai.publish.publish, { changeSetId, override: true }), /hasn't passed/);
     const [version] = await c.query(api.ai.versions.list, {});
     await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+  },
+
+  async 'new sections: placed anywhere, previewed, published, moved, removed, rolled back'() {
+    const heading = `Our partners ${Date.now()}`;
+    const fields = { page: '/summary', after: 'pillars', heading, body: 'First paragraph.\n\nSecond paragraph.', buttonLabel: 'Meet the team', buttonUrl: '/aicteam' };
+    await script([
+      { tools: [['get_page_sections', { page: '/summary' }]] },
+      { tools: [['add_section', fields], describe('Added a section', { page: '/summary', text: heading })] },
+      DONE,
+      OK,
+    ]);
+    let { threadId, changeSetId } = await say('Add a section after what we stand for');
+    await inState(threadId, 'ready');
+    const { calls } = await control('state');
+    assert.ok(toolResults(calls[1]).includes('What we stand for'), 'it can see the parts of the page');
+    assert.ok(!(await live()).sections.some((s) => s.heading === heading), 'live before Publish');
+    const preview = await c.query(api.ai.preview.siteContentPreview, { changeSetId });
+    assert.equal(preview.sections.find((s) => s.heading === heading).after, 'pillars');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const added = (await live()).sections.find((s) => s.heading === heading);
+    assert.equal(added.button_url, '/aicteam');
+
+    // Refused: places that don't exist.
+    await script([
+      {
+        tools: [
+          ['add_section', { page: '/summary', after: 'nowhere', heading: 'x', body: 'x' }],
+          ['add_section', { page: '/summary', after: 'hero', heading: 'x', body: 'x', buttonLabel: 'Go', buttonUrl: 'javascript:alert(1)' }],
+          ['add_section', { page: '/summary', after: 'hero', heading: 'x', body: 'x', buttonLabel: 'Go', buttonUrl: '//evil.example/phish' }],
+          ['add_section', { page: '/summary', after: 'hero', heading: 'x', body: 'x', buttonLabel: 'Go', buttonUrl: '/no-such-page' }],
+          ['add_section', { page: '/summary', after: 'hero', heading: 'x', body: 'x', buttonLabel: 'Only a label' }],
+          ['update_record', { table: 'pageSections', id: added.id, field: 'after', value: 'nowhere' }],
+        ],
+      },
+      { tools: [['update_record', { table: 'pageSections', id: added.id, field: 'after', value: 'story' }], ['update_record', { table: 'pageSections', id: added.id, field: 'body', value: 'New words' }]] },
+      DONE,
+      OK,
+    ]);
+    ({ threadId, changeSetId } = await say('Move it'));
+    await inState(threadId, 'ready');
+    const results = toolResults((await control('state')).calls[1]);
+    assert.equal(results.match(/must be one of/g)?.length, 2, results.slice(0, 500));
+    assert.match(results, /must start with https/);
+    assert.equal(results.match(/must be a page on this site/g)?.length, 2);
+    assert.match(results, /needs both its text and its address/);
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const moved = (await live()).sections.find((s) => s.id === added.id);
+    assert.equal(moved.after, 'story');
+    assert.equal(moved.body, 'New words');
+
+    // Removing one asks first, and can be undone.
+    await script([{ tools: [['delete_record', { table: 'pageSections', id: added.id, reason: 'Asked to' }]] }]);
+    ({ threadId, changeSetId } = await say('Remove it'));
+    const d = await inState(threadId, 'needs_admin');
+    assert.equal(d.pendingConfirm.label, heading);
+    await script([DONE, OK]);
+    await c.mutation(api.ai.chat.answerConfirm, { changeSetId, approve: true });
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    assert.ok(!(await live()).sections.some((s) => s.id === added.id));
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+    const back = (await live()).sections.find((s) => s.heading === heading);
+    assert.equal(back.body, 'New words');
+    // Tidy up: the test leaves no section behind.
+    await script([{ tools: [['delete_record', { table: 'pageSections', id: back.id, reason: 'Tidy' }]] }]);
+    ({ threadId, changeSetId } = await say('Remove it'));
+    await inState(threadId, 'needs_admin');
+    await script([DONE, OK]);
+    await c.mutation(api.ai.chat.answerConfirm, { changeSetId, approve: true });
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+  },
+
+  async 'sections in the same place keep the order they were added, and can be reordered'() {
+    const stamp = Date.now();
+    const add = (n, after = 'story') => ['add_section', { page: '/summary', after, heading: `Our partners ${stamp} ${n}`, body: 'x' }];
+    await script([{ tools: [add('A')] }, { tools: [add('B')] }, { tools: [add('C', 'pillars')] }, { tools: [add('D', 'pillars')] }, DONE, OK]);
+    let { threadId, changeSetId } = await say('Add sections');
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const inPlace = async (after) => (await live()).sections.filter((s) => s.heading.includes(String(stamp)) && s.after === after).sort((x, y) => x.created_at.localeCompare(y.created_at));
+    const story = await inPlace('story');
+    const pillars = await inPlace('pillars');
+    assert.deepEqual(story.map((s) => s.heading.at(-1)), ['A', 'B'], 'a later section lands below an earlier one');
+    // Two groups reordered in one draft both apply.
+    await script([
+      { tools: [['reorder', { table: 'pageSections', ids: [story[1].id, story[0].id] }]] },
+      { tools: [['reorder', { table: 'pageSections', ids: [pillars[1].id, pillars[0].id] }]] },
+      DONE,
+      OK,
+    ]);
+    ({ threadId, changeSetId } = await say('Swap them'));
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    assert.deepEqual((await inPlace('story')).map((s) => s.heading.at(-1)), ['B', 'A']);
+    assert.deepEqual((await inPlace('pillars')).map((s) => s.heading.at(-1)), ['D', 'C'], 'the second reorder dropped the first');
+    const versions = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: versions[0].id });
+    await c.mutation(api.ai.versions.rollback, { versionId: versions[1].id });
+    assert.ok(!(await live()).sections.some((s) => s.heading.includes(String(stamp))));
+  },
+
+  async 'new people: team, governors and mentors, with no picture needed'() {
+    const stamp = Date.now();
+    const person = (name, category) => ['add_person', { name, role: 'Advisor', category }];
+    await script([
+      { tools: [person(`Gov ${stamp}`, 'governor'), person(`Mentor ${stamp}`, 'mentor_india_academic'), person(`Team ${stamp}`, 'team')] },
+      { tools: [['add_person', { name: 'x', role: 'y', category: 'team', pictureId: await (async () => (await live()).gallery[0].image.split('/img/')[1])() }]] },
+      DONE,
+      OK,
+    ]);
+    const { threadId, changeSetId } = await say('Add these people');
+    const d = await inState(threadId, 'ready');
+    assert.equal(d.contentOps.length, 3);
+    assert.match(toolResults((await control('state')).calls[2]), /only use a picture the admin attached/, 'someone else\'s photo is refused');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const team = (await live()).team;
+    assert.equal(team.find((m) => m.name === `Gov ${stamp}`).category_display, 'Board of Governors');
+    assert.equal(team.find((m) => m.name === `Mentor ${stamp}`).category, 'mentor_india_academic');
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+    assert.ok(!(await live()).team.some((m) => m.name.endsWith(String(stamp))));
+  },
+
+  async 'new startups and news: need a picture, and can use one attached in the chat'() {
+    const stamp = Date.now();
+    const imageId = await upload();
+    const other = (await live()).startups[0].logo_or_image.split('/img/')[1];
+    const startup = { name: `name ${stamp}`, description: `description ${stamp}` };
+    await script([
+      { tools: [['add_startup', { ...startup, pictureId: '' }], ['add_startup', { ...startup, pictureId: other }]] },
+      { tools: [['add_startup', { ...startup, websiteUrl: 'https://example.com', altText: 'Logo', pictureId: imageId }], ['add_news', { title: `Title ${stamp}`, content: 'Full story', pictureId: imageId }]] },
+      DONE,
+      OK,
+    ]);
+    const { threadId, changeSetId } = await c.mutation(api.ai.chat.send, { prompt: 'Add a startup and a news post', pictures: [{ imageId, name: 'logo.png' }] });
+    const d = await inState(threadId, 'ready');
+    const { calls } = await control('state');
+    assert.ok(JSON.stringify(calls[0].messages).includes(imageId), 'the agent is told about the attached picture');
+    assert.match(toolResults(calls[1]), /needs: logoId\. Ask the admin to attach/, 'no picture is refused');
+    assert.match(toolResults(calls[1]), /only use a picture the admin attached/, 'another startup\'s logo is refused');
+    assert.equal(d.contentOps.length, 2);
+    assert.ok(!wouldClean().includes(imageId), 'cleanup must keep a picture in an open draft');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const site = await live();
+    assert.ok(site.startups.find((s) => s.name === `name ${stamp}`).logo_or_image.includes(imageId));
+    assert.equal(site.news.find((n) => n.title === `Title ${stamp}`).content, 'Full story');
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+    assert.ok(!(await live()).startups.some((s) => s.name === `name ${stamp}`));
+    const stray = await upload();
+    assert.ok(wouldClean().includes(stray), 'cleanup still finds unused pictures');
+  },
+
+  async 'a deleted record keeps its picture, so a later rollback still has it'() {
+    const imageId = await upload();
+    const id = await c.mutation(api.gallery.create, { imageId, subtext: `Keep ${Date.now()}` });
+    await script([{ tools: [['delete_record', { table: 'gallery', id, reason: 'Asked' }]] }]);
+    const { threadId, changeSetId } = await say('Delete it');
+    await inState(threadId, 'needs_admin');
+    await script([DONE, OK]);
+    await c.mutation(api.ai.chat.answerConfirm, { changeSetId, approve: true });
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    assert.ok(!wouldClean().includes(imageId), 'cleanup would break the rollback');
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+    const restored = (await live()).gallery.find((g) => g.image.includes(imageId));
+    assert.ok(restored, 'the record and picture are back');
+    await c.mutation(api.gallery.remove, { id: restored.id });
+  },
+
+  async 'contact details and links: edited as data, and bad addresses refused'() {
+    const phones = '+91-1111111111\n+91-2222222222';
+    await script([
+      {
+        tools: [
+          ['update_site_text', { key: 'contact.phones', value: phones }],
+          ['update_site_text', { key: 'links.instagram', value: 'https://instagram.com/new' }],
+          ['update_site_text', { key: 'links.facebook', value: 'not a link' }],
+          ['update_site_text', { key: 'links.apply', value: 'javascript:alert(1)' }],
+          ['update_site_text', { key: 'links.youtube', value: '' }],
+          ['update_site_text', { key: 'links.map', value: '' }],
+        ],
+      },
+      DONE,
+      OK,
+    ]);
+    const { threadId, changeSetId } = await say('Update the contact details');
+    const d = await inState(threadId, 'ready');
+    const results = toolResults((await control('state')).calls[1]);
+    assert.equal(results.match(/full web address/g)?.length, 3);
+    assert.deepEqual(d.contentOps.map((op) => op.key).sort(), ['contact.phones', 'links.instagram', 'links.youtube']);
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const text = Object.fromEntries((await live()).text.map((t) => [t.key, t.value]));
+    assert.equal(text['contact.phones'], phones);
+    assert.equal(text['links.instagram'], 'https://instagram.com/new');
+    const [version] = await c.query(api.ai.versions.list, {});
+    await c.mutation(api.ai.versions.rollback, { versionId: version.id });
+    assert.ok(!(await live()).text.some((t) => t.key === 'contact.phones'));
+    // The Site text page goes through the same check.
+    await rejects(() => c.mutation(api.siteText.publish, { changes: [{ key: 'links.apply', value: 'www.forms.com/x' }] }), /full web address/);
+    await rejects(() => c.mutation(api.siteText.publish, { changes: [{ key: 'links.apply', value: 'javascript:alert(1)' }] }), /full web address/);
+    await rejects(() => c.mutation(api.siteText.publish, { changes: [{ key: 'links.apply', value: '' }] }), /full web address/);
   },
 
   async 'the change list can be corrected'() {

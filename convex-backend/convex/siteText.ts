@@ -9,8 +9,18 @@ const MAX_KEY = 100;
 const MAX_VALUE = 5000;
 const MAX_CHANGES = 1000;
 
+// These can be blank, which takes the icon off the footer. Any other link has
+// buttons depending on it.
+const OPTIONAL_LINKS = new Set(["links.facebook", "links.x", "links.linkedin", "links.youtube", "links.instagram"]);
+
 /** The same limits for anything that writes website text. Throws a message. */
 export function checkSiteText(key: string, value: string | null) {
+  if (key.startsWith("links.") && value !== null) {
+    const blank = !value.trim();
+    if (blank ? !OPTIONAL_LINKS.has(key) : !/^https?:\/\/\S+$/i.test(value.trim())) {
+      throw new ConvexError(`"${key}" must be a full web address, like https://example.com.`);
+    }
+  }
   if (key.length > MAX_KEY || !KEY.test(key)) {
     throw new ConvexError(`"${key}" is not a valid text name.`);
   }

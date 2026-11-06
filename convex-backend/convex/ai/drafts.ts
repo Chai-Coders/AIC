@@ -7,18 +7,19 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { contentTable, type ContentOp, type ContentTable } from "../schema";
 import { imageUrl } from "../images";
 import { checkSiteText } from "../siteText";
-import { findTextFields, textField, textKeyForValue } from "./textFields";
+import { findTextFields, pagesWithParts, partsOfPage, textField, textKeyForValue } from "./textFields";
 import { applyTextOps, canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
 
 export async function loadTables(ctx: QueryCtx): Promise<Tables> {
-  const [gallery, startups, news, teamMembers, backgroundVideo] = await Promise.all([
+  const [gallery, startups, news, teamMembers, backgroundVideo, pageSections] = await Promise.all([
     ctx.db.query("gallery").collect(),
     ctx.db.query("startups").collect(),
     ctx.db.query("news").collect(),
     ctx.db.query("teamMembers").collect(),
     ctx.db.query("backgroundVideo").collect(),
+    ctx.db.query("pageSections").collect(),
   ]);
-  return { gallery, startups, news, teamMembers, backgroundVideo };
+  return { gallery, startups, news, teamMembers, backgroundVideo, pageSections };
 }
 
 async function requireDraft(ctx: QueryCtx, changeSetId: Id<"changeSets">) {
@@ -115,18 +116,39 @@ export const updateSiteText = internalMutation({
   },
 });
 
+/** A page's parts, in order, with the sections already added between them. */
+export const pageSections = internalQuery({
+  args: { changeSetId: v.id("changeSets"), page: v.string() },
+  handler: async (ctx, { changeSetId, page }) => {
+    const cs = await requireDraft(ctx, changeSetId);
+    const parts = partsOfPage(page);
+    if (!parts) return { error: `Sections can be added to: ${pagesWithParts().join(", ")}.` };
+    const added = applyOps(await loadTables(ctx), cs.contentOps).pageSections.filter((s) => s.page === page);
+    return {
+      page,
+      parts: parts.map((part) => ({
+        ...part,
+        addedAfterIt: added
+          .filter((s) => s.after === part.id)
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .map((s) => ({ id: s._id, heading: s.heading })),
+      })),
+    };
+  },
+});
+
 export const searchMedia = internalQuery({
   args: { changeSetId: v.id("changeSets"), query: v.optional(v.string()) },
   handler: async (ctx, { changeSetId, query }) => {
     const cs = await requireDraft(ctx, changeSetId);
     const tables = applyOps(await loadTables(ctx), cs.contentOps);
     const usedBy = new Map<string, { table: string; id: string; label: string; altText: string }[]>();
-    for (const table of ["gallery", "startups", "news", "teamMembers"] as const) {
+    for (const table of ["gallery", "startups", "news", "teamMembers", "pageSections"] as const) {
       const field = imageFieldOf(table)!;
       for (const doc of tables[table]) {
         if (!doc[field]) continue;
         const list = usedBy.get(doc[field]) ?? [];
-        list.push({ table, id: doc._id, label: doc.subtext || doc.name || doc.title || "", altText: doc.altText ?? "" });
+        list.push({ table, id: doc._id, label: doc.subtext || doc.name || doc.title || doc.heading || "", altText: doc.altText ?? "" });
         usedBy.set(doc[field], list);
       }
     }
@@ -189,7 +211,13 @@ export const updateRecord = internalMutation({
   args: { changeSetId: v.id("changeSets"), runSeq: v.number(), table: contentTable, id: v.string(), field: v.string(), value: v.string() },
   handler: async (ctx, { changeSetId, runSeq, table, id, field, value }) => {
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
-    await setField(ctx, cs, table, id, field, checkTextField(table, field, value));
+    const checked = checkTextField(table, field, value);
+    if (table === "pageSections" && (field === "page" || field === "after")) {
+      const doc = applyOps(await loadTables(ctx), cs.contentOps).pageSections.find((d) => d._id === id);
+      if (field === "after" && doc) checkSectionPlace(doc.page, value);
+      if (field === "page") throw new ConvexError("To move a section to another page, add it there and delete this one.");
+    }
+    await setField(ctx, cs, table, id, field, checked);
     return { ok: true };
   },
 });
@@ -198,6 +226,25 @@ async function requireImageId(ctx: QueryCtx, imageId: string) {
   const id = ctx.db.normalizeId("images", imageId);
   if (!id || !(await ctx.db.get(id))) throw new ConvexError(`No image with id ${imageId}. Find one with search_media.`);
   return id;
+}
+
+/**
+ * Something new only gets a picture the admin gave for it: a model reaching into
+ * the library put other people's photos on new people, and the review passed it.
+ */
+async function requireAttachedPicture(ctx: QueryCtx, cs: Doc<"changeSets">, imageId: string) {
+  if (!(cs.pictures ?? []).some((picture) => picture.imageId === imageId)) {
+    throw new ConvexError("New items can only use a picture the admin attached in this chat. Ask the admin to attach one.");
+  }
+  return await requireImageId(ctx, imageId);
+}
+
+function checkSectionPlace(page: string, after: string) {
+  const parts = partsOfPage(page);
+  if (!parts) throw new ConvexError(`Sections can be added to: ${pagesWithParts().join(", ")}.`);
+  if (!parts.some((part) => part.id === after)) {
+    throw new ConvexError(`"after" must be one of: ${parts.map((part) => part.id).join(", ")}.`);
+  }
 }
 
 export const createRecord = internalMutation({
@@ -209,10 +256,16 @@ export const createRecord = internalMutation({
       const checked = checkTextField(table, field, value);
       if (checked !== undefined) doc[field] = checked;
     }
+    if (table === "pageSections") checkSectionPlace(String(doc.page ?? ""), String(doc.after ?? ""));
     const imageField = imageFieldOf(table);
-    if (imageId && imageField) doc[imageField] = await requireImageId(ctx, imageId);
+    if (imageId && imageField) doc[imageField] = await requireAttachedPicture(ctx, cs, imageId);
+    // Alt text describes a picture, so it means nothing without one.
+    if (!imageField || !doc[imageField]) delete doc.altText;
+    if (table === "pageSections" && !doc.buttonLabel !== !doc.buttonUrl) {
+      throw new ConvexError("A button needs both its text and its address. Ask the admin for whichever is missing.");
+    }
     const missing = missingForCreate(table, doc);
-    if (missing.length) throw new ConvexError(`A new ${table} record needs: ${missing.join(", ")}.`);
+    if (missing.length) throw new ConvexError(`A new ${table} record needs: ${missing.join(", ")}.${missing.includes(imageFieldOf(table) ?? "") ? " Ask the admin to attach a picture." : ""}`);
     const taken = cs.contentOps.filter((op) => op.op === "create").map((op) => Number(op.id.slice(4)));
     const id = `new:${Math.max(0, ...taken) + 1}`;
     await patchDraft(ctx, cs, { contentOps: [...cs.contentOps, { op: "create", table, id, doc }] });
@@ -226,7 +279,8 @@ export const swapMedia = internalMutation({
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const field = imageFieldOf(table);
     if (!field) throw new ConvexError(`${table} records don't have a picture to swap.`);
-    await setField(ctx, cs, table, id, field, await requireImageId(ctx, imageId));
+    const picture = id.startsWith("new:") ? await requireAttachedPicture(ctx, cs, imageId) : await requireImageId(ctx, imageId);
+    await setField(ctx, cs, table, id, field, picture);
     return { ok: true };
   },
 });
@@ -243,7 +297,7 @@ export const reorder = internalMutation({
     const unknown = ids.filter((id) => !docs.some((d) => d._id === id));
     if (unknown.length) throw new ConvexError(`Not in ${table}: ${unknown.join(", ")}.`);
     if (ids.some((id) => id.startsWith("new:"))) throw new ConvexError("Records new in this draft are listed first and can't be reordered yet.");
-    const rest = cs.contentOps.filter((op) => !(op.op === "reorder" && op.table === table));
+    const rest = cs.contentOps.filter((op) => !(op.op === "reorder" && op.table === table && op.ids.some((id) => ids.includes(id))));
     await patchDraft(ctx, cs, { contentOps: [...rest, { op: "reorder", table, ids }] });
     return { ok: true };
   },
@@ -261,7 +315,7 @@ export const queueDeleteRecord = internalMutation({
     }
     const doc = await realDoc(ctx, table, id);
     if (!doc) throw new ConvexError(`No ${table} record with id ${id}.`);
-    const label = String(doc.title || doc.name || doc.subtext || doc.videoName || id);
+    const label = String(doc.title || doc.name || doc.heading || doc.subtext || doc.videoName || id);
     await ctx.db.patch(cs._id, {
       status: "needs_admin",
       running: false,

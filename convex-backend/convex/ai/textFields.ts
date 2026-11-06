@@ -2,6 +2,7 @@
 // is plain data, so the backend bundles it instead of keeping a second list. A key
 // added there is known here once the backend is redeployed.
 import { FIELDS, PAGES, SHARED } from "../../../frontend/src/content/registry.js";
+import { SECTION_MAP } from "../../../frontend/src/content/sectionMap.js";
 
 type Field = { key: string; label: string; kind: string; value: string };
 type Group = { name: string; fields: Field[] };
@@ -45,3 +46,9 @@ export function textKeyForValue(text: string, published: Record<string, string>)
   const matches = Object.values(fields).filter((field) => plain(published[field.key] ?? field.value) === needle);
   return matches.length === 1 ? matches[0].key : null;
 }
+
+type PagePart = { id: string; label: string };
+const pageParts = SECTION_MAP as unknown as Record<string, PagePart[]>;
+
+export const pagesWithParts = () => Object.keys(pageParts);
+export const partsOfPage = (page: string): PagePart[] | undefined => (Object.hasOwn(pageParts, page) ? pageParts[page] : undefined);

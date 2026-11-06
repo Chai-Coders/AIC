@@ -12,6 +12,7 @@ import HomeNews from '../components/home/HomeNews';
 import HomePricing from '../components/home/HomePricing';
 import HomeGallery from '../components/home/HomeGallery';
 import HomeContact from '../components/home/HomeContact';
+import PageSections from '../content/PageSections';
 
 const HomePage = () => {
   useDocumentTitle();
@@ -20,6 +21,7 @@ const HomePage = () => {
     <>
       <Header transparent />
       <main id="main-content">
+        <PageSections>
         <HomeSlider />
         <HomeAbout />
         <HomePrograms />
@@ -30,6 +32,7 @@ const HomePage = () => {
         <HomeNews />
         <HomeGallery />
         <HomeContact />
+        </PageSections>
       </main>
       <Footer />
     </>

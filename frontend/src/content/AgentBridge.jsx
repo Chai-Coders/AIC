@@ -80,6 +80,19 @@ function keyShownBy(el) {
   return inside && inside.innerText.trim() === el.innerText.trim() ? inside.dataset.cmsKey : null;
 }
 
+/** Where on the page it is: the part it's in, and the added section, if it's in one. */
+function placeOf(el) {
+  const main = document.getElementById('main-content');
+  const custom = el.closest('[data-custom-section]');
+  let part = el;
+  while (part && part.parentElement !== main) part = part.parentElement;
+  // The nearest marker before it says which part it's in. An added section counts as
+  // the part it comes after.
+  let marker = part?.previousElementSibling;
+  while (marker && !marker.hasAttribute('data-part-start')) marker = marker.previousElementSibling;
+  return { afterSection: marker?.dataset.partStart ?? null, customSectionId: custom?.dataset.customSection ?? null };
+}
+
 function describeElement(el) {
   const section = el.closest('section, header, footer, nav, main > *');
   return {
@@ -88,6 +101,7 @@ function describeElement(el) {
     selector: cssPath(el),
     // The website text it shows, if any: the exact name to edit it by.
     key: keyShownBy(el),
+    ...placeOf(el),
     text: (el.innerText || el.getAttribute('alt') || '').trim().slice(0, 300),
     classes: [...el.classList],
     sectionHeading: section?.querySelector('h1, h2, h3')?.innerText?.trim().slice(0, 120) || null,

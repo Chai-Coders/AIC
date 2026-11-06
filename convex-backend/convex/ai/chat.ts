@@ -15,6 +15,7 @@ const OPEN: Doc<"changeSets">["status"][] = ["drafting", "reviewing", "needs_adm
 const MAX_PROMPT_CHARS = 8000;
 const MAX_POINTED = 10;
 const MAX_POINTED_CHARS = 20_000;
+const MAX_PICTURES = 5;
 // Chat messages go to the provider and the activity log, so keys must not get in.
 const LOOKS_LIKE_A_KEY = /\b(AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/;
 
@@ -95,8 +96,8 @@ export const newThread = mutation({
 });
 
 export const send = mutation({
-  args: { threadId: v.optional(v.string()), prompt: v.string(), selectedElements: v.optional(v.array(v.any())) },
-  handler: async (ctx, { threadId: given, prompt, selectedElements = [] }) => {
+  args: { threadId: v.optional(v.string()), prompt: v.string(), selectedElements: v.optional(v.array(v.any())), pictures: v.optional(v.array(v.object({ imageId: v.id("images"), name: v.string() }))) },
+  handler: async (ctx, { threadId: given, prompt, selectedElements = [], pictures = [] }) => {
     const userId = await requireAdmin(ctx);
     const clean = prompt.trim();
     if (!clean) throw new ConvexError("Please type a message.");
@@ -106,6 +107,11 @@ export const send = mutation({
     }
     if (selectedElements.length > MAX_POINTED || JSON.stringify(selectedElements).length > MAX_POINTED_CHARS) {
       throw new ConvexError(`Please point at no more than ${MAX_POINTED} things at a time.`);
+    }
+
+    if (pictures.length > MAX_PICTURES) throw new ConvexError(`Please attach no more than ${MAX_PICTURES} pictures at a time.`);
+    for (const { imageId } of pictures) {
+      if (!(await ctx.db.get(imageId))) throw new ConvexError("One of the attached pictures could not be found. Please attach it again.");
     }
 
     const threadId = given ?? (await createThread(ctx, components.agent, { userId, title: "AI Assistant" }));
@@ -126,6 +132,7 @@ export const send = mutation({
         title: `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS),
         // Only what this message points at.
         selectedElements,
+        pictures: [...(cs.pictures ?? []), ...pictures],
       });
       cs = (await ctx.db.get(cs._id))!;
     } else {
@@ -140,6 +147,7 @@ export const send = mutation({
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
         selectedElements,
+        pictures,
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
@@ -148,9 +156,13 @@ export const send = mutation({
     }
 
     const count = selectedElements.length;
-    const text = count ? `${clean}\n\n(The admin pointed at ${count === 1 ? "an element" : `${count} elements`} in the preview. Call get_selected_element.)` : clean;
+    const notes = [
+      ...(count ? [`The admin pointed at ${count === 1 ? "an element" : `${count} elements`} in the preview. Call get_selected_element.`] : []),
+      ...pictures.map((p) => `The admin attached a picture, "${p.name.replace(/["\n]/g, " ").slice(0, 80)}", with imageId ${p.imageId}.`),
+    ];
+    const text = notes.length ? `${clean}\n\n(${notes.join(" ")})` : clean;
     const { messageId } = await saveMessage(ctx, components.agent, { threadId, userId, prompt: text });
-    await audit(ctx, { userId, changeSetId: cs._id, action: "prompt", detail: { prompt: clean, selectedElements } });
+    await audit(ctx, { userId, changeSetId: cs._id, action: "prompt", detail: { prompt: clean, selectedElements, pictures } });
     await startEditor(ctx, cs, messageId);
     return { threadId, changeSetId: cs._id };
   },

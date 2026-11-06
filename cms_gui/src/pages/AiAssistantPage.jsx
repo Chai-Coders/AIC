@@ -132,8 +132,10 @@ export default function AiAssistantPage() {
 
   // ---- Actions ---------------------------------------------------------------
 
-  const onSend = async (prompt) => {
-    const result = await run(() => send({ prompt, ...(threadId ? { threadId } : {}), ...(selected.length ? { selectedElements: selected } : {}) }));
+  const onSend = async (prompt, pictures) => {
+    const result = await run(() =>
+      send({ prompt, ...(threadId ? { threadId } : {}), ...(selected.length ? { selectedElements: selected } : {}), ...(pictures.length ? { pictures } : {}) }),
+    );
     setChosenThread(result.threadId);
     setSelected([]);
     if (picking) togglePick();

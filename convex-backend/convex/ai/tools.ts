@@ -7,8 +7,9 @@ import { ConvexError } from "convex/values";
 import { internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { pagesWithParts } from "./textFields";
 
-const table = z.enum(["gallery", "startups", "news", "teamMembers", "backgroundVideo"]);
+const table = z.enum(["gallery", "startups", "news", "teamMembers", "backgroundVideo", "pageSections"]);
 
 const errorText = (e: unknown) => (e instanceof ConvexError ? String(e.data) : e instanceof Error ? e.message : String(e));
 
@@ -58,6 +59,13 @@ function readTools(env: Env) {
       z.object({ query: z.string().optional(), page: z.string().optional() }),
       (args) => ctx.runQuery(internal.ai.drafts.readSiteText, { changeSetId, ...args }),
     ),
+    get_page_sections: define(
+      env,
+      "get_page_sections",
+      'List the parts of a page in order, each with its id for placing a new section after it, and the sections already added. Page is a route, e.g. "/summary".',
+      z.object({ page: z.string() }),
+      (args) => ctx.runQuery(internal.ai.drafts.pageSections, { changeSetId, ...args }),
+    ),
     search_media: define(
       env,
       "search_media",
@@ -77,6 +85,16 @@ function readTools(env: Env) {
 
 export function editorTools(env: EditorEnv) {
   const { ctx, changeSetId, runSeq } = env;
+  // The add_* tools name their fields, which models fill in far more reliably than an
+  // open-ended list. Fields left out aren't sent.
+  const create = (table: "teamMembers" | "startups" | "news" | "gallery" | "pageSections", fields: Record<string, string | undefined>, imageId?: string) =>
+    ctx.runMutation(internal.ai.drafts.createRecord, {
+      changeSetId,
+      runSeq,
+      table,
+      imageId: imageId?.trim() || undefined,
+      fields: Object.fromEntries(Object.entries(fields).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== "")),
+    });
   return {
     ...readTools(env),
     update_site_text: define(
@@ -93,18 +111,77 @@ export function editorTools(env: EditorEnv) {
       z.object({ table, id: z.string(), field: z.string(), value: z.string() }),
       (args) => ctx.runMutation(internal.ai.drafts.updateRecord, { changeSetId, runSeq, ...args }),
     ),
-    create_record: define(
+    add_person: define(
       env,
-      "create_record",
-      "Add a new text record (a news post, startup, gallery item or team member) that uses an existing picture. Find the picture with search_media; you can't upload one.",
+      "add_person",
+      "Add someone to the site: AIC team, Board of Governors or a mentor. A photo is optional: pass one only if the admin attached it.",
       z.object({
-        table,
-        // A list, not a free-form object: not every provider accepts open-ended object schemas.
-        fields: z.array(z.object({ name: z.string(), value: z.string() })).describe("Text fields of the record, using the names from get_site_content."),
-        imageId: z.string().optional(),
+        name: z.string(),
+        role: z.string().describe("Job title, exactly as the admin gave it."),
+        category: z
+          .enum(["team", "governor", "mentor_intl_industry", "mentor_intl_academic", "mentor_india_industry", "mentor_india_academic"])
+          .describe("team: AIC team. governor: Board of Governors. The others: mentors, international or India, industry or academic."),
+        bio: z.string().optional().describe("Only if the admin gave one. Never make one up."),
+        pictureId: z.string().optional().describe("imageId of a picture the admin attached."),
+        altText: z.string().optional().describe("Describes the picture, if there is one."),
       }),
-      ({ fields, ...args }) =>
-        ctx.runMutation(internal.ai.drafts.createRecord, { changeSetId, runSeq, ...args, fields: Object.fromEntries(fields.map((f) => [f.name, f.value])) }),
+      ({ pictureId, ...fields }) => create("teamMembers", fields, pictureId),
+    ),
+    add_startup: define(
+      env,
+      "add_startup",
+      "Add a startup. It needs a logo the admin attached: if there isn't one, don't call this, ask them to attach it.",
+      z.object({
+        name: z.string(),
+        description: z.string().describe("Based only on what the admin said."),
+        pictureId: z.string().describe("imageId of the logo the admin attached."),
+        websiteUrl: z.string().optional().describe("Only if the admin gave one."),
+        altText: z.string().optional(),
+      }),
+      ({ pictureId, ...fields }) => create("startups", fields, pictureId),
+    ),
+    add_news: define(
+      env,
+      "add_news",
+      "Post a news update. It needs a picture the admin attached: if there isn't one, don't call this, ask them to attach it.",
+      z.object({
+        title: z.string(),
+        content: z.string().describe("The article, based only on what the admin said."),
+        pictureId: z.string().describe("imageId of the picture the admin attached."),
+        subtitle: z.string().optional().describe("A one-line summary."),
+        publishedDate: z.string().optional().describe("YYYY-MM-DD. Leave out for today."),
+        altText: z.string().optional(),
+      }),
+      ({ pictureId, ...fields }) => create("news", fields, pictureId),
+    ),
+    add_gallery_photo: define(
+      env,
+      "add_gallery_photo",
+      "Add a photo to the gallery, from a picture the admin attached.",
+      z.object({
+        pictureId: z.string().describe("imageId of the picture the admin attached."),
+        subtext: z.string().optional().describe("A short caption."),
+        altText: z.string().optional(),
+      }),
+      ({ pictureId, ...fields }) => create("gallery", fields, pictureId),
+    ),
+    add_section: define(
+      env,
+      "add_section",
+      "Add a new section to a page, between its existing parts. Call get_page_sections first for the ids to use in `after`. Include everything the admin asked for: if they asked for a button, set both buttonLabel and buttonUrl.",
+      z.object({
+        page: z.enum(pagesWithParts() as [string, ...string[]]).describe("The page's route."),
+        after: z.string().describe("Id of the part this section goes straight after, from get_page_sections."),
+        heading: z.string(),
+        body: z.string().describe("The text. A blank line starts a new paragraph."),
+        eyebrow: z.string().optional().describe("A small line above the heading. Only if the admin asked for one."),
+        buttonLabel: z.string().optional(),
+        buttonUrl: z.string().optional().describe('A page on this site like "/aicteam", or a full web address.'),
+        background: z.enum(["default", "white"]).optional(),
+        pictureId: z.string().optional().describe("imageId of a picture the admin attached."),
+        altText: z.string().optional(),
+      }),
+      ({ pictureId, ...fields }) => create("pageSections", fields, pictureId),
     ),
     delete_record: define(
       env,
@@ -116,14 +193,14 @@ export function editorTools(env: EditorEnv) {
     swap_media: define(
       env,
       "swap_media",
-      "Point a record at a different existing picture from the library.",
+      "Change an existing record's picture: to one the admin attached, or, if they asked for that, one from the library.",
       z.object({ table, id: z.string(), imageId: z.string() }),
       (args) => ctx.runMutation(internal.ai.drafts.swapMedia, { changeSetId, runSeq, ...args }),
     ),
     reorder: define(
       env,
       "reorder",
-      "Change the order of gallery items or startups. List the record ids in the new order, first shown first.",
+      "Change the order of gallery items, startups, or sections added after the same part of a page. List the record ids in the new order, first shown first.",
       z.object({ table, ids: z.array(z.string()) }),
       (args) => ctx.runMutation(internal.ai.drafts.reorder, { changeSetId, runSeq, ...args }),
     ),

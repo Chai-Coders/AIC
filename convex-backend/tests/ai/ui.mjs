@@ -53,6 +53,16 @@ await step('the preview IS the real site: same images, buttons, links and text a
   await real.context().close();
   await fr.evaluate(()=>{history.pushState({},'','/');dispatchEvent(new PopStateEvent('popstate'))});
 });
+await step('every page part lines up with the section map',async()=>{
+  const {SECTION_MAP}=await import(`${process.env.REPO}/frontend/src/content/sectionMap.js`);
+  const fr=page.frames().find(f=>f.url().includes('5174'));
+  for(const [path,parts] of Object.entries(SECTION_MAP)){
+    await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
+    await fr.waitForFunction((p)=>(document.documentElement.dataset.aicParts||'').startsWith(p+' '),path,{timeout:15000});
+    assert.equal(await fr.evaluate(()=>document.documentElement.dataset.aicParts),`${path} ${parts.length}`,`section map for ${path}`);
+  }
+  await fr.evaluate(()=>{history.pushState({},'','/');dispatchEvent(new PopStateEvent('popstate'))});
+});
 await step('content edit shows in the preview only, Before/After flips, Publish, rollback',async()=>{
   const item=(await live()).news[0];
   const HEADLINE=`Draft headline ${Date.now()}`;
@@ -100,15 +110,58 @@ await step('website text edit: draft shows on the page, Before/After, publish, r
   await page.getByRole('button',{name:'after',exact:true}).click();
   await site().getByRole('heading',{name:NEW}).waitFor({timeout:30000});
   await publishEnabled().click();
-  await page.waitForFunction(()=>true);
   for(let i=0;i<50&&!(await live()).text.some(t=>t.key===KEY);i++)await page.waitForTimeout(200);
   assert.equal((await live()).text.find(t=>t.key===KEY)?.value,NEW);
   await page.locator('nav a',{hasText:'AI history'}).click();
   await page.getByRole('button',{name:'Roll back'}).first().click();
-  await page.getByText('Rolled back.').waitFor({timeout:15000});
+  // Wait for the data: a toast from an earlier step may still be showing.
+  for(let i=0;i<50&&(await live()).text.some(t=>t.key===KEY);i++)await page.waitForTimeout(200);
   assert.ok(!(await live()).text.some(t=>t.key===KEY));
   await page.locator('nav a',{hasText:'AI Assistant'}).click(); await page.waitForURL('**/ai');
   await site().locator('body').waitFor({timeout:60000});
+});
+await step('a new section shows in its place, and removed text leaves no gap',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(800);
+  const H=`Partner programmes ${Date.now()}`;
+  await control('script',{script:[{tools:[['add_section',{page:'/summary',after:'story',heading:H,body:'Our partners help founders.',buttonLabel:'Meet the team',buttonUrl:'/aicteam',background:'white'}],['update_site_text',{key:'summary.story.eyebrow',value:''}],['describe_change',{summary:'Added a section',page:'/summary',text:H}]]},{text:'Added it.'},OK]});
+  await say('Add a section below our story, and remove the small line above it');
+  await publishEnabled().waitFor({timeout:30000});
+  await site().getByRole('heading',{name:H}).waitFor({timeout:15000});
+  const fr=page.frames().find(f=>f.url().includes('5174'));
+  const place=await fr.evaluate((H)=>{const all=[...document.querySelectorAll('#main-content > :not([data-part-start])')];const i=all.findIndex(e=>e.querySelector('h2')?.textContent===H);return {i,before:all[i-1]?.querySelector('h2')?.textContent,custom:all[i].hasAttribute('data-custom-section'),count:all.length};},H);
+  assert.ok(place.custom,'it is the added section');
+  assert.equal(place.i,2,`it sits right after our story: ${JSON.stringify(place)}`);
+  const eyebrow=await fr.evaluate(()=>{const p=document.querySelector('#main-content > section:nth-of-type(2) .eyebrow');return p?getComputedStyle(p).display:'gone'});
+  assert.ok(eyebrow==='none'||eyebrow==='gone',`removed text still shows: ${eyebrow}`);
+  await page.waitForTimeout(1200);await shot('15-section');
+  assert.ok(!(await live()).sections.some(s=>s.heading===H),'live before Publish');
+  // Pointing inside the section reports the part it comes after.
+  await page.getByRole('button',{name:'Point at something'}).click();await page.waitForTimeout(300);
+  await site().getByRole('heading',{name:H}).click();
+  await page.getByRole('list',{name:/pointing at/}).locator('li').first().waitFor({timeout:8000});
+  await page.getByRole('button',{name:'Done pointing'}).first().click();
+  await control('script',{script:[{tools:[['get_selected_element',{}]]},{text:'Seen.'},OK]});
+  await say('What is this');
+  await page.getByText('Seen.').waitFor({timeout:20000});
+  const seen=JSON.stringify((await control('state')).calls[1].messages);
+  assert.match(seen,/afterSection[^,]*story/,'it knows where on the page the element is');
+  await publishEnabled().waitFor({timeout:20000});
+  await page.getByRole('button',{name:'Discard'}).click();
+  await site().getByRole('heading',{name:H}).waitFor({state:'detached',timeout:10000});
+});
+await step('a picture attached in the chat reaches the agent',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(500);
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==','base64');
+  await page.locator('input[type=file]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:png});
+  await page.getByRole('list',{name:'Attached pictures'}).getByText('logo.png').waitFor({timeout:15000});
+  await control('script',{script:[{text:'Got the picture.'}]});
+  await say('Here is a logo');
+  await page.getByText('Got the picture.').waitFor({timeout:30000});
+  const {calls}=await control('state');
+  assert.match(JSON.stringify(calls[0].messages),/attached a picture, .*logo\.png/);
+  assert.equal(await page.getByRole('list',{name:'Attached pictures'}).count(),0,'the list clears after sending');
 });
 await step('delete shows a confirm card',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();

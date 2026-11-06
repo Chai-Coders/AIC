@@ -42,6 +42,7 @@ export const contentTable = v.union(
   v.literal("news"),
   v.literal("teamMembers"),
   v.literal("backgroundVideo"),
+  v.literal("pageSections"),
 );
 export type ContentTable = Infer<typeof contentTable>;
 
@@ -185,6 +186,23 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  // Sections added to the website's pages from the CMS, between the parts written
+  // in its code (frontend/src/content/PageSections.jsx). `page` is a route, and
+  // `after` an id from frontend/src/content/sectionMap.js.
+  pageSections: defineTable({
+    page: v.string(),
+    after: v.string(),
+    eyebrow: v.optional(v.string()),
+    heading: v.string(),
+    body: v.string(),
+    imageId: v.optional(v.id("images")),
+    altText: v.optional(v.string()),
+    buttonLabel: v.optional(v.string()),
+    buttonUrl: v.optional(v.string()),
+    background: v.optional(v.union(v.literal("default"), v.literal("white"))),
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
+
   // Videos uploaded from the CMS that Mux is still processing. Once Mux has a
   // playback id the upload replaces the background video (see mux.ts).
   muxUploads: defineTable({
@@ -230,6 +248,8 @@ export default defineSchema({
     baseCommitSha: v.optional(v.string()),
     buildAttempts: v.optional(v.number()),
     buildError: v.optional(v.string()),
+    // Pictures the admin attached in the chat, for the agent to use.
+    pictures: v.optional(v.array(v.object({ imageId: v.id("images"), name: v.string() }))),
     // Times this run has waited out the provider's rate limit.
     rateLimitWaits: v.optional(v.number()),
     versionId: v.optional(v.id("versions")),

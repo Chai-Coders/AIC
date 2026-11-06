@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import useApi from '../hooks/useApi';
 import { fetchSiteText } from '../api/content';
 import { FIELDS } from './registry';
-import { EDIT_MODE } from './editMode';
+import { AGENT_MODE, EDIT_MODE } from './editMode';
 import { TextContext, useText } from './useText';
 
 // Website text: what was published from the CMS, falling back to the text in
@@ -42,6 +42,9 @@ const renderRich = (value) =>
 /** One editable text. Renders just the text, wrapped in a selectable span in the CMS preview. */
 export function Text({ k }) {
   const value = useText()(k);
+  // A removed text takes its heading, paragraph or button with it (base.css). On
+  // the Site text page it stays, as an empty box to click on.
+  if (!value.trim() && (!EDIT_MODE || AGENT_MODE)) return <span data-empty-text hidden />;
   const content = FIELDS[k]?.kind === 'rich' ? renderRich(value) : value;
   return EDIT_MODE ? <span data-cms-key={k}>{content}</span> : content;
 }

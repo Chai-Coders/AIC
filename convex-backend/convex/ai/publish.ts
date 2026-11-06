@@ -82,7 +82,7 @@ async function applyContentOps(ctx: MutationCtx, ops: ContentOp[]) {
         const found = await touch(op.table, rawId);
         if (found) docs.push({ ...found.doc });
       }
-      for (const { id, createdAt } of applyReorder(docs, op.ids)) {
+      for (const { id, createdAt } of applyReorder(docs, op.ids, op.table)) {
         await ctx.db.patch(id as Id<"gallery">, { createdAt } as any);
         await refresh(id);
       }
