@@ -144,7 +144,8 @@ function HistoryList() {
 export default function VersionsPage() {
   const [params, setParams] = useSearchParams();
   const pendingCount = useQuery(anyApi.drafts.pendingCount) ?? 0;
-  const tab = params.get('tab') ?? (pendingCount > 0 ? 'pending' : 'history');
+  const asked = params.get('tab');
+  const tab = asked === 'pending' || asked === 'history' ? asked : pendingCount > 0 ? 'pending' : 'history';
 
   const tabs = [
     { value: 'pending', label: 'Waiting for approval', count: pendingCount },

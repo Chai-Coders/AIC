@@ -415,12 +415,21 @@ const ORDER = { create: 0, update: 1, delete: 2 };
 export const approve = mutation({
   args: {
     draftId: v.id("versions"),
+    // The changes the admin was shown (id and when each was last proposed).
+    seen: v.array(v.object({ id: v.id("changes"), editedAt: v.number() })),
     images: v.array(v.object({ pendingId: v.id("pendingImages"), imageId: v.id("images") })),
   },
-  handler: async (ctx, { draftId, images }) => {
+  handler: async (ctx, { draftId, seen, images }) => {
     await requireAdmin(ctx);
     const draft = await pendingDraft(ctx);
     if (!draft || draft._id !== draftId) throw new ConvexError("This draft has already been approved or rejected.");
+    // Never publish something the admin hasn't seen: the AI may still be
+    // adding to the draft while it is being reviewed.
+    const current = await draftChanges(ctx, draft._id);
+    const seenAt = new Map(seen.map((c) => [c.id as string, c.editedAt]));
+    if (current.length !== seen.length || current.some((c) => seenAt.get(c._id) !== c.editedAt)) {
+      throw new ConvexError("The AI changed this draft while you were checking it. Please look over the changes again, then approve.");
+    }
     const imageFor = new Map<string, Id<"images">>();
     for (const { pendingId, imageId } of images) {
       if (!(await ctx.db.get(imageId))) throw new ConvexError("A picture could not be prepared. Please try again.");
@@ -436,7 +445,7 @@ export const approve = mutation({
     // The draft becomes the newest version: close the CMS sitting and move it
     // to now, so the history stays in the order things went live.
     await closeSittings(ctx);
-    const proposals = await draftChanges(ctx, draft._id);
+    const proposals = current;
     for (const p of proposals) await ctx.db.delete(p._id);
     const now = Date.now();
     await ctx.db.patch(draft._id, { status: "approved", changeCount: 0, createdAt: now, lastEditAt: now, decidedAt: now });

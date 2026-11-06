@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ExternalLink, Plus, Video } from 'lucide-react';
+import { ArrowRight, Bot, ExternalLink, Plus, Video } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { anyApi } from 'convex/server';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { SECTIONS, SITE_URL } from '../routes';
@@ -18,6 +20,7 @@ export default function HomeView() {
   const { user } = useAuth();
   const [counts, setCounts] = useState({});
   const [video, setVideo] = useState(undefined);
+  const pendingCount = useQuery(anyApi.drafts.pendingCount) ?? 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +60,24 @@ export default function HomeView() {
           </a>
         )}
       </div>
+
+      {pendingCount > 0 && (
+        <Link
+          to="/versions?tab=pending"
+          className="flex items-center gap-4 rounded-xl border border-primary/30 bg-accent p-5 transition-shadow hover:shadow-md"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Bot className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-foreground">
+              {pendingCount} AI {pendingCount === 1 ? 'change is' : 'changes are'} waiting for your approval
+            </h2>
+            <p className="text-sm text-muted-foreground">Check them before they go on the website.</p>
+          </div>
+          <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {SECTION_IDS.map((id) => {

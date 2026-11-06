@@ -339,7 +339,8 @@ export default function PendingDraft() {
         images.push({ pendingId: id, imageId: await uploadImage(await response.blob()) });
       }
       setBusy('Publishing…');
-      const result = await run(() => approve({ draftId: draft.id, images }));
+      const seen = draft.changes.map((c) => ({ id: c.id, editedAt: c.editedAt }));
+      const result = await run(() => approve({ draftId: draft.id, seen, images }));
       showToast(
         result.kept > 0
           ? `Published ${plural(result.applied, 'change')}. ${plural(result.kept, 'field')} kept your newer edit.`

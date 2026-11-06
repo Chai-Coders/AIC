@@ -35,7 +35,23 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
 - [x] 4. Pictures: URL download (https only, private hosts blocked, 10 MB, image/* only),
         one-time upload links (/upload/<token>, 1 h), WebP copies made in the browser on approve,
         cleanup keeps pictures used by history and pending drafts
-- [ ] 5. `find_content` across every field
+- [x] 5. `find_content` across every field in `lib/registry.ts` (text, label, item, page; ranked).
+        The "CMS expansion" keys (e.g. `about.hero.subtitle`) don't exist in code yet: when those
+        fields are added to the registry they are searched, versioned and editable automatically.
+
+## Review fixes
+
+- [x] Approve refuses if the AI changed the draft after the admin loaded it (no unseen changes go live)
+- [x] Delete dialogs no longer say "can't be undone"; save toast mentions Versions
+- [x] Overview shows a banner when AI changes wait for approval
+- [x] Upload page first-render crash; unknown ?tab= value
+- [x] Docs: convex-backend/README.md (Version history, AI connection, test token)
+
+## Before production (org side)
+
+- Site port (3211) behind public HTTPS; `SITE_URL` = public CMS address
+- Deploy `cms_gui` with SPA rewrites (vercel.json included)
+- ChatGPT needs developer mode on a plan that allows write connectors
 
 ## Log
 
@@ -46,3 +62,5 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
   approve flow tested in headless browser (override kept, edited value, uploaded logo).
 - 2026-11-06: OAuth tested end to end (login round-trip, consent, PKCE, code/refresh reuse
   rejected); upload link tested (upload, reuse blocked).
+- 2026-11-06: review pass; approve race guard tested; UI approve with uploaded picture tested;
+  dark mode + phone screenshots checked.
