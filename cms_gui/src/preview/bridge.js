@@ -65,15 +65,25 @@ window.__aicDraftContent = draftContent;
 const OUTLINE_ID = '__aic_outline';
 const LABEL_ID = '__aic_outline_label';
 const ACCENT = '#2f7fd8';
+const KEEP_IN_VIEW_MS = 4000;
 
-function clearHighlight() {
+function removeOutline() {
   document.getElementById(OUTLINE_ID)?.remove();
   document.getElementById(LABEL_ID)?.remove();
+}
+
+function clearHighlight() {
+  removeOutline();
   window.__aicOutlined = null;
 }
 
+const outlineKey = (el) => {
+  const r = el.getBoundingClientRect();
+  return `${Math.round(r.left + window.scrollX)},${Math.round(r.top + window.scrollY)},${Math.round(r.width)},${Math.round(r.height)}`;
+};
+
 function placeOutline(el, label) {
-  clearHighlight();
+  removeOutline();
   const rect = el.getBoundingClientRect();
   const box = document.createElement('div');
   box.id = OUTLINE_ID;
@@ -110,7 +120,7 @@ function placeOutline(el, label) {
     });
     document.body.appendChild(tag);
   }
-  window.__aicOutlined = { el, label };
+  window.__aicOutlined = { ...window.__aicOutlined, el, label, rect: outlineKey(el) };
 }
 
 /** First visible element matching `selector`, or containing `text`. */
@@ -146,12 +156,15 @@ function highlight(target, attempt = 0) {
   const el = findElement(target);
   if (!el) {
     // The page may still be loading (lazy routes, content fetch); retry briefly.
-    if (attempt < 30) setTimeout(() => highlight(target, attempt + 1), 100);
+    if (attempt < 80) setTimeout(() => highlight(target, attempt + 1), 100);
     else send('highlightResult', { found: false });
     return;
   }
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => placeOutline(el, target.label), 350);
+  // Pages scroll to the top and shift as images load while a route settles, so
+  // the loop below keeps bringing the element back for a few seconds.
+  window.__aicOutlined = { target, keepInViewUntil: Date.now() + KEEP_IN_VIEW_MS };
+  placeOutline(el, target.label);
+  el.scrollIntoView({ block: 'center' });
   send('highlightResult', { found: true });
 }
 
@@ -161,12 +174,22 @@ function navigate(path) {
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
-// Keep the outline on its element when the page scrolls or reflows.
-const reposition = () => {
+// Keep the outline on its element when the page reflows, and find the element
+// again if React replaces it (content loading in, a route settling).
+setInterval(() => {
   const current = window.__aicOutlined;
-  if (current?.el?.isConnected) placeOutline(current.el, current.label);
-};
-window.addEventListener('resize', reposition);
+  if (!current?.el) return;
+  if (!current.el.isConnected) {
+    const el = current.target && findElement(current.target);
+    if (el) placeOutline(el, current.label);
+    return;
+  }
+  if (outlineKey(current.el) !== current.rect) placeOutline(current.el, current.label);
+  if (current.keepInViewUntil > Date.now()) {
+    const { top, bottom } = current.el.getBoundingClientRect();
+    if (top < 0 || bottom > window.innerHeight) current.el.scrollIntoView({ block: 'center' });
+  }
+}, 250);
 
 // --- Click to point ---------------------------------------------------------
 
@@ -232,6 +255,8 @@ document.addEventListener('mousemove', onPickMove, true);
 document.addEventListener('click', onPickClick, true);
 
 window.addEventListener('message', (event) => {
+  // Only the CMS page that embeds this preview can drive it.
+  if (event.source !== PARENT) return;
   const msg = event.data;
   if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('aic:')) return;
   switch (msg.type) {
@@ -264,6 +289,15 @@ setInterval(() => {
 }, 300);
 
 window.addEventListener('error', (e) => send('error', { message: String(e.message || e.error) }));
+// An error boundary keeps a render crash from reaching window.onerror, and React
+// only logs it. The build check must still hear about it.
+const realConsoleError = console.error.bind(console);
+console.error = (...args) => {
+  realConsoleError(...args);
+  const first = args[0];
+  if (first instanceof Error) send('error', { message: first.message });
+  else if (typeof first === 'string' && first.includes('error occurred in')) send('error', { message: first.slice(0, 500) });
+};
 window.addEventListener('unhandledrejection', (e) => send('error', { message: String(e.reason?.message || e.reason) }));
 
 send('ready');

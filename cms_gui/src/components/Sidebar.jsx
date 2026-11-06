@@ -57,7 +57,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               <NavLink
                 key={route.path}
                 to={route.path}
-                end={route.path === '/'}
+                end={route.path === '/' || route.path === '/ai'}
                 onClick={close}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${

@@ -32,6 +32,9 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuOpen]);
 
+  // The AI Assistant uses the whole window for its chat and preview panes.
+  const fullBleed = location.pathname === '/ai';
+
   const outletContext = useMemo(() => ({ showToast: addToast }), [addToast]);
 
   if (!isAuthenticated) {
@@ -39,16 +42,22 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex min-h-dvh w-full bg-background text-foreground">
+    <div className={`flex w-full bg-background text-foreground ${fullBleed ? 'h-dvh overflow-hidden' : 'min-h-dvh'}`}>
       <Sidebar isOpen={menuOpen} setIsOpen={setMenuOpen} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenMenu={() => setMenuOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          <div className="mx-auto w-full max-w-6xl">
+        {fullBleed ? (
+          <main className="min-h-0 flex-1">
             <Outlet context={outletContext} />
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+            <div className="mx-auto w-full max-w-6xl">
+              <Outlet context={outletContext} />
+            </div>
+          </main>
+        )}
       </div>
 
       <Toast toasts={toasts} removeToast={removeToast} />

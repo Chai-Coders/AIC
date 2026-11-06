@@ -109,6 +109,29 @@ const tests = {
     assert.ok(log.some((row) => row.action === 'model.editor' && row.costUsd > 0), 'audit log has the cost');
   },
 
+  async 'requests fit what current Claude models accept'() {
+    const item = (await live()).news[0];
+    // Opus 5.5 always thinks: thinking blocks must go back unchanged between tool
+    // steps, and sampling parameters are a 400.
+    await script([
+      { thinking: 'sig-abc-123', tools: [['get_site_content', { table: 'news', id: item.id }]] },
+      { thinking: 'sig-def-456', text: undefined, tools: [['get_site_content', { table: 'gallery' }]] },
+      DONE,
+    ]);
+    const { threadId, changeSetId } = await say('Just look');
+    await inState(threadId, 'drafting');
+    const { calls } = await control('state');
+    assert.equal(calls.length, 3);
+    for (const call of calls) {
+      for (const key of ['temperature', 'top_p', 'top_k']) assert.ok(!call.bodyKeys.includes(key), `sends ${key}`);
+    }
+    const history = JSON.stringify(calls[2].messages);
+    assert.ok(history.includes('sig-abc-123') && history.includes('sig-def-456'), 'thinking blocks were dropped between steps');
+    const roles = calls[2].messages.map((m) => m.role).join(',');
+    assert.ok(!/assistant,assistant/.test(roles), `tool steps are out of order: ${roles}`);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
   async 'rollback refuses to overwrite a later edit'() {
     const item = (await live()).startups[0];
     await script([{ tools: [['update_record', { table: 'startups', id: item.id, field: 'name', value: 'Agent Name' }]] }, DONE, OK]);

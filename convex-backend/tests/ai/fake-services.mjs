@@ -15,14 +15,14 @@ const answer=(res,next)=>{
    if(!next) return respond(res,200,msg([{type:'text',text:'(script empty)'}],'end_turn'));
    if(next.status) return respond(res,next.status,{type:'error',error:{type:'api_error',message:next.message||'boom'}});
    if(next.text) return respond(res,200,msg([{type:'text',text:next.text}],next.stop||'end_turn'));
-   return respond(res,200,msg([...(next.say?[{type:'text',text:next.say}]:[]),...next.tools.map(([n,i])=>toolUse(n,i))],'tool_use'));};
+   return respond(res,200,msg([...(next.thinking?[{type:'thinking',thinking:'',signature:next.thinking}]:[]),...(next.say?[{type:'text',text:next.say}]:[]),...next.tools.map(([n,i])=>toolUse(n,i))],'tool_use'));};
 http.createServer((req,res)=>{let b='';req.on('data',d=>b+=d);req.on('end',()=>{ const u=new URL(req.url,'http://x'); const j=b?JSON.parse(b):{};
  if(u.pathname==='/control/script'){state.script=j.script;state.calls=[];return respond(res,200,{ok:1});}
  if(u.pathname==='/control/state'){return respond(res,200,{head:state.head,calls:state.calls,commits:[...commits.entries()].map(([k,v])=>({sha:k,message:v.message,parents:v.parents})),remaining:state.script.length});}
  if(u.pathname==='/control/deploy'){state.statuses[j.sha]=j.state;return respond(res,200,{ok:1});}
  if(u.pathname==='/control/external-edit'){const t={...trees.get(commits.get(state.head).tree)};const s=sha1(j.content);blobs.set(s,j.content);t[j.path]=s;const id=treeId(t);trees.set(id,t);const c=crypto.randomBytes(20).toString('hex');commits.set(c,{tree:id,parents:[state.head],message:'external'});state.head=c;return respond(res,200,{head:c});}
  if(u.pathname==='/control/file'){const t=trees.get(commits.get(state.head).tree);const s=t[j.path];return respond(res,200,{content:s?blobs.get(s):null});}
- if(u.pathname==='/v1/messages'){ const next=state.script.shift(); if(next?.delay){return setTimeout(()=>answer(res,next),next.delay);} state.calls.push({system:j.system,messages:j.messages,tools:(j.tools||[]).map(t=>t.name),key:req.headers['x-api-key'],model:j.model,tool_choice:j.tool_choice}); if(LOG)fs.appendFileSync(LOG,JSON.stringify(j)+'\n');
+ if(u.pathname==='/v1/messages'){ const next=state.script.shift(); if(next?.delay){return setTimeout(()=>answer(res,next),next.delay);} state.calls.push({bodyKeys:Object.keys(j),system:j.system,messages:j.messages,tools:(j.tools||[]).map(t=>t.name),key:req.headers['x-api-key'],model:j.model,tool_choice:j.tool_choice}); if(LOG)fs.appendFileSync(LOG,JSON.stringify(j)+'\n');
    return answer(res,next); }
  const m=u.pathname.match(/^\/repos\/[^/]+\/[^/]+(\/.*)$/); if(m){ const p=m[1]; if(req.headers.authorization!=='Bearer fake-token') return respond(res,401,{message:'bad'});
   let x; if((x=p.match(/^\/git\/ref\/heads\/(.+)$/))) return respond(res,200,{object:{sha:state.head}});

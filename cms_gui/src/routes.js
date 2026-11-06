@@ -1,5 +1,8 @@
 import {
+  History,
   LayoutDashboard,
+  Settings2,
+  Sparkles,
   Image,
   Rocket,
   Newspaper,
@@ -175,7 +178,10 @@ export const SECTIONS = {
 };
 
 export const ROUTES = [
+  { path: '/ai', id: 'ai', name: 'AI Assistant', icon: Sparkles },
   { path: '/', id: 'home', name: 'Overview', icon: LayoutDashboard },
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
+  { path: '/ai/history', id: 'ai-history', name: 'AI history', icon: History },
+  { path: '/ai/settings', id: 'ai-settings', name: 'AI settings', icon: Settings2 },
 ];
