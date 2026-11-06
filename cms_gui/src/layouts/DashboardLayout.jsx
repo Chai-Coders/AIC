@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import Toast from '../components/Toast';
+import { ROUTES } from '../routes';
 
 export default function DashboardLayout() {
   const { isAuthenticated } = useAuth();
@@ -33,6 +34,7 @@ export default function DashboardLayout() {
   }, [menuOpen]);
 
   const outletContext = useMemo(() => ({ showToast: addToast }), [addToast]);
+  const fullBleed = ROUTES.some((r) => r.fullBleed && r.path === location.pathname);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -44,11 +46,17 @@ export default function DashboardLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenMenu={() => setMenuOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-          <div className="mx-auto w-full max-w-6xl">
+        {fullBleed ? (
+          <main className="flex min-h-0 flex-1 flex-col">
             <Outlet context={outletContext} />
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+            <div className="mx-auto w-full max-w-6xl">
+              <Outlet context={outletContext} />
+            </div>
+          </main>
+        )}
       </div>
 
       <Toast toasts={toasts} removeToast={removeToast} />

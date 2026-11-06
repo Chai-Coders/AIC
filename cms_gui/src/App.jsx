@@ -8,6 +8,7 @@ import StartupsPage from './pages/StartupsPage';
 import NewsPage from './pages/NewsPage';
 import TeamPage from './pages/TeamPage';
 import BackgroundVideoPage from './pages/BackgroundVideoPage';
+import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 
@@ -39,6 +40,9 @@ export default function App() {
               <Route path="/" element={<DashboardLayout />}>
                 {/* Home / Overview */}
                 <Route index element={<HomePage />} />
+
+                {/* Website text editor */}
+                <Route path="site-text" element={<SiteTextPage />} />
 
                 {/* Gallery Items Routes */}
                 <Route path="gallery" element={<GalleryPage />} />
