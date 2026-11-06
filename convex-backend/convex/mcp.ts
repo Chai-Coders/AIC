@@ -22,7 +22,12 @@ export const CORS_HEADERS = {
   "Access-Control-Expose-Headers": "WWW-Authenticate, Mcp-Session-Id",
 };
 
-const siteUrl = () => (process.env.CONVEX_SITE_URL ?? "").replace(/\/$/, "");
+/**
+ * Public address of this server's site port, as AI apps reach it. Normally
+ * CONVEX_SITE_URL; PUBLIC_SITE_URL overrides it when the server is reached
+ * through something else, e.g. a tunnel while testing.
+ */
+export const siteUrl = () => (process.env.PUBLIC_SITE_URL || process.env.CONVEX_SITE_URL || "").replace(/\/$/, "");
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...headers } });

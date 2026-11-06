@@ -106,6 +106,7 @@ Set with `npx convex env set NAME value`; list with `npx convex env list`.
 | `MUX_TOKEN_ID`, `MUX_TOKEN_SECRET` | Uploading background videos from the CMS |
 | `JWT_PRIVATE_KEY`, `JWKS` | Signing CMS sessions (set by `scripts/setup-auth-keys.mjs`) |
 | `SITE_URL` | The CMS address (set by `scripts/setup-auth-keys.mjs`). AI apps are sent to `<SITE_URL>/oauth/authorize` to sign in |
+| `PUBLIC_SITE_URL` | Optional. The site port's public address for AI apps when it differs from `CONVEX_SITE_URL`, e.g. a test tunnel (see below) |
 
 `CONVEX_SITE_URL` is provided by the server itself (from `CONVEX_SITE_ORIGIN`).
 
@@ -144,6 +145,21 @@ claude mcp add --transport http aic-website http://127.0.0.1:3211/mcp --header "
 
 Test tokens last 30 days and appear under "Connected apps", where they can be
 disconnected.
+
+### Testing with Claude.ai or ChatGPT before the server is public
+
+Expose the local site port through a temporary HTTPS tunnel and tell the backend
+its public address:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:3211      # prints https://<random>.trycloudflare.com
+npx convex env set PUBLIC_SITE_URL https://<random>.trycloudflare.com
+```
+
+Add `https://<random>.trycloudflare.com/mcp` as a custom connector. The sign-in
+page still opens on the local CMS in your browser, which is fine. The address
+changes every time the tunnel restarts; afterwards run
+`npx convex env remove PUBLIC_SITE_URL`.
 
 ## CMS admins
 

@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./lib/access";
 import { randomToken, sha256 } from "./lib/tokens";
-import { CORS_HEADERS } from "./mcp";
+import { CORS_HEADERS, siteUrl } from "./mcp";
 
 // OAuth 2.1 for AI apps connecting to the MCP server (mcp.ts), as the MCP
 // spec and Claude.ai / ChatGPT require:
@@ -22,7 +22,7 @@ const CODE_LIFETIME_MS = 10 * 60 * 1000;
 const TOUCH_EVERY_MS = 5 * 60 * 1000;
 const UNUSED_CLIENT_MS = 24 * 60 * 60 * 1000;
 
-const site = () => (process.env.CONVEX_SITE_URL ?? "").replace(/\/$/, "");
+const site = siteUrl;
 const cms = () => (process.env.SITE_URL ?? "").replace(/\/$/, "");
 
 const json = (body: unknown, status = 200) =>
