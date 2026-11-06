@@ -31,3 +31,5 @@ dist-ssr
 
 # Build-time API snapshot (scripts/snapshot.mjs)
 src/data/snapshot.json
+.vercel
+.env*
