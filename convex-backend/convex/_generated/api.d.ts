@@ -20,6 +20,7 @@ import type * as lib_validate from "../lib/validate.js";
 import type * as migrate from "../migrate.js";
 import type * as mux from "../mux.js";
 import type * as news from "../news.js";
+import type * as siteText from "../siteText.js";
 import type * as startups from "../startups.js";
 import type * as team from "../team.js";
 import type * as users from "../users.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   migrate: typeof migrate;
   mux: typeof mux;
   news: typeof news;
+  siteText: typeof siteText;
   startups: typeof startups;
   team: typeof team;
   users: typeof users;
