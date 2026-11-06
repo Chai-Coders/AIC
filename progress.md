@@ -64,3 +64,18 @@ Plan: `idea.md`. Branch: `migrations`. Decisions and gotchas: `memory.md`.
   rejected); upload link tested (upload, reuse blocked).
 - 2026-11-06: review pass; approve race guard tested; UI approve with uploaded picture tested;
   dark mode + phone screenshots checked.
+
+## End-to-end test run (2026-11-06)
+
+30 tests from the manual checklist, automated with headless Chromium + MCP/OAuth over HTTP
+against the local deployment. Result: **30/30 pass** after fixes. Log:
+`/tmp/claude-1000/.../scratchpad/e2e/e2e.log` (scripts next to it: lib.mjs, part1-3.mjs).
+
+Bugs found and fixed by the run:
+- Draft tick / "Use the AI value" waited for the server before moving (now optimistic)
+- Phone: bottom bars of approval / restore / undo squeezed the summary to one word per line
+- Restore page intro nested quotes
+
+Not testable locally (need the org's public HTTPS server or keys): Claude.ai / ChatGPT web
+connectors, Claude Code's interactive /mcp (simulated with the same OAuth calls instead),
+homepage video upload (no Mux keys).

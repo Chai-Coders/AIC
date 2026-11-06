@@ -416,8 +416,9 @@ export default function PendingDraft() {
       ))}
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:left-64">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
-          <div className="min-w-0 flex-1">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 lg:px-10">
+          {/* On phones the summary gets its own line above the buttons. */}
+          <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
             <p className="text-sm font-medium text-foreground">
               {plural(toApply.length, 'change')} will go live
             </p>
@@ -427,7 +428,7 @@ export default function PendingDraft() {
             type="button"
             onClick={() => setConfirm('reject')}
             disabled={!!busy}
-            className="btn-ghost px-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="btn-ghost ml-auto px-3 text-destructive hover:bg-destructive/10 hover:text-destructive sm:ml-0"
           >
             <X className="h-4 w-4" />
             Reject all

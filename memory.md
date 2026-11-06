@@ -44,3 +44,6 @@ Things decided or learned while building `idea.md`. Read before changing this ar
 - After a refresh, the old access token stops working at once (the row is replaced).
 - `npx convex dev --once` stops the local backend afterwards; keep `npx convex dev` running.
 - Headless checks: playwright-core with /usr/bin/chromium (Chrome extension wasn't connected).
+- Controlled checkboxes backed by a mutation need an optimistic update (`withOptimisticUpdate`),
+  or they don't move until the server answers.
+- Fixed bottom bars: give the summary text `basis-full sm:basis-auto` so phones wrap it above the buttons.

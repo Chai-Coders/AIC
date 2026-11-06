@@ -76,8 +76,8 @@ export default function RestorePage() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Restore website to this point</h1>
         {version && (
           <p className="text-sm text-muted-foreground">
-            Makes the website look as it did right after “{versionTitle(version)}” ({formatDateTime(version.lastEditAt)}). Check
-            what will change, untick anything you want to keep as it is now.
+            Makes the website look as it did right after this version ({versionTitle(version)}, {formatDateTime(version.lastEditAt)}).
+            Check what will change, and untick anything you want to keep as it is now.
           </p>
         )}
       </div>
@@ -146,8 +146,8 @@ export default function RestorePage() {
 
       {preview && preview.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur md:left-64">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-10">
-            <span className="text-sm font-medium text-foreground">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 lg:px-10">
+            <span className="basis-full text-sm font-medium text-foreground sm:basis-auto">
               {selectedKeys.length} of {plural(preview.length, 'change')} selected
             </span>
             <div className="ml-auto flex gap-2">
