@@ -79,3 +79,17 @@ Bugs found and fixed by the run:
 Not testable locally (need the org's public HTTPS server or keys): Claude.ai / ChatGPT web
 connectors, Claude Code's interactive /mcp (simulated with the same OAuth calls instead),
 homepage video upload (no Mux keys).
+
+## Merge with Site text, hosted test run (2026-11-06)
+
+Merged upstream `migrations` (Site text editor) into this branch; conflicts were only in
+shared import lists, the CMS menu and the README file table. Both features kept.
+
+Tested on a hosted copy (Convex Cloud free tier + Vercel), 38 tests, **38/38 pass**:
+the 30 above plus Site text (preview shows drafts, draft survives reload, discard, publish
+reaches the public website, click text in the preview to jump to its field, restore
+original, menu has Site text / Versions / AI connection side by side). Real Claude.ai-style
+sign-in now works without a tunnel because the backend has a public HTTPS address.
+
+Not yet joined up: Site text edits are published directly. They are not in Versions
+(no undo / restore) and the AI tools cannot find or propose them.

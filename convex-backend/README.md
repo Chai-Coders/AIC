@@ -95,8 +95,37 @@ npx convex env set MUX_TOKEN_SECRET <secret>
 npx convex run admin:createAdmin '{"email":"…","password":"…","name":"…"}'
 ```
 
-Build the apps with `VITE_CONVEX_URL` set to the public API address (and `VITE_SITE_URL`
-for the CMS).
+Build the apps with these variables (no trailing slashes):
+
+| App | Variable | Value |
+|---|---|---|
+| `frontend`, `cms_gui` | `VITE_CONVEX_URL` | The public API address |
+| `cms_gui` | `VITE_SITE_URL` | The website's address ("View website" links, Site text preview) |
+| `frontend` | `VITE_CMS_URL` | The CMS address. Only this address may show the site in the Site text preview |
+
+The website saves a copy of the content when it is built (`frontend/scripts/snapshot.mjs`)
+and shows it until the live content arrives, so rebuild it after large content changes.
+
+## Hosting on Convex Cloud instead
+
+Convex's free plan also works (0.5 GB database, 1 GB files, 1 GB bandwidth a month;
+pictures are the main use of bandwidth). There is no server to run:
+
+```sh
+npx convex login
+npx convex deploy                                   # creates the project the first time
+node scripts/setup-auth-keys.mjs https://cms.example.com   # see note below
+npx convex run --prod admin:createAdmin '{"email":"…","password":"…","name":"…"}'
+```
+
+`setup-auth-keys.mjs` and `npx convex env set` act on the deployment in `.env.local`, which
+is the dev deployment after `npx convex dev`; add `--prod` to `npx convex env set` (or set
+`CONVEX_DEPLOY_KEY` from the dashboard) to reach production. Use
+`https://<name>.convex.cloud` as `VITE_CONVEX_URL`; AI apps connect to
+`https://<name>.convex.site/mcp`.
+
+To copy existing data across: `npx convex export --include-file-storage --path data.zip`
+on the old deployment, then `npx convex import --prod data.zip`.
 
 ## Deployment variables
 
