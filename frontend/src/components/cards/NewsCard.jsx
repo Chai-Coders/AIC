@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { cdnImageProps, fitWideImage } from '../../lib/image';
 import { excerpt, formatDate } from '../../lib/format';
+import { Text } from '../../content/Text';
 
 const NewsCard = ({ item, featured = false }) => (
   <article className={`news-card ${featured ? 'news-card--featured' : ''}`}>
@@ -32,7 +33,7 @@ const NewsCard = ({ item, featured = false }) => (
       </h3>
       {item.content && <p className="news-card__text">{excerpt(item.content, featured ? 260 : 140)}</p>}
       <span className="text-link news-card__more" aria-hidden="true">
-        Read more <i className="fa fa-arrow-right" />
+        <Text k="news.card.more" /> <i className="fa fa-arrow-right" />
       </span>
     </div>
   </article>

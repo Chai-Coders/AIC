@@ -6,9 +6,7 @@ const NewsPage = () => (
   <PageLayout
     title="News & Updates"
     hero={{
-      eyebrow: 'Newsroom',
-      title: 'News & updates',
-      description: 'Announcements, events and milestones from AIC-IIITKottayam and our startups.',
+      prefix: 'news.hero',
       breadcrumbs: [{ label: 'News' }],
     }}
   >

@@ -6,9 +6,7 @@ const GalleryPage = () => (
   <PageLayout
     title="Gallery"
     hero={{
-      eyebrow: 'Gallery',
-      title: 'Moments from the centre',
-      description: 'Workshops, hackathons, demo days and everyday life at AIC-IIITKottayam.',
+      prefix: 'gallery.hero',
       breadcrumbs: [{ label: 'Gallery' }],
     }}
   >

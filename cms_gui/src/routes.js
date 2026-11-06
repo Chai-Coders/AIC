@@ -7,6 +7,7 @@ import {
   Video,
   History,
   Bot,
+  Type,
 } from 'lucide-react';
 
 // Public website address, shown as a "View website" link when configured.
@@ -164,6 +165,8 @@ export const SECTIONS = {
 
 export const ROUTES = [
   { path: '/', id: 'home', name: 'Overview', icon: LayoutDashboard },
+  // Fills the whole window instead of the usual centred column (see DashboardLayout).
+  { path: '/site-text', id: 'site-text', name: 'Site text', icon: Type, fullBleed: true },
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
   { path: '/versions', id: 'versions', name: 'Versions', icon: History },

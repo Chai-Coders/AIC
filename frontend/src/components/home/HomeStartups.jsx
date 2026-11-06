@@ -5,6 +5,7 @@ import { ErrorState } from '../common/AsyncState';
 import useApi from '../../hooks/useApi';
 import { fetchAllStartups } from '../../api/content';
 import { cdnImage } from '../../lib/image';
+import { Text } from '../../content/Text';
 
 const Row = ({ items, reverse }) => (
   <div className="logo-marquee__row">
@@ -33,12 +34,10 @@ const HomeStartups = () => {
       <div className="container">
         <SectionHeader
           id="startups-title"
-          eyebrow="Portfolio"
-          title="Startups building with AIC"
-          lead="High-growth tech ventures and innovative entrepreneurs incubated at the centre."
+          prefix="home.startups"
           aside={
             <Link to="/startup#portfolio" className="btn btn--outline">
-              View all startups <i className="fa fa-arrow-right" aria-hidden="true" />
+              <Text k="home.startups.button" /> <i className="fa fa-arrow-right" aria-hidden="true" />
             </Link>
           }
         />

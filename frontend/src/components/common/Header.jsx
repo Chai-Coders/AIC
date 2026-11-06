@@ -1,38 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { APPLY_URL } from '../../data/site';
+import { Text } from '../../content/Text';
 
+// Labels and descriptions are the texts nav.<id>.label and nav.<id>.<i>.label / .desc.
 const NAV = [
-  { label: 'Home', to: '/' },
-  {
-    label: 'About',
-    id: 'about',
-    items: [
-      { label: 'Who we are', to: '/summary', desc: 'Mission, vision and facilities' },
-      { label: 'Board of Governors', to: '/boardmember', desc: 'Leadership and governance' },
-      { label: 'Our Team', to: '/aicteam', desc: 'The people running AIC' },
-      { label: 'Mentors', to: '/mentor', desc: 'Our international mentor panel' },
-    ],
-  },
-  {
-    label: 'Programs',
-    id: 'programs',
-    items: [
-      { label: 'Pre-Incubation (SIA)', to: '/sia', desc: 'Start-Up-In AIC cohort' },
-      { label: 'Incubation (SISFS)', to: '/sisfs', desc: 'Startup India Seed Fund' },
-      { label: 'Acceleration', to: '/startup', desc: 'Scale-up support for startups' },
-    ],
-  },
-  { label: 'Portfolio', to: '/startup#portfolio' },
-  {
-    label: 'Media',
-    id: 'media',
-    items: [
-      { label: 'News & Updates', to: '/news', desc: 'Announcements and events' },
-      { label: 'Gallery', to: '/gallery', desc: 'Moments from the centre' },
-    ],
-  },
-  { label: 'Careers', to: '/careers' },
+  { id: 'home', to: '/' },
+  { id: 'about', items: ['/summary', '/boardmember', '/aicteam', '/mentor'] },
+  { id: 'programs', items: ['/sia', '/sisfs', '/startup'] },
+  { id: 'portfolio', to: '/startup#portfolio' },
+  { id: 'media', items: ['/news', '/gallery'] },
+  { id: 'careers', to: '/careers' },
 ];
 
 const Header = ({ transparent = false }) => {
@@ -81,7 +59,7 @@ const Header = ({ transparent = false }) => {
   }, [menuOpen]);
 
   const solid = !transparent || scrolled || menuOpen;
-  const groupActive = (group) => group.items.some((item) => item.to === location.pathname);
+  const groupActive = (group) => group.items.includes(location.pathname);
 
   return (
     <header className={`site-header ${solid ? 'is-solid' : 'is-transparent'}`}>
@@ -116,22 +94,26 @@ const Header = ({ transparent = false }) => {
                     aria-controls={`menu-${entry.id}`}
                     onClick={() => setOpenGroup(openGroup === entry.id ? null : entry.id)}
                   >
-                    {entry.label}
+                    <Text k={`nav.${entry.id}.label`} />
                     <i className="fa fa-angle-down" aria-hidden="true" />
                   </button>
                   <ul id={`menu-${entry.id}`} className="site-nav__menu">
-                    {entry.items.map((item) => (
-                      <li key={item.to}>
-                        <NavLink to={item.to} className="site-nav__menu-link" end>
-                          <span className="site-nav__menu-label">{item.label}</span>
-                          <span className="site-nav__menu-desc">{item.desc}</span>
+                    {entry.items.map((to, i) => (
+                      <li key={to}>
+                        <NavLink to={to} className="site-nav__menu-link" end>
+                          <span className="site-nav__menu-label">
+                            <Text k={`nav.${entry.id}.${i}.label`} />
+                          </span>
+                          <span className="site-nav__menu-desc">
+                            <Text k={`nav.${entry.id}.${i}.desc`} />
+                          </span>
                         </NavLink>
                       </li>
                     ))}
                   </ul>
                 </li>
               ) : (
-                <li key={entry.to} className="site-nav__item">
+                <li key={entry.id} className="site-nav__item">
                   <NavLink
                     to={entry.to}
                     end
@@ -139,7 +121,7 @@ const Header = ({ transparent = false }) => {
                       `site-nav__link ${isActive && !entry.to.includes('#') ? 'is-active' : ''}`
                     }
                   >
-                    {entry.label}
+                    <Text k={`nav.${entry.id}.label`} />
                   </NavLink>
                 </li>
               )
@@ -147,7 +129,7 @@ const Header = ({ transparent = false }) => {
           </ul>
           <div className="site-nav__actions">
             <Link to="/#contact" className="btn btn--outline btn--sm site-nav__contact">
-              Contact
+              <Text k="nav.contact" />
             </Link>
             <a
               className={`btn btn--sm ${solid ? 'btn--primary' : 'btn--accent'}`}
@@ -155,7 +137,7 @@ const Header = ({ transparent = false }) => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Apply now
+              <Text k="nav.apply" />
             </a>
           </div>
         </nav>

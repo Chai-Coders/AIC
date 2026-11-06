@@ -14,7 +14,7 @@ the Docker image in `docker-compose.yml`.
 
 | Path | What it does |
 |---|---|
-| `convex/schema.ts` | Tables: gallery, startups, news, team members, background video, pictures, Mux uploads, sign-in, version history, AI drafts and AI sign-ins |
+| `convex/schema.ts` | Tables: gallery, startups, news, team members, background video, website text, pictures, Mux uploads, sign-in, version history, AI drafts and AI sign-ins |
 | `convex/lib/registry.ts` | Every editable field with its label and rules. History, the Versions page and the AI tools all read it |
 | `convex/lib/history.ts`, `convex/versions.ts` | Version history: every edit is recorded; undo, put back one field, restore to a point |
 | `convex/drafts.ts` | The AI draft: proposals, review, approve (all at once, later edits stay on top) and reject |
@@ -23,6 +23,7 @@ the Docker image in `docker-compose.yml`.
 | `convex/uploads.ts` | One-time links where the admin drops a picture into the AI draft |
 | `convex/content.ts` | Public read API. `siteContent` returns everything the website shows in one call |
 | `convex/gallery.ts`, `startups.ts`, `news.ts`, `team.ts` | Create / edit / delete, CMS admins only |
+| `convex/siteText.ts` | Publishes website text edited in the CMS's Site text page (the texts themselves are listed in `frontend/src/content/registry.js`) |
 | `convex/images.ts` | Picture uploads (stored as WebP copies at several widths) and a daily cleanup of unused ones |
 | `convex/http.ts` | Serves pictures at `/img/<id>?w=<width>` and the sign-in routes |
 | `convex/mux.ts` | Background video uploads to Mux |
@@ -54,7 +55,7 @@ npx convex run admin:createAdmin '{"email":"you@example.com","password":"at-leas
 Start the apps against it (`.env.example` in each folder lists the variables):
 
 ```sh
-cd frontend && VITE_CONVEX_URL=http://127.0.0.1:3212 npm run dev -- --port 5174
+cd frontend && VITE_CONVEX_URL=http://127.0.0.1:3212 VITE_CMS_URL=http://localhost:5175 npm run dev -- --port 5174
 cd cms_gui  && VITE_CONVEX_URL=http://127.0.0.1:3212 VITE_SITE_URL=http://localhost:5174 npm run dev -- --port 5175
 ```
 

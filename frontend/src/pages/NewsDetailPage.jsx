@@ -8,6 +8,7 @@ import { readCache } from '../api/cache';
 import { fetchAllNews, fetchNewsItem } from '../api/content';
 import { cdnImageProps, fitWideImage } from '../lib/image';
 import { formatDate } from '../lib/format';
+import { Text } from '../content/Text';
 
 const NewsArticle = ({ id }) => {
   // Render instantly from the cached news list when we have it; the detail request refreshes it.
@@ -52,14 +53,16 @@ const NewsArticle = ({ id }) => {
         )}
         {item.content && <div className="prose">{item.content}</div>}
         <Link to="/news" className="text-link article__back">
-          <i className="fa fa-arrow-left" aria-hidden="true" /> Back to all news
+          <i className="fa fa-arrow-left" aria-hidden="true" /> <Text k="news.article.back" />
         </Link>
       </article>
 
       {more.length > 0 && (
         <section className="section section--white" aria-labelledby="more-news-title">
           <div className="container">
-            <h2 id="more-news-title" className="section-title section-title--sm">More news</h2>
+            <h2 id="more-news-title" className="section-title section-title--sm">
+              <Text k="news.article.more" />
+            </h2>
             <div className="grid grid--3">
               {more.map((n) => (
                 <NewsCard key={n.id} item={n} />

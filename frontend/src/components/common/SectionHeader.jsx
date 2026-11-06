@@ -1,21 +1,33 @@
 import React from 'react';
+import { useHasText } from '../../content/useText';
+import { Text } from '../../content/Text';
 
 /**
- * Eyebrow + title + lead paragraph used at the top of every section.
+ * Eyebrow + title + lead paragraph used at the top of every section, read
+ * from the texts `<prefix>.eyebrow`, `<prefix>.title` and `<prefix>.lead`.
  * `align`: 'left' | 'center'. `aside` renders on the right (split layout).
  */
-const SectionHeader = ({ eyebrow, title, lead, align = 'left', aside, id }) => {
+const SectionHeader = ({ prefix, align = 'left', aside, id }) => {
+  const has = useHasText();
   const classes = ['section-head', align === 'center' && 'section-head--center', aside && 'section-head--split']
     .filter(Boolean)
     .join(' ');
 
   const copy = (
     <>
-      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      {has(`${prefix}.eyebrow`) && (
+        <p className="eyebrow">
+          <Text k={`${prefix}.eyebrow`} />
+        </p>
+      )}
       <h2 className="section-title" id={id}>
-        {title}
+        <Text k={`${prefix}.title`} />
       </h2>
-      {lead && <p className="section-lead">{lead}</p>}
+      {has(`${prefix}.lead`) && (
+        <p className="section-lead">
+          <Text k={`${prefix}.lead`} />
+        </p>
+      )}
     </>
   );
 

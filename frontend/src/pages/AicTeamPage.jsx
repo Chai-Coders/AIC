@@ -7,16 +7,14 @@ const AicTeamPage = () => (
   <PageLayout
     title="Our Team"
     hero={{
-      eyebrow: 'People & culture',
-      title: 'The AIC-IIITKottayam team',
-      description: 'The people who run the centre day to day and work alongside our startups.',
+      prefix: 'team.hero',
       breadcrumbs: [{ label: 'About' }, { label: 'Our Team' }],
     }}
   >
     <div className="container people-nav-section">
       <PeopleNav />
     </div>
-    <PeopleCarousel category="team" title="AIC-IIITKottayam Team" emptyText="No team members listed yet." />
+    <PeopleCarousel category="team" prefix="team.list" />
   </PageLayout>
 );
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Bot, ExternalLink, Plus, Video } from 'lucide-react';
+import { ArrowRight, Bot, ExternalLink, Plus, Type, Video } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { api } from '../services/api';
@@ -118,6 +118,22 @@ export default function HomeView() {
           );
         })}
       </div>
+
+      <Link
+        to="/site-text"
+        className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-md"
+      >
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+          <Type className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base font-semibold text-foreground">Site text</h2>
+          <p className="truncate text-sm text-muted-foreground">
+            Headings, paragraphs, buttons and contact details on every page, edited next to a live preview.
+          </p>
+        </div>
+        <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </Link>
 
       <Link
         to="/background-video"

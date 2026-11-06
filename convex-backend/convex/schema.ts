@@ -91,6 +91,16 @@ export default defineSchema({
     updatedAt: v.number(),
   }),
 
+  // Website text edited in the CMS's "Site text" page. Only edited texts have a
+  // row: everything else shows the text written in the website's code
+  // (frontend/src/content/registry.js), which is also what a deleted row means.
+  // `key` names the text, like "home.hero.title".
+  siteText: defineTable({
+    key: v.string(),
+    value: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   // Videos uploaded from the CMS that Mux is still processing. Once Mux has a
   // playback id the upload replaces the background video (see mux.ts).
   muxUploads: defineTable({

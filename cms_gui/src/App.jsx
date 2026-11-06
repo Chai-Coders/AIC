@@ -14,6 +14,7 @@ import RestorePage from './pages/RestorePage';
 import AiConnectionPage from './pages/AiConnectionPage';
 import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
 import UploadPage from './pages/UploadPage';
+import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
 
@@ -49,6 +50,9 @@ export default function App() {
               <Route path="/" element={<DashboardLayout />}>
                 {/* Home / Overview */}
                 <Route index element={<HomePage />} />
+
+                {/* Website text editor */}
+                <Route path="site-text" element={<SiteTextPage />} />
 
                 {/* Gallery Items Routes */}
                 <Route path="gallery" element={<GalleryPage />} />

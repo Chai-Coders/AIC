@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { CONTACT, telHref } from '../../data/site';
+import { MAP_EMBED_URL, MAP_URL, telHref } from '../../data/site';
+import { cmsKey, useList } from '../../content/useText';
+import { Editable, Text } from '../../content/Text';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMPTY = { name: '', email: '', message: '' };
 
 const HomeContact = () => {
+  const list = useList();
+  const emails = list('contact.emails');
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [sent, setSent] = useState(false);
@@ -33,15 +37,17 @@ const HomeContact = () => {
     // There is no mail API on the backend, so hand the message to the visitor's email app.
     const subject = encodeURIComponent(`Contact message from ${form.name}`);
     const body = encodeURIComponent(`Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`);
-    window.location.href = `mailto:${CONTACT.emails.join(',')}?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${emails.join(',')}?subject=${subject}&body=${body}`;
     setSent(true);
     setForm(EMPTY);
   };
 
-  const field = (name, label, { as: Tag = 'input', ...rest } = {}) => {
+  const field = (name, labelKey, { as: Tag = 'input', ...rest } = {}) => {
     return (
       <div className="field">
-        <label htmlFor={`contact-${name}`}>{label}</label>
+        <label htmlFor={`contact-${name}`}>
+          <Text k={labelKey} />
+        </label>
         <Tag
           id={`contact-${name}`}
           className="input"
@@ -64,29 +70,34 @@ const HomeContact = () => {
     <section id="contact" className="section section--white" aria-labelledby="contact-title">
       <div className="container contact">
         <div className="contact__info">
-          <p className="eyebrow">Contact</p>
+          <p className="eyebrow">
+            <Text k="home.contact.eyebrow" />
+          </p>
           <h2 id="contact-title" className="section-title">
-            Talk to the team
+            <Text k="home.contact.title" />
           </h2>
           <p className="section-lead">
-            Questions about a programme, eligibility or a partnership? Write to us, call, or visit the centre on the IIIT
-            Kottayam campus.
+            <Text k="home.contact.lead" />
           </p>
 
           <dl className="contact__details">
             <div>
-              <dt>Address</dt>
+              <dt>
+                <Text k="home.contact.address" />
+              </dt>
               <dd>
-                {CONTACT.address.join(' ')}{' '}
-                <a href={CONTACT.mapUrl} target="_blank" rel="noopener noreferrer" className="text-link">
-                  Directions <i className="fa fa-external-link" aria-hidden="true" />
+                <Editable k="contact.address">{list('contact.address').join(' ')}</Editable>{' '}
+                <a href={MAP_URL} target="_blank" rel="noopener noreferrer" className="text-link">
+                  <Text k="home.contact.directions" /> <i className="fa fa-external-link" aria-hidden="true" />
                 </a>
               </dd>
             </div>
             <div>
-              <dt>Email</dt>
-              <dd>
-                {CONTACT.emails.map((email) => (
+              <dt>
+                <Text k="home.contact.email" />
+              </dt>
+              <dd {...cmsKey('contact.emails')}>
+                {emails.map((email) => (
                   <a key={email} href={`mailto:${email}`}>
                     {email}
                   </a>
@@ -94,9 +105,11 @@ const HomeContact = () => {
               </dd>
             </div>
             <div>
-              <dt>Phone</dt>
-              <dd>
-                {CONTACT.phones.map((phone) => (
+              <dt>
+                <Text k="home.contact.phone" />
+              </dt>
+              <dd {...cmsKey('contact.phones')}>
+                {list('contact.phones').map((phone) => (
                   <a key={phone} href={telHref(phone)}>
                     {phone}
                   </a>
@@ -107,7 +120,7 @@ const HomeContact = () => {
 
           <iframe
             className="contact__map"
-            src={CONTACT.mapEmbedUrl}
+            src={MAP_EMBED_URL}
             title="AIC-IIITK location on Google Maps"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
@@ -115,16 +128,18 @@ const HomeContact = () => {
         </div>
 
         <form className="contact__form" onSubmit={handleSubmit} noValidate>
-          <h3 className="contact__form-title">Send us a message</h3>
-          {field('name', 'Your name', { type: 'text', autoComplete: 'name' })}
-          {field('email', 'Email address', { type: 'email', autoComplete: 'email' })}
-          {field('message', 'Message', { as: 'textarea', rows: 6 })}
+          <h3 className="contact__form-title">
+            <Text k="home.contact.form.title" />
+          </h3>
+          {field('name', 'home.contact.form.name', { type: 'text', autoComplete: 'name' })}
+          {field('email', 'home.contact.form.email', { type: 'email', autoComplete: 'email' })}
+          {field('message', 'home.contact.form.message', { as: 'textarea', rows: 6 })}
           <button type="submit" className="btn btn--primary">
-            Send message <i className="fa fa-arrow-right" aria-hidden="true" />
+            <Text k="home.contact.form.send" /> <i className="fa fa-arrow-right" aria-hidden="true" />
           </button>
           {sent && (
             <p className="contact__success" role="status">
-              Your email app should open with the message ready to send. Thank you for reaching out.
+              <Text k="home.contact.form.sent" />
             </p>
           )}
         </form>

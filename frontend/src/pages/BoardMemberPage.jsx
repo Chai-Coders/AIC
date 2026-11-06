@@ -7,21 +7,14 @@ const BoardMemberPage = () => (
   <PageLayout
     title="Board of Governors"
     hero={{
-      eyebrow: 'Leadership',
-      title: 'Board of Governors',
-      description: 'Leading industrialists and academicians who guide the strategy and governance of AIC-IIITKottayam.',
+      prefix: 'board.hero',
       breadcrumbs: [{ label: 'About' }, { label: 'Board of Governors' }],
     }}
   >
     <div className="container people-nav-section">
       <PeopleNav />
     </div>
-    <PeopleCarousel
-      category="governor"
-      title="AIC-IIITKottayam Board of Governors"
-      variant="board"
-      emptyText="No board members listed yet."
-    />
+    <PeopleCarousel category="governor" prefix="board.list" variant="board" />
   </PageLayout>
 );
 

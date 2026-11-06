@@ -5,6 +5,7 @@ import AsyncState, { SkeletonGrid } from '../common/AsyncState';
 import NewsCard from '../cards/NewsCard';
 import useApi from '../../hooks/useApi';
 import { fetchAllNews } from '../../api/content';
+import { Text } from '../../content/Text';
 
 const HomeNews = () => {
   const news = useApi(fetchAllNews);
@@ -17,12 +18,10 @@ const HomeNews = () => {
       <div className="container">
         <SectionHeader
           id="latest-news-title"
-          eyebrow="News & updates"
-          title="Latest from the centre"
-          lead="Announcements, events and milestones from AIC-IIITKottayam and our startups."
+          prefix="home.news"
           aside={
             <Link to="/news" className="btn btn--outline">
-              All news <i className="fa fa-arrow-right" aria-hidden="true" />
+              <Text k="home.news.button" /> <i className="fa fa-arrow-right" aria-hidden="true" />
             </Link>
           }
         />

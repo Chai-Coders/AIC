@@ -26,6 +26,7 @@ import type * as migrate from "../migrate.js";
 import type * as mux from "../mux.js";
 import type * as news from "../news.js";
 import type * as oauth from "../oauth.js";
+import type * as siteText from "../siteText.js";
 import type * as startups from "../startups.js";
 import type * as team from "../team.js";
 import type * as uploads from "../uploads.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   mux: typeof mux;
   news: typeof news;
   oauth: typeof oauth;
+  siteText: typeof siteText;
   startups: typeof startups;
   team: typeof team;
   uploads: typeof uploads;
