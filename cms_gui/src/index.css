@@ -127,3 +127,23 @@
 @utility icon-btn {
   @apply inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/30 disabled:opacity-50;
 }
+
+/* AI Assistant: let the Sandpack preview fill its pane. */
+.aic-site-preview,
+.aic-site-preview .sp-preview,
+.aic-site-preview .sp-preview-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+/* Sandpack's own loading overlay never clears under React StrictMode (its
+   listener is bound to the first, discarded client); SitePreview shows its
+   own until the bridge in the sandbox says it is ready. */
+.aic-site-preview .sp-loading {
+  display: none !important;
+}
+.aic-site-preview .sp-preview-iframe {
+  flex: 1;
+  height: 100%;
+  border: 0;
+}

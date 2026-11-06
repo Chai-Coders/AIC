@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
+    "@codesandbox/sandpack-react": "^2.20.0",
     "@convex-dev/auth": "^0.0.96",
     "convex": "^1.47.0",
     "lucide-react": "^1.41.0",

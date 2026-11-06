@@ -10,5 +10,8 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // The AI Assistant preview bundles the website source from ../frontend
+    // (src/preview/localSources.js).
+    fs: { allow: ['.', '../frontend'] },
   },
 })
