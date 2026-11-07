@@ -391,7 +391,7 @@ const tests = {
     await control('feeds', {});
   },
 
-  async 'usage and the log are separate for each model, and add up'() {
+  async 'usage is split by model and job, and adds up to the meter'() {
     const item = (await live()).news[0];
     await c.mutation(api.ai.settings.save, { editorModel: { provider: 'anthropic', model: 'claude-haiku-5-5' }, reviewerModel: { provider: 'anthropic', model: 'claude-sonnet-5-5' } });
     const before = await spent();
@@ -408,18 +408,6 @@ const tests = {
     assert.equal(row('claude-haiku-5-5', 'editor').name, 'Claude Haiku 5.5', 'with its name');
     assert.ok(Math.abs(totalUsd - (await spent())) < 1e-9, 'the rows add up to the meter');
     assert.ok(Math.abs(rows.reduce((sum, r) => sum + r.costUsd, 0) - totalUsd) < 1e-9);
-
-    const log = (args) => c.query(api.ai.audit.browse, args);
-    const editor = await log({ model: 'claude-haiku-5-5' });
-    const reviewer = await log({ model: 'claude-sonnet-5-5' });
-    assert.ok(editor.rows.some((r) => r.action === 'tool.update_record') && editor.rows.some((r) => r.action === 'model.editor'), "the editor's actions and calls");
-    assert.ok(!editor.rows.some((r) => r.action.includes('review')), 'and none of the reviewer\'s');
-    assert.ok(reviewer.rows.some((r) => r.action === 'model.reviewer') && reviewer.rows.some((r) => r.action === 'review.approved'), "the reviewer's");
-    assert.ok(editor.models.includes('claude-haiku-5-5') && editor.models.includes('claude-sonnet-5-5'), 'the filter lists both');
-    const calls = await log({ category: 'models', model: 'claude-haiku-5-5' });
-    assert.ok(calls.rows.length > 0 && calls.rows.every((r) => r.category === 'models' && r.model === 'claude-haiku-5-5' && r.costUsd > 0));
-    assert.ok(calls.costUsd > 0 && calls.modelCalls === calls.total);
-    assert.ok((await log({ category: 'requests' })).rows.every((r) => r.action === 'prompt'));
 
     await rejectWaiting();
   },

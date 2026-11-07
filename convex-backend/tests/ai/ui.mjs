@@ -268,7 +268,7 @@ await step('a reload of the public site shows an approval and an undo straight a
   await pub.context().close();
   await backToAssistant();
 });
-await step('the spend meter moves by itself, and the activity log filters',async()=>{
+await step('the spend meter moves by itself',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();
   await page.waitForTimeout(800);
   const item=(await live()).news[0];
@@ -280,20 +280,7 @@ await step('the spend meter moves by itself, and the activity log filters',async
   await say('Rename the first news post');
   await sent().waitFor({timeout:40000});
   await page.waitForFunction((b)=>document.querySelector('[role=meter]').parentElement.innerText!==b,before,{timeout:10000});
-  await page.locator('nav a',{hasText:'AI activity'}).click();
-  await page.getByRole('heading',{name:'AI activity'}).waitFor();
-  assert.equal(await page.getByRole('button',{name:/Roll back/}).count(),0,'undo lives on the Versions page');
-  // The log, one model and one category at a time.
-  const body=page.locator('section',{hasText:'Activity log'}).locator('tbody tr');
-  await page.getByRole('combobox',{name:'Show category'}).selectOption('sending');
-  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr td:nth-child(4)')].some(t=>t.textContent==='sent'),null,{timeout:5000});
-  await page.getByRole('combobox',{name:'Show category'}).selectOption('models');
-  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr')].length>0&&[...document.querySelectorAll('section tbody tr td:nth-child(2)')].every(t=>t.textContent==='Model calls'),null,{timeout:5000});
-  const model=(await body.first().locator('td').nth(2).innerText()).trim();
-  await page.getByRole('combobox',{name:'Show model'}).selectOption(model);
-  await page.waitForTimeout(400);
-  for(const m of await body.locator('td:nth-child(3)').allInnerTexts())assert.equal(m.trim(),model);
-  await shot('16-log-filter');
+  assert.equal(await page.locator('nav a',{hasText:'AI activity'}).count(),0,'changes are reviewed on Versions only');
   await page.goto(CMS+'/versions?tab=pending');
   await page.getByRole('button',{name:'Reject all'}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Reject all'}).click();await page.getByText('The draft was rejected.').first().waitFor({timeout:15000});
   assert.equal((await live()).news.find(n=>n.id===item.id).title,item.title);

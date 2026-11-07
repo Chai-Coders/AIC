@@ -1,7 +1,6 @@
 import {
   History,
   LayoutDashboard,
-  ScrollText,
   Settings2,
   Sparkles,
   Image,
@@ -188,8 +187,6 @@ export const ROUTES = [
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
   { path: '/versions', id: 'versions', name: 'Versions', icon: History },
-  // The assistant's chat log and spending; its changes are on Versions.
-  { path: '/ai/history', id: 'ai-history', name: 'AI activity', icon: ScrollText },
   { path: '/ai/settings', id: 'ai-settings', name: 'AI settings', icon: Settings2 },
   { path: '/ai-connection', id: 'ai-connection', name: 'AI connection', icon: Bot },
 ];

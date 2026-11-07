@@ -18,7 +18,8 @@ rules as AI apps over MCP:
   draft applied.
 - **Removed for now:** added page sections, the background video, gallery and startup reordering, and setting a news
   date, since the version history doesn't track them yet.
-- AI history is now **AI activity**: the chat log and spending.
+- **No AI history page**: the Versions page is where changes are reviewed and undone. Spending is on AI settings; the
+  step-by-step log stays in the `auditLog` table only.
 
 ## Decisions
 

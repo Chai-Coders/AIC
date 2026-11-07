@@ -82,7 +82,6 @@ cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localho
 - **Approving** on the Versions page is one Convex transaction. A field the admin edited in the CMS after the
   assistant sent its change keeps the admin's edit, unless they choose the AI value there.
 - **Undo** is the Versions page's: undo a version, put back one change, or restore the site to a point.
-  The AI activity page keeps the chat log and spending only.
 
 ## The preview
 
@@ -121,11 +120,11 @@ and it isn't in use. Prices the admin enters always win. Names come from the pro
 and only plain characters get through. Keys only go to their own provider, to ask which models they can use; that isn't a
 model call, so it costs nothing. Past usage keeps the cost worked out at the time.
 
-## Usage and the log
+## Usage
 
 The settings page splits usage by month, provider, model and job (editing or review), with a total that matches the meter.
-The activity log on AI activity filters by category and by model, with what the selection adds up to. It looks at the latest
-1,000 entries.
+Every prompt, tool call, verdict and model call is also written to the `auditLog` table, for looking into a problem from the
+Convex dashboard; there is no CMS page for it, since the changes themselves are on the Versions page.
 
 ## When the agent asks
 

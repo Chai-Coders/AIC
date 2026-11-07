@@ -15,7 +15,6 @@ import AiConnectionPage from './pages/AiConnectionPage';
 import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
 import UploadPage from './pages/UploadPage';
 import AiAssistantPage from './pages/AiAssistantPage';
-import AiHistoryPage from './pages/AiHistoryPage';
 import AiSettingsPage from './pages/AiSettingsPage';
 import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
@@ -53,7 +52,6 @@ export default function App() {
               <Route path="/" element={<DashboardLayout />}>
                 {/* AI Assistant */}
                 <Route path="ai" element={<AiAssistantPage />} />
-                <Route path="ai/history" element={<AiHistoryPage />} />
                 <Route path="ai/settings" element={<AiSettingsPage />} />
 
                 {/* Home / Overview */}
