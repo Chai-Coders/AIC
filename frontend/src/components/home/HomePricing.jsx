@@ -1,6 +1,5 @@
 import React from 'react';
 import SectionHeader from '../common/SectionHeader';
-import { REGISTER_URL } from '../../data/site';
 import { cmsKey, useList, useText } from '../../content/useText';
 import { Text } from '../../content/Text';
 
@@ -37,7 +36,7 @@ const HomePricing = () => {
                   ))}
                 </ul>
                 <a
-                  href={REGISTER_URL}
+                  href={t('links.register')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`btn btn--block ${plan.featured ? 'btn--accent' : 'btn--outline'}`}

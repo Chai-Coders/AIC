@@ -59,7 +59,7 @@ const Lightbox = ({ items, index, onChange }) => {
             </>
           )}
           <figure className="lightbox__figure">
-            <img key={item.id} src={cdnImage(item.image, 1920)} alt={item.subtext || 'Gallery image'} />
+            <img key={item.id} src={cdnImage(item.image, 1920)} alt={item.alt_text || item.subtext || 'Gallery image'} />
             <figcaption>
               {item.subtext && <span>{item.subtext}</span>}
               <span className="lightbox__count">

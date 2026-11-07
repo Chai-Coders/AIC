@@ -22,6 +22,7 @@ const iso = (ms: number) => new Date(ms).toISOString();
 export const toGallery = (doc: Doc<"gallery">) => ({
   id: doc._id,
   image: imageUrl(doc.imageId),
+  alt_text: doc.altText ?? "",
   subtext: doc.subtext,
   created_at: iso(doc.createdAt),
 });
@@ -31,6 +32,7 @@ export const toStartup = (doc: Doc<"startups">) => ({
   name: doc.name,
   description: doc.description,
   logo_or_image: imageUrl(doc.logoId),
+  alt_text: doc.altText ?? "",
   website_url: doc.websiteUrl ?? null,
   created_at: iso(doc.createdAt),
 });
@@ -41,6 +43,7 @@ export const toNews = (doc: Doc<"news">) => ({
   subtitle: doc.subtitle,
   content: doc.content,
   thumbnail: imageUrl(doc.thumbnailId),
+  alt_text: doc.altText ?? "",
   published_date: doc.publishedDate,
 });
 
@@ -51,6 +54,7 @@ export const toTeamMember = (doc: Doc<"teamMembers">) => ({
   category: doc.category,
   category_display: CATEGORY_LABELS[doc.category],
   photo: imageUrl(doc.photoId),
+  alt_text: doc.altText ?? "",
   bio: doc.bio,
   created_at: iso(doc.createdAt),
 });

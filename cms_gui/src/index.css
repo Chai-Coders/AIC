@@ -127,3 +127,12 @@
 @utility icon-btn {
   @apply inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-primary/30 disabled:opacity-50;
 }
+
+/* While dragging a pane divider, a frame under the pointer must not swallow the drag. */
+.aic-dragging iframe {
+  pointer-events: none;
+}
+.aic-dragging {
+  cursor: col-resize;
+  user-select: none;
+}

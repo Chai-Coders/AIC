@@ -2,13 +2,8 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireAdmin } from "./lib/access";
 import { applyTarget, cmsSitting } from "./lib/history";
-import { TEXTS } from "./lib/siteText";
+import { checkTextValue, TEXTS } from "./lib/siteText";
 
-// Text keys look like "home.programs.0.factLabel": words and numbers joined by
-// dots.
-const KEY = /^[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)*$/;
-const MAX_KEY = 100;
-const MAX_VALUE = 5000;
 const MAX_CHANGES = 1000;
 
 /**
@@ -27,15 +22,7 @@ export const publish = mutation({
       throw new ConvexError(`At most ${MAX_CHANGES} texts can be published at once.`);
     }
     for (const { key, value } of changes) {
-      if (key.length > MAX_KEY || !KEY.test(key)) {
-        throw new ConvexError(`"${key}" is not a valid text name.`);
-      }
-      if (!TEXTS.has(key)) {
-        throw new ConvexError(`The website has no text "${key}". Reload the page and try again.`);
-      }
-      if (value !== null && value.length > MAX_VALUE) {
-        throw new ConvexError(`"${key}" can be at most ${MAX_VALUE} characters.`);
-      }
+      checkTextValue(key, value);
     }
     const versionId = await cmsSitting(ctx);
     for (const { key, value } of changes) {

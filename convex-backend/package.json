@@ -8,9 +8,18 @@
     "typecheck": "tsc --noEmit -p convex"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.97",
+    "@ai-sdk/google": "^4.0.112",
+    "@ai-sdk/openai": "^4.0.109",
+    "@ai-sdk/provider": "^4.0.36",
+    "@ai-sdk/provider-utils": "^5.0.75",
     "@auth/core": "^0.41.3",
+    "@convex-dev/agent": "^0.7.9",
     "@convex-dev/auth": "^0.0.96",
-    "convex": "^1.47.0"
+    "ai": "^7.0.163",
+    "convex": "^1.47.0",
+    "convex-helpers": "^0.1.134",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

@@ -108,9 +108,10 @@ const CLEANUP_AFTER_MS = 24 * 60 * 60 * 1000;
  * Runs daily (crons.ts).
  */
 export const cleanupUnused = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const cutoff = Date.now() - CLEANUP_AFTER_MS;
+  // dryRun deletes nothing and returns the pictures it would have deleted.
+  args: { keepNewerThanMs: v.optional(v.number()), dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { keepNewerThanMs, dryRun }) => {
+    const cutoff = Date.now() - (keepNewerThanMs ?? CLEANUP_AFTER_MS);
 
     const used = new Set<string>();
     for (const row of await ctx.db.query("gallery").collect()) used.add(row.imageId);
@@ -126,6 +127,21 @@ export const cleanupUnused = internalMutation({
       if (rejected.has(change.versionId)) continue;
       collectImageIds(change.before, used);
       collectImageIds(change.after, used);
+    }
+    // Pictures attached in the AI Assistant's chat, and used by its drafts that
+    // haven't been sent to the AI draft yet (once sent, they are in `changes`).
+    const IMAGE_FIELDS = ["imageId", "logoId", "thumbnailId", "photoId"];
+    for (const draft of await ctx.db.query("changeSets").collect()) {
+      if (["sent", "published", "discarded", "failed"].includes(draft.status)) continue;
+      for (const picture of draft.pictures ?? []) used.add(picture.imageId);
+      for (const op of draft.contentOps) {
+        if (op.op === "create") collectImageIds(op.doc, used);
+        if (op.op === "update" && IMAGE_FIELDS.includes(op.field) && typeof op.to === "string") used.add(op.to);
+      }
+    }
+
+    if (dryRun) {
+      return (await ctx.db.query("images").collect()).filter((image) => !used.has(image._id) && image._creationTime < cutoff).map((image) => image._id as string);
     }
 
     let images = 0;
@@ -151,5 +167,6 @@ export const cleanupUnused = internalMutation({
       }
     }
     if (images || files) console.log(`Removed ${images} unused pictures and ${files} stray files.`);
+    return [];
   },
 });

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { APPLY_URL, HOST_INSTITUTE_URL, MAP_URL, SOCIAL, telHref } from '../../data/site';
+import { SOCIAL, telHref } from '../../data/site';
 import { cmsKey, useList, useText } from '../../content/useText';
 import { Editable, Text } from '../../content/Text';
 
@@ -43,7 +43,7 @@ const Footer = () => {
           <Text k="footer.cta.title" />
         </h2>
         <div className="btn-row">
-          <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn--accent" href={t('links.apply')} target="_blank" rel="noopener noreferrer">
             <Text k="footer.cta.apply" /> <i className="fa fa-arrow-right" aria-hidden="true" />
           </a>
           <Link className="btn btn--ghost-light" to="/#contact">
@@ -61,9 +61,9 @@ const Footer = () => {
             <Text k="footer.about" />
           </p>
           <ul className="site-footer__social" aria-label="Social media">
-            {SOCIAL.map((s) => (
+            {SOCIAL.filter((s) => t(`links.${s.brand}`).trim()).map((s) => (
               <li key={s.label}>
-                <a href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} data-brand={s.brand}>
+                <a href={t(`links.${s.brand}`)} target="_blank" rel="noopener noreferrer" aria-label={s.label} data-brand={s.brand}>
                   {s.text ? (
                     <span className="site-footer__x" aria-hidden="true">{s.text}</span>
                   ) : (
@@ -106,7 +106,7 @@ const Footer = () => {
                   </React.Fragment>
                 ))}
               </Editable>
-              <a href={MAP_URL} target="_blank" rel="noopener noreferrer">
+              <a href={t('links.map')} target="_blank" rel="noopener noreferrer">
                 <Text k="footer.directions" /> <i className="fa fa-external-link" aria-hidden="true" />
               </a>
             </p>
@@ -134,7 +134,7 @@ const Footer = () => {
         </p>
         <p>
           <Text k="footer.hosted" />{' '}
-          <a href={HOST_INSTITUTE_URL} target="_blank" rel="noopener noreferrer">
+          <a href={t('links.host')} target="_blank" rel="noopener noreferrer">
             <Text k="footer.host" />
           </a>
         </p>

@@ -4,6 +4,7 @@ import Lightbox from '../common/Lightbox';
 import useApi from '../../hooks/useApi';
 import { fetchAllGallery } from '../../api/content';
 import { cdnImageProps } from '../../lib/image';
+import { Text } from '../../content/Text';
 
 /**
  * Responsive photo grid with a lightbox. `limit` shows only the first N items
@@ -18,7 +19,7 @@ const GalleryGrid = ({ limit, featured = false }) => {
     <AsyncState
       state={gallery}
       skeleton={<SkeletonGrid count={limit || 9} className="gallery-grid" media={false} />}
-      empty={<EmptyState icon="fa-picture-o" title="No photos yet">Check back soon for photos from our events.</EmptyState>}
+      empty={<EmptyState icon="fa-picture-o" title={<Text k="words.noPhotos" />}><Text k="words.noPhotosHint" /></EmptyState>}
     >
       {(all) => {
         const items = limit ? all.slice(0, limit) : all;
@@ -32,7 +33,7 @@ const GalleryGrid = ({ limit, featured = false }) => {
                       {...(featured && i === 0
                         ? cdnImageProps(item.image, [800, 1200, 1600], '(min-width: 1100px) 50vw, (min-width: 640px) 66vw, 100vw')
                         : cdnImageProps(item.image, [400, 800], '(min-width: 1100px) 25vw, (min-width: 640px) 33vw, 50vw'))}
-                      alt={item.subtext || `Gallery photo ${i + 1}`}
+                      alt={item.alt_text || item.subtext || `Gallery photo ${i + 1}`}
                       loading="lazy"
                       decoding="async"
                     />

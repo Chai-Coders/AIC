@@ -6,7 +6,9 @@ import SplashScreen from './components/common/SplashScreen';
 import useScrollReveal from './hooks/useScrollReveal';
 import { TextProvider } from './content/Text';
 import CmsBridge from './content/CmsBridge';
+import { AGENT_MODE } from './content/editMode';
 
+const AgentBridge = lazy(() => import('./content/AgentBridge'));
 const BoardMemberPage = lazy(() => import('./pages/BoardMemberPage'));
 const AicTeamPage = lazy(() => import('./pages/AicTeamPage'));
 const MentorPage = lazy(() => import('./pages/MentorPage'));
@@ -68,6 +70,11 @@ function App() {
   return (
     <TextProvider>
       <CmsBridge />
+      {AGENT_MODE && (
+        <Suspense fallback={null}>
+          <AgentBridge />
+        </Suspense>
+      )}
       <SplashScreen />
       <ScrollToTop />
       <Suspense fallback={<PageFallback />}>

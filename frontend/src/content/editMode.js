@@ -19,3 +19,7 @@ export const EDIT_MODE =
   window.parent !== window &&
   CMS_ORIGIN !== null &&
   new URLSearchParams(window.location.search).has('cms-edit');
+
+// The CMS's AI Assistant shows the site with ?cms-edit=1&cms-agent=1: the admin
+// browses normally and sees the agent's draft (see AgentBridge.jsx).
+export const AGENT_MODE = EDIT_MODE && new URLSearchParams(window.location.search).has('cms-agent');

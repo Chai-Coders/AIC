@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useApi from '../../hooks/useApi';
 import { fetchBackgroundVideo } from '../../api/content';
-import { APPLY_URL } from '../../data/site';
 import { useText } from '../../content/useText';
 import { Text } from '../../content/Text';
 
@@ -151,7 +150,7 @@ const HomeSlider = () => {
           <Text k="home.hero.desc" />
         </p>
         <div className="btn-row">
-          <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn--accent" href={t('links.apply')} target="_blank" rel="noopener noreferrer">
             <Text k="home.hero.apply" /> <i className="fa fa-arrow-right" aria-hidden="true" />
           </a>
           <a className="btn btn--ghost-light" href="#programmes">

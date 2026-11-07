@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './SplashScreen.css';
 import { EDIT_MODE } from '../../content/editMode';
+import { Text } from '../../content/Text';
 
 // First-visit splash: the AIC logo fills with liquid while the page loads.
 
@@ -126,7 +127,7 @@ const SplashScreen = () => {
           <img className="splash__real" src="/img/aic-logo.png" alt="" />
           <span className="splash__shine" />
         </div>
-        <p className="splash__caption">Atal Incubation Centre &middot; IIIT Kottayam</p>
+        <p className="splash__caption"><Text k="words.splash" /></p>
         <div className="splash__bar" aria-hidden="true"><span /></div>
       </div>
     </div>

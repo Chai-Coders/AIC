@@ -41,7 +41,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex min-h-dvh w-full bg-background text-foreground">
+    <div className={`flex w-full bg-background text-foreground ${fullBleed ? 'h-dvh overflow-hidden' : 'min-h-dvh'}`}>
       <Sidebar isOpen={menuOpen} setIsOpen={setMenuOpen} />
 
       <div className="flex min-w-0 flex-1 flex-col">

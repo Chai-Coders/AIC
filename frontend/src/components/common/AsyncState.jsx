@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from '../../content/Text';
 
 /** Grid of placeholder cards shown while a list is loading. */
 export const SkeletonGrid = ({ count = 6, className = 'grid grid--3', media = true }) => (
@@ -19,11 +20,11 @@ export const SkeletonGrid = ({ count = 6, className = 'grid grid--3', media = tr
 export const ErrorState = ({ message = 'Something went wrong while loading this content.', onRetry }) => (
   <div className="state state--error" role="alert">
     <i className="fa fa-exclamation-circle" aria-hidden="true" />
-    <p className="state__title">We couldn&rsquo;t load this right now</p>
+    <p className="state__title"><Text k="words.loadError" /></p>
     <p>{message}</p>
     {onRetry && (
       <button type="button" className="btn btn--outline btn--sm" onClick={onRetry}>
-        <i className="fa fa-refresh" aria-hidden="true" /> Try again
+        <i className="fa fa-refresh" aria-hidden="true" /> <Text k="words.tryAgain" />
       </button>
     )}
   </div>
