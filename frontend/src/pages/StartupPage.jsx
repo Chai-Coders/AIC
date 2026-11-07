@@ -3,8 +3,8 @@ import PageLayout from '../components/common/PageLayout';
 import SectionHeader from '../components/common/SectionHeader';
 import ProgramContent from '../components/sections/ProgramContent';
 import StartupGrid from '../components/sections/StartupGrid';
-import { APPLY_URL } from '../data/site';
 import { Text } from '../content/Text';
+import { useText } from '../content/useText';
 
 // Partners have no API endpoint, so they stay static.
 const PARTNERS = [
@@ -18,7 +18,9 @@ const PARTNERS = [
 // Card titles and points are the texts startup.cards.<i>.title / .items.
 const CARDS = [{ icon: 'fa-check-circle' }, { icon: 'fa-refresh' }, { icon: 'fa-trophy', accent: true }, { icon: 'fa-rocket' }];
 
-const StartupPage = () => (
+const StartupPage = () => {
+  const t = useText();
+  return (
   <PageLayout
     title="Acceleration & portfolio"
     hero={{
@@ -26,7 +28,7 @@ const StartupPage = () => (
       breadcrumbs: [{ label: 'Programs' }, { label: 'Acceleration' }],
       actions: (
         <>
-          <a className="btn btn--accent" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn--accent" href={t('links.apply')} target="_blank" rel="noopener noreferrer">
             <Text k="startup.hero.apply" /> <i className="fa fa-external-link" aria-hidden="true" />
           </a>
           <a className="btn btn--outline" href="#portfolio">
@@ -64,5 +66,6 @@ const StartupPage = () => (
     </section>
   </PageLayout>
 );
+};
 
 export default StartupPage;

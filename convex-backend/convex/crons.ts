@@ -3,7 +3,9 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-crons.daily("remove unused pictures", { hourUTC: 21, minuteUTC: 30 }, internal.images.cleanupUnused);
+crons.daily("remove unused pictures", { hourUTC: 21, minuteUTC: 30 }, internal.images.cleanupUnused, {});
+
+crons.daily("check AI model prices", { hourUTC: 22, minuteUTC: 0 }, internal.ai.prices.refresh, {});
 
 crons.daily("remove expired AI sign-ins and upload links", { hourUTC: 21, minuteUTC: 45 }, internal.oauth.cleanup);
 

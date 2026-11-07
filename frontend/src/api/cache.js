@@ -2,8 +2,10 @@
 //
 // - Results are kept in memory and in localStorage, so navigating between pages
 //   and returning visitors render instantly from the last known data.
-// - Cached data younger than FRESH_MS is used without touching the network;
-//   older data is shown immediately while a background refresh runs.
+// - Data fetched by this page load less than FRESH_MS ago is used without touching
+//   the network, so moving between pages stays instant. Anything else (including all
+//   of localStorage) is shown immediately while a background refresh runs, so a
+//   reload always picks up what was just published or rolled back.
 // - Concurrent requests for the same key share one network call.
 // - A snapshot taken at build time (scripts/snapshot.mjs) is the last resort, so
 //   first-time visitors see content before the API has answered.
@@ -15,6 +17,7 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const memory = new Map(); // key -> { data, time }
 const inflight = new Map(); // key -> Promise
+const fetchedAt = new Map(); // key -> when this page load last fetched it
 
 // Optional: the file only exists when the build could reach the API.
 const snapshot = Object.values(
@@ -62,8 +65,9 @@ export function readCache(key) {
   return entry || null;
 }
 
-export function isFresh(entry) {
-  return !!entry && Date.now() - entry.time < FRESH_MS;
+/** The next read goes to the network: the visitor came back, and things may have changed. */
+export function markStale() {
+  fetchedAt.clear();
 }
 
 /** Fetch `key` with `fetcher`, sharing in-flight requests and storing the result. */
@@ -73,6 +77,7 @@ export function fetchAndCache(key, fetcher) {
     .then((data) => {
       const entry = { data, time: Date.now() };
       memory.set(key, entry);
+      fetchedAt.set(key, entry.time);
       writeStorage(key, entry);
       return data;
     })
@@ -84,6 +89,6 @@ export function fetchAndCache(key, fetcher) {
 /** Returns cached data when fresh, otherwise fetches. */
 export function getCached(key, fetcher) {
   const entry = readCache(key);
-  if (isFresh(entry)) return Promise.resolve(entry.data);
+  if (entry && Date.now() - (fetchedAt.get(key) ?? 0) < FRESH_MS) return Promise.resolve(entry.data);
   return fetchAndCache(key, fetcher);
 }

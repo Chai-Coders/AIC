@@ -1,6 +1,6 @@
 import React from 'react';
-import { RECOGNITION_FORM_URL } from '../../data/site';
 import { Text } from '../../content/Text';
+import { useText } from '../../content/useText';
 
 // Titles and texts are home.features.steps.<i>.title / .text.
 const STEP_COUNT = 5;
@@ -15,7 +15,9 @@ const PHOTOS = [
   { img: '/img/site/cohort.jpg', alt: 'A cohort of student innovators at an AIC programme', shape: 'pill' },
 ];
 
-const HomeFeatures = () => (
+const HomeFeatures = () => {
+  const t = useText();
+  return (
   <section id="features" className="section" aria-labelledby="features-title">
     <div className="container">
       <div className="approach">
@@ -29,7 +31,7 @@ const HomeFeatures = () => (
           <p className="section-lead">
             <Text k="home.features.lead" />
           </p>
-          <a className="btn btn--outline approach__cta" href={RECOGNITION_FORM_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn btn--outline approach__cta" href={t('links.recognition')} target="_blank" rel="noopener noreferrer">
             <Text k="home.features.button" /> <i className="fa fa-arrow-right" aria-hidden="true" />
           </a>
         </header>
@@ -66,5 +68,6 @@ const HomeFeatures = () => (
     </div>
   </section>
 );
+};
 
 export default HomeFeatures;

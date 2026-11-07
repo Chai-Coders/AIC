@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FIELDS, PAGES, SHARED, pageForPath } from './registry';
-import { CMS_ORIGIN, EDIT_MODE } from './editMode';
+import { AGENT_MODE, CMS_ORIGIN, EDIT_MODE } from './editMode';
 import { useTextContext } from './useText';
 
 // Runs only inside the CMS preview. Messages (all carry `source`):
@@ -146,5 +146,5 @@ function Bridge() {
 }
 
 export default function CmsBridge() {
-  return EDIT_MODE ? <Bridge /> : null;
+  return EDIT_MODE && !AGENT_MODE ? <Bridge /> : null;
 }

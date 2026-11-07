@@ -1,17 +1,19 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import { requireAdmin } from "./lib/access";
-import { text, todayIso } from "./lib/validate";
+import { altTextPatch, text, todayIso } from "./lib/validate";
 import { requireImage } from "./images";
 import { recordCmsEdit } from "./lib/history";
 
 const fieldArgs = {
+  alt_text: v.optional(v.string()),
   title: v.string(),
   subtitle: v.optional(v.string()),
   content: v.string(),
 };
 
-const fields = (args: { title: string; subtitle?: string; content: string }) => ({
+const fields = (args: { title: string; subtitle?: string; content: string; alt_text?: string }) => ({
+  ...altTextPatch(args.alt_text),
   title: text(args.title, "Headline", { required: true, max: 255 }),
   subtitle: text(args.subtitle ?? "", "Summary", { max: 300 }),
   content: text(args.content, "Article", { required: true }),

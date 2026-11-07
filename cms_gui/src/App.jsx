@@ -14,6 +14,9 @@ import RestorePage from './pages/RestorePage';
 import AiConnectionPage from './pages/AiConnectionPage';
 import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
 import UploadPage from './pages/UploadPage';
+import AiAssistantPage from './pages/AiAssistantPage';
+import AiHistoryPage from './pages/AiHistoryPage';
+import AiSettingsPage from './pages/AiSettingsPage';
 import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
@@ -48,6 +51,11 @@ export default function App() {
 
               {/* Protected Dashboard Layout and Sub-Pages */}
               <Route path="/" element={<DashboardLayout />}>
+                {/* AI Assistant */}
+                <Route path="ai" element={<AiAssistantPage />} />
+                <Route path="ai/history" element={<AiHistoryPage />} />
+                <Route path="ai/settings" element={<AiSettingsPage />} />
+
                 {/* Home / Overview */}
                 <Route index element={<HomePage />} />
 

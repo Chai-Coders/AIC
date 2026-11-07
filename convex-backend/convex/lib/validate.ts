@@ -34,3 +34,12 @@ export function optionalUrl(value: string | undefined, label: string) {
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
+
+/**
+ * The `altText` patch for a record, from the CMS form's `alt_text`. Omitted
+ * (undefined) leaves the stored text alone; empty clears it.
+ */
+export function altTextPatch(value: string | undefined): { altText?: string } {
+  if (value === undefined) return {};
+  return { altText: text(value, "Alt text", { max: 300 }) };
+}

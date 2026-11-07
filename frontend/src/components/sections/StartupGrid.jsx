@@ -5,6 +5,7 @@ import useApi from '../../hooks/useApi';
 import { fetchAllStartups } from '../../api/content';
 import { cdnImage } from '../../lib/image';
 import { displayHost, excerpt } from '../../lib/format';
+import { Text } from '../../content/Text';
 
 const StartupCard = ({ startup, onOpen }) => (
   <article className="startup-card">
@@ -16,11 +17,11 @@ const StartupCard = ({ startup, onOpen }) => (
       {startup.description && <p className="startup-card__desc">{excerpt(startup.description, 120)}</p>}
       <div className="startup-card__actions">
         <button type="button" className="text-link" onClick={() => onOpen(startup)}>
-          Details<span className="sr-only"> about {startup.name}</span>
+          <Text k="words.details" /><span className="sr-only"> about {startup.name}</span>
         </button>
         {startup.website_url && (
           <a className="text-link" href={startup.website_url} target="_blank" rel="noopener noreferrer">
-            Website <i className="fa fa-external-link" aria-hidden="true" />
+            <Text k="words.website" /> <i className="fa fa-external-link" aria-hidden="true" />
             <span className="sr-only"> of {startup.name}</span>
           </a>
         )}
@@ -55,7 +56,7 @@ const StartupGrid = () => {
           )}
         </p>
         <label className="search-field">
-          <span className="sr-only">Search startups</span>
+          <span className="sr-only"><Text k="words.searchStartups" /></span>
           <i className="fa fa-search" aria-hidden="true" />
           <input
             type="search"
@@ -70,12 +71,12 @@ const StartupGrid = () => {
       <AsyncState
         state={startups}
         skeleton={<SkeletonGrid count={8} className="grid grid--4" />}
-        empty={<EmptyState icon="fa-rocket" title="No startups listed yet" />}
+        empty={<EmptyState icon="fa-rocket" title={<Text k="words.noStartups" />} />}
       >
         {() =>
           filtered.length === 0 ? (
             <EmptyState icon="fa-search" title={`No startups match “${query}”`}>
-              Try a different name or keyword.
+              <Text k="words.tryDifferent" />
             </EmptyState>
           ) : (
             <div className="grid grid--4">
@@ -91,7 +92,7 @@ const StartupGrid = () => {
         {selected && (
           <div className="startup-dialog__inner">
             <div className="startup-dialog__logo">
-              <img src={cdnImage(selected.logo_or_image, 600)} alt={`${selected.name} logo`} />
+              <img src={cdnImage(selected.logo_or_image, 600)} alt={selected.alt_text || `${selected.name} logo`} />
             </div>
             <h2>{selected.name}</h2>
             {selected.description && <p className="prose">{selected.description}</p>}

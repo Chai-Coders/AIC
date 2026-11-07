@@ -24,7 +24,7 @@ import {
   resolveRecordId,
 } from "./lib/history";
 import { todayIso } from "./lib/validate";
-import { TEXT_FORMAT, TEXTS, textPage } from "./lib/siteText";
+import { checkTextValue, TEXT_FORMAT, TEXTS, textPage } from "./lib/siteText";
 import { describeChange, displayValue } from "./versions";
 
 // The AI draft: changes proposed by connected AI apps (see mcp.ts). There is
@@ -41,7 +41,7 @@ export async function pendingDraft(ctx: QueryCtx) {
     .first();
 }
 
-async function openDraft(ctx: MutationCtx, app: string) {
+export async function openDraft(ctx: MutationCtx, app: string) {
   const draft = await pendingDraft(ctx);
   if (draft) {
     // Several apps can add to the same draft; list each once.
@@ -60,7 +60,7 @@ async function openDraft(ctx: MutationCtx, app: string) {
   });
 }
 
-async function draftChanges(ctx: QueryCtx, versionId: Id<"versions">) {
+export async function draftChanges(ctx: QueryCtx, versionId: Id<"versions">) {
   const changes = await ctx.db
     .query("changes")
     .withIndex("by_version", (q) => q.eq("versionId", versionId))
@@ -81,7 +81,7 @@ export function parseFieldKey(key: string) {
 export const fieldKey = (entity: Entity, recordId: string, field: string) => `${ENTITIES[entity].type}/${recordId}/${field}`;
 
 /** The live record, or the draft's create change for a "new-N" record. */
-async function findTarget(ctx: QueryCtx, versionId: Id<"versions"> | null, entity: Entity, recordId: string) {
+export async function findTarget(ctx: QueryCtx, versionId: Id<"versions"> | null, entity: Entity, recordId: string) {
   if (recordId.startsWith("new-")) {
     if (!versionId) throw new ConvexError(`There is no draft record "${recordId}".`);
     const created = await ctx.db
@@ -105,6 +105,7 @@ export const proposeEdit = internalMutation({
     const { def, recordId, field } = parseFieldKey(key);
     if (field.kind === "image") throw new ConvexError("Pictures are changed with propose_image or request_upload_link.");
     const normalized = normalizeValue(field, value);
+    if (def.entity === "siteText") checkTextValue(recordId, (normalized as string | null) ?? "");
     const versionId = await openDraft(ctx, app);
     const { live } = await findTarget(ctx, versionId, def.entity, recordId);
     const id = live?._id ?? recordId;
@@ -372,6 +373,7 @@ export const editValue = mutation({
     const { change } = await draftChange(ctx, changeId);
     const field = fieldDef(change.entity, key ?? change.field);
     let normalized = normalizeValue(field, value);
+    if (change.entity === "siteText") checkTextValue(change.recordId, (normalized as string | null) ?? "");
     if (field.kind === "image" && normalized !== null) {
       const imageId = ctx.db.normalizeId("images", String(normalized));
       if (!imageId || !(await ctx.db.get(imageId))) throw new ConvexError("The picture could not be found. Please upload it again.");

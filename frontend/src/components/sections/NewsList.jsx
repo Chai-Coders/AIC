@@ -3,6 +3,7 @@ import AsyncState, { EmptyState, SkeletonGrid } from '../common/AsyncState';
 import NewsCard from '../cards/NewsCard';
 import useApi from '../../hooks/useApi';
 import { fetchAllNews } from '../../api/content';
+import { Text } from '../../content/Text';
 
 /** All news from the /news/ API: the latest item is featured, the rest form a grid. */
 const NewsList = () => {
@@ -12,7 +13,7 @@ const NewsList = () => {
     <AsyncState
       state={news}
       skeleton={<SkeletonGrid count={6} />}
-      empty={<EmptyState icon="fa-newspaper-o" title="No news yet">Announcements will appear here.</EmptyState>}
+      empty={<EmptyState icon="fa-newspaper-o" title={<Text k="words.noNews" />}><Text k="words.noNewsHint" /></EmptyState>}
     >
       {([latest, ...rest]) => (
         <div className="stack">

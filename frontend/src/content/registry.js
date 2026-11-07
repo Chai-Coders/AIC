@@ -131,7 +131,57 @@ const CONTACT = group('Contact details', 'contact', {
   ]),
 });
 
-export const SHARED = [HEADER, FOOTER, CONTACT];
+// Addresses people go to. Each needs to be a full web address.
+const LINKS = group('Links', 'links', {
+  apply: line('Apply for incubation form', 'https://forms.gle/2c4NgmXp4B16zGet6'),
+  recognition: line('Startup recognition form', 'https://goo.gl/forms/5BGUvajn6IoUryqF3'),
+  register: line('Register form', 'https://goo.gl/forms/bYQ16uftJgLtssgr2'),
+  siaForm: line('Pre-incubation (SIA) form', 'https://docs.google.com/forms/d/e/1FAIpQLScMg2bbHeF0wbV_feQlbAcHz1ro78PdpYNEwKni870ZSvl4mg/viewform'),
+  sisfs: line('Seed Fund (SISFS) site', 'https://seedfund.startupindia.gov.in/'),
+  host: line('IIIT Kottayam website', 'http://www.iiitkottayam.ac.in/'),
+  map: line('Google Maps link', 'https://maps.app.goo.gl/XuuDfrAYVuXhok899'),
+  facebook: line('Facebook', 'https://www.facebook.com/aiciiitkottayam/'),
+  x: line('X (Twitter)', 'https://twitter.com/AICIIITKottayam'),
+  linkedin: line('LinkedIn', 'https://www.linkedin.com/company/aic-iiitkottayam'),
+  youtube: line('YouTube', 'https://www.youtube.com/'),
+  instagram: line('Instagram', 'https://www.instagram.com/aic.iiitkottayam/'),
+});
+
+// Small words the site uses in several places.
+const WORDS = group('Buttons and messages', 'words', {
+  home: line('Breadcrumb: home', 'Home'),
+  details: line('Startup card: details link', 'Details'),
+  website: line('Startup card: website link', 'Website'),
+  searchStartups: line('Startup search box label', 'Search startups'),
+  noStartups: line('No startups listed', 'No startups listed yet'),
+  tryDifferent: line('No startups found', 'Try a different name or keyword.'),
+  noNews: line('No news: heading', 'No news yet'),
+  noNewsHint: line('No news: text', 'Announcements will appear here.'),
+  noPhotos: line('No photos: heading', 'No photos yet'),
+  noPhotosHint: line('No photos: text', 'Check back soon for photos from our events.'),
+  loadError: line('Could not load: heading', 'We couldn’t load this right now'),
+  tryAgain: line('Could not load: button', 'Try again'),
+  splash: line('Loading screen caption', 'Atal Incubation Centre · IIIT Kottayam'),
+});
+
+// The trail above page titles. Found by the wording in PageHero.
+const CRUMBS = group('Breadcrumbs', 'crumb', {
+  about: line('About', 'About'),
+  acceleration: line('Acceleration', 'Acceleration'),
+  boardofgovernors: line('Board of Governors', 'Board of Governors'),
+  careers: line('Careers', 'Careers'),
+  gallery: line('Gallery', 'Gallery'),
+  mentors: line('Mentors', 'Mentors'),
+  news: line('News', 'News'),
+  notfound: line('Not found', 'Not found'),
+  ourteam: line('Our Team', 'Our Team'),
+  programs: line('Programs', 'Programs'),
+  sia: line('SIA', 'SIA'),
+  sisfs: line('SISFS', 'SISFS'),
+  whoweare: line('Who we are', 'Who we are'),
+});
+
+export const SHARED = [HEADER, FOOTER, CONTACT, LINKS, WORDS, CRUMBS];
 
 // Used on more than one page.
 const NEWS_CARD = group('News cards', 'news.card', { more: line('Read more link', 'Read more') });

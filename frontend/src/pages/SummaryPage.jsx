@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import PageLayout from '../components/common/PageLayout';
 import SectionHeader from '../components/common/SectionHeader';
 import { CtaBanner, InfoCard } from '../components/sections/ProgramContent';
-import { APPLY_URL, HOST_INSTITUTE_URL } from '../data/site';
 import { Text } from '../content/Text';
+import { useText } from '../content/useText';
 
 // Titles and texts are summary.pillars.<i>.title / .text.
 const PILLAR_COUNT = 4;
 
-const SummaryPage = () => (
+const SummaryPage = () => {
+  const t = useText();
+  return (
   <PageLayout
     title="Who we are"
     hero={{ prefix: 'summary.hero', breadcrumbs: [{ label: 'About' }, { label: 'Who we are' }] }}
@@ -30,7 +32,7 @@ const SummaryPage = () => (
             <Text k="summary.story.text" />
           </p>
           <div className="btn-row">
-            <a className="btn btn--primary" href={APPLY_URL} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn--primary" href={t('links.apply')} target="_blank" rel="noopener noreferrer">
               <Text k="summary.story.apply" />
             </a>
             <Link className="btn btn--outline" to="/aicteam">
@@ -79,7 +81,7 @@ const SummaryPage = () => (
             <Text k="summary.cards.host.text" />
           </p>
           <div className="card__footer">
-            <a className="text-link" href={HOST_INSTITUTE_URL} target="_blank" rel="noopener noreferrer">
+            <a className="text-link" href={t('links.host')} target="_blank" rel="noopener noreferrer">
               <Text k="summary.cards.host.link" /> <i className="fa fa-external-link" aria-hidden="true" />
             </a>
           </div>
@@ -104,10 +106,11 @@ const SummaryPage = () => (
 
     <section className="section">
       <div className="container">
-        <CtaBanner prefix="summary.cta" action={{ href: APPLY_URL, icon: 'fa-arrow-right' }} />
+        <CtaBanner prefix="summary.cta" action={{ href: t('links.apply'), icon: 'fa-arrow-right' }} />
       </div>
     </section>
   </PageLayout>
 );
+};
 
 export default SummaryPage;
