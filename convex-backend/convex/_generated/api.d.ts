@@ -17,6 +17,8 @@ import type * as ai_drafts from "../ai/drafts.js";
 import type * as ai_flow from "../ai/flow.js";
 import type * as ai_models from "../ai/models.js";
 import type * as ai_preview from "../ai/preview.js";
+import type * as ai_priceSources from "../ai/priceSources.js";
+import type * as ai_prices from "../ai/prices.js";
 import type * as ai_prompts from "../ai/prompts.js";
 import type * as ai_publish from "../ai/publish.js";
 import type * as ai_records from "../ai/records.js";
@@ -39,6 +41,7 @@ import type * as news from "../news.js";
 import type * as siteText from "../siteText.js";
 import type * as startups from "../startups.js";
 import type * as team from "../team.js";
+import type * as testCleanup from "../testCleanup.js";
 import type * as users from "../users.js";
 
 import type {
@@ -57,6 +60,8 @@ declare const fullApi: ApiFromModules<{
   "ai/flow": typeof ai_flow;
   "ai/models": typeof ai_models;
   "ai/preview": typeof ai_preview;
+  "ai/priceSources": typeof ai_priceSources;
+  "ai/prices": typeof ai_prices;
   "ai/prompts": typeof ai_prompts;
   "ai/publish": typeof ai_publish;
   "ai/records": typeof ai_records;
@@ -79,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   siteText: typeof siteText;
   startups: typeof startups;
   team: typeof team;
+  testCleanup: typeof testCleanup;
   users: typeof users;
 }>;
 

@@ -109,7 +109,7 @@ function ConfirmCard({ draft, onError }) {
 function ModelPicker({ settings, onError }) {
   const save = useMutation(api.settings.save);
   const current = settings.editorModel;
-  const models = settings.priceTable.filter((p) => settings.providers.some((x) => x.name === p.provider && x.configured));
+  const models = settings.priceTable.filter((p) => p.available !== false && settings.providers.some((x) => x.name === p.provider && x.configured));
   const change = async (e) => {
     const [provider, ...rest] = e.target.value.split('/');
     const next = { provider, model: rest.join('/') };
@@ -128,7 +128,7 @@ function ModelPicker({ settings, onError }) {
       )}
       {models.map((m) => (
         <option key={`${m.provider}/${m.model}`} value={`${m.provider}/${m.model}`}>
-          {m.model}
+          {m.name ?? m.model}
         </option>
       ))}
     </select>

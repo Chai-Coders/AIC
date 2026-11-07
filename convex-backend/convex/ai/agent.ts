@@ -60,6 +60,7 @@ async function recordUsage(
   await ctx.runMutation(internal.ai.audit.log, {
     userId,
     changeSetId: args.changeSetId,
+    model: args.model,
     action: `model.${args.role}`,
     detail: { model: args.model, inputTokens, outputTokens },
     costUsd,
@@ -141,7 +142,7 @@ export const editorStep = internalAction({
         name: "AI Assistant",
         languageModel: languageModel(ref.provider, ref.model, apiKey),
         instructions: EDITOR_INSTRUCTIONS,
-        tools: editorTools({ ctx, changeSetId, runSeq, userId: cs.createdBy }),
+        tools: editorTools({ ctx, changeSetId, runSeq, userId: cs.createdBy, model: ref.model }),
         usageHandler: async (usageCtx, { usage }) => {
           await recordUsage(usageCtx as ActionCtx, meta, usage);
         },
@@ -177,7 +178,7 @@ export const saveVerdict = internalMutation({
     if (!cs || cs.runSeq !== runSeq || cs.status !== "reviewing") return;
     const now = Date.now();
     const review = { verdict: approved ? ("approved" as const) : ("rejected" as const), reasons, at: now };
-    await audit(ctx, { userId: cs.createdBy, changeSetId, action: approved ? "review.approved" : "review.rejected", detail: { reasons } });
+    await audit(ctx, { userId: cs.createdBy, changeSetId, model: cs.reviewerModel.model, action: approved ? "review.approved" : "review.rejected", detail: { reasons } });
     if (approved) {
       await ctx.db.patch(changeSetId, { status: "ready", running: false, review, notice: undefined, updatedAt: now });
       return;
@@ -238,7 +239,7 @@ export const reviewStep = internalAction({
         model: languageModel(ref.provider, ref.model, apiKey),
         system: REVIEWER_INSTRUCTIONS,
         prompt,
-        tools: reviewerTools({ ctx, changeSetId, userId: cs.createdBy }, (result) => {
+        tools: reviewerTools({ ctx, changeSetId, userId: cs.createdBy, model: ref.model }, (result) => {
           verdict = result;
         }) as any,
         maxOutputTokens: MAX_OUTPUT_TOKENS,

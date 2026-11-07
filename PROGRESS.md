@@ -62,6 +62,10 @@ Other tests use a scripted fake model. Claude's request shape was checked agains
 2026-11-07 `gemini-3.8-flash` was returning 503 (high demand), and `gemini-2.5-flash-lite` returned 404 for new users though
 Google's pricing page still lists it.
 
+Real price sources, 2026-11-07: all four answered, and the prices were checked by hand against the official pages. They
+settled the one disagreement between the lists (`gemini-3.8-flash` is $0.75 on Google's page). OpenAI's prices come only from the
+two lists, since its page refuses automated requests.
+
 ## Open
 
 - The agent can't change styling or layout, which the doc's goals include. Left out for now by decision.
@@ -69,6 +73,9 @@ Google's pricing page still lists it.
 - The site's own logo is a file in the code, so the agent can't change it and says so.
 - Not yet run on real Gemini (daily free limit reached on 2026-11-07): the review seeing the editor's reply, so a draft isn't rejected
   because the agent said it can't change the site's logo. Checked with the fake model only.
+
+- The spend meter is an estimate, not a provider balance: a normal API key can't read one. Anthropic and OpenAI have admin
+  APIs for real costs, which need a separate admin key. Google has no equivalent.
 
 ## Follow-ups
 

@@ -98,6 +98,33 @@ minute is used without asking the server, so moving between pages stays instant.
 asks, so a publish or rollback shows at once. A tab left open and untouched keeps what it has until the visitor moves between
 pages or comes back to it.
 
+## Prices and model names
+
+`convex/ai/prices.ts` checks every day, when a key is saved, and from **Check prices now** on the settings page.
+Each model's price comes from the first of these that applies (`priceSources.ts`):
+
+1. The provider's own price page: Anthropic's and Google's can be read as text. OpenAI's refuses automated requests.
+2. LiteLLM and OpenRouter, two independent public price lists, when they agree.
+3. Otherwise the higher of the two, marked as unconfirmed, because reading high can only stop the assistant early.
+
+A price page that's far from both lists is treated as misread. An unconfirmed price far from the last known one is held
+back and flagged. A source that's down changes nothing, and a model is only removed when every source answered without it
+and it isn't in use. Prices the admin enters always win. Names come from the provider where the key can ask, then the lists,
+and only plain characters get through. Keys only go to their own provider, to ask which models they can use; that isn't a
+model call, so it costs nothing. Past usage keeps the cost worked out at the time.
+
+## Usage and the log
+
+The settings page splits usage by month, provider, model and job (editing or review), with a total that matches the meter.
+The activity log on AI history filters by category and by model, with what the selection adds up to. It looks at the latest
+1,000 entries.
+
+## Rollback steps
+
+A publish, its rollback, the undo of that rollback and so on form a chain, and every other step takes the change off the
+site. `versions.ts` works out each row's wording from its place in the chain, so older rows read properly too. The last step
+is the only one with a button: **Undo this rollback** while the change is off, **Roll back** while it's live.
+
 ## When the agent asks
 
 It works for AIC IIITK: "our", "we" and "our logo" mean the incubator, and startups are other companies. It asks instead of
@@ -108,7 +135,8 @@ in the code, so it says it can't change that. Up to 3 pictures can be attached t
 
 - **Busy models and limits:** when a provider is overloaded or a limit is hit, the assistant waits and retries
   up to 4 times (a notice says so), then stops and keeps the draft. Each model call has a 3-minute time limit.
-- **Spend:** cost is tokens × the price table on the settings page. Cached tokens are counted at the full input
+- **Spend:** the meter is an estimate, and updates by itself after every model call. Providers don't tell a normal
+  API key its balance, so cost is the tokens they report (thinking tokens included) × the current prices. Cached tokens are counted at the full input
   price and no prompt caching is requested, so the meter errs high and long chats cost more than they could.
 - **Website deploy:** the frontend must be deployed with `AgentBridge.jsx` for the preview to work in production.
 

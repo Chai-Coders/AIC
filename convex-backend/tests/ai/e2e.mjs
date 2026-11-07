@@ -252,6 +252,145 @@ const tests = {
     assert.ok(!(await live()).text.some((t) => t.key === 'notFound.hero.home'));
   },
 
+  async 'prices: the most trusted source wins, and a bad one changes nothing'() {
+    const priceOf = async (model) => (await c.query(api.ai.settings.get, {})).priceTable.find((p) => p.model === model);
+    await control('feeds', {});
+    let result = await c.action(api.ai.prices.refreshNow, {});
+    assert.deepEqual(result.failed, []);
+
+    let p = await priceOf('claude-test-official');
+    assert.deepEqual([p.inputPerMTok, p.outputPerMTok, p.source], [5, 10, 'official'], 'the price page beats both lists');
+    p = await priceOf('claude-test-tier');
+    assert.deepEqual([p.inputPerMTok, p.outputPerMTok], [1, 2], 'small prompts pay the lower tier');
+    p = await priceOf('claude-test-wrong');
+    assert.deepEqual([p.inputPerMTok, p.source], [5, 'agreed'], 'a page price far from both lists is a misread');
+    p = await priceOf('gemini-test-official');
+    assert.deepEqual([p.inputPerMTok, p.outputPerMTok, p.source], [0.75, 3.75, 'official'], "Google's page is read too");
+    p = await priceOf('claude-test-agreed');
+    assert.deepEqual([p.inputPerMTok, p.source, p.name], [1, 'agreed', 'Claude Test Agreed'], "two lists agreeing, with the provider's own name");
+    p = await priceOf('claude-test-differ');
+    assert.deepEqual([p.inputPerMTok, p.outputPerMTok, p.source], [2, 3, 'unconfirmed'], 'lists that differ: the higher, marked');
+    p = await priceOf('claude-test-only');
+    assert.deepEqual([p.source, p.available], ['unconfirmed', false], "one list only, and this key can't use it");
+    for (const model of ['claude-embed-test', 'claude-test-zero', 'claude-test-old', 'claude-test-picture', 'thing', 'claude-test-agreed:batch']) {
+      assert.equal(await priceOf(model), undefined, `${model} isn't offered`);
+    }
+    const headers = await control('feedHeaders');
+    assert.ok(headers.length >= 4 && !headers.flat().some((h) => /key|authorization/i.test(h)), 'no API key goes to a price source');
+
+    // A name from outside can't carry markup.
+    await control('feeds', { 'openrouter.json': JSON.stringify({ data: [{ id: 'anthropic/claude-test-markup', name: 'Anthropic: <b>x</b>', pricing: { prompt: '0.000001', completion: '0.000002' } }] }) });
+    await c.action(api.ai.prices.refreshNow, {});
+    assert.equal((await priceOf('claude-test-markup')).name, 'Claude Test Markup');
+
+    // The admin's own price stays through a check.
+    await control('feeds', {});
+    await c.mutation(api.ai.settings.save, { priceTable: [{ provider: 'anthropic', model: 'claude-test-agreed', inputPerMTok: 9, outputPerMTok: 9 }] });
+    await c.action(api.ai.prices.refreshNow, {});
+    p = await priceOf('claude-test-agreed');
+    assert.deepEqual([p.inputPerMTok, p.source, p.name], [9, 'admin', 'Claude Test Agreed']);
+    await c.mutation(api.ai.settings.save, { priceTable: [] });
+    assert.equal((await priceOf('claude-test-agreed')).inputPerMTok, 1, 'and goes back to automatic');
+
+    // An unconfirmed jump isn't believed.
+    const LLF = (i, o) => ({ litellm_provider: 'anthropic', mode: 'chat', input_cost_per_token: i / 1e6, output_cost_per_token: o / 1e6 });
+    await control('feeds', { 'litellm.json': JSON.stringify({ 'claude-opus-5-5': LLF(4, 20), 'claude-test-differ': LLF(100, 200) }) });
+    result = await c.action(api.ai.prices.refreshNow, {});
+    assert.ok(result.held.includes('claude-test-differ'));
+    p = await priceOf('claude-test-differ');
+    assert.deepEqual([p.inputPerMTok, p.held], [2, true], 'the last price stays');
+
+    // A source down, or a page whose layout changed: the others carry on, nothing is removed.
+    await control('feeds', { 'openrouter.json': null, 'anthropic.md': '<html>Welcome</html>' });
+    result = await c.action(api.ai.prices.refreshNow, {});
+    assert.deepEqual([...result.failed].sort(), ["Anthropic's price page", 'OpenRouter']);
+    assert.ok(await priceOf('claude-test-differ'));
+    assert.equal((await priceOf('claude-opus-5-5')).inputPerMTok, 4);
+    await control('feeds', { 'openrouter.json': null, 'litellm.json': null, 'anthropic.md': null, 'google.md': null });
+    result = await c.action(api.ai.prices.refreshNow, {});
+    assert.equal(result.failed.length, 4);
+    assert.ok(await priceOf('claude-test-differ'), 'everything down keeps every price');
+    assert.equal((await c.query(api.ai.settings.get, {})).priceCheck.failed.length, 4, 'and the settings page can say so');
+
+    // Gone from every source, with all of them answering.
+    await control('feeds', { 'litellm.json': JSON.stringify({ 'claude-opus-5-5': LLF(4, 20) }), 'openrouter.json': JSON.stringify({ data: [{ id: 'anthropic/claude-opus-5.5', name: 'Anthropic: Claude Opus 5.5', pricing: { prompt: '0.000004', completion: '0.00002' } }] }) });
+    await c.action(api.ai.prices.refreshNow, {});
+    assert.equal(await priceOf('claude-test-differ'), undefined);
+    await control('feeds', {});
+  },
+
+  async 'usage and the log are separate for each model, and add up'() {
+    const item = (await live()).news[0];
+    await c.mutation(api.ai.settings.save, { editorModel: { provider: 'anthropic', model: 'claude-haiku-5-5' }, reviewerModel: { provider: 'anthropic', model: 'claude-sonnet-5-5' } });
+    const before = await spent();
+    const NEW = `Split ${Date.now()}`;
+    await control('script', { script: [{ tools: [['update_record', { table: 'news', id: item.id, field: 'title', value: NEW }], describe('Rename')] }, DONE, OK] });
+    const { threadId, changeSetId } = await say('Rename it');
+    await inState(threadId, 'ready');
+    assert.ok((await spent()) > before, 'the meter moved');
+
+    await c.mutation(api.ai.settings.save, { editorModel: { provider: 'anthropic', model: 'claude-opus-5-5' }, reviewerModel: { provider: 'anthropic', model: 'claude-opus-5-5' } });
+    const { rows, totalUsd } = await c.query(api.ai.usage.summary, {});
+    const row = (model, role) => rows.find((r) => r.model === model && r.role === role);
+    assert.ok(row('claude-haiku-5-5', 'editor').calls >= 2 && row('claude-sonnet-5-5', 'reviewer').calls >= 1, 'each model and job has its own row');
+    assert.equal(row('claude-haiku-5-5', 'editor').name, 'Claude Haiku 5.5', 'with its name');
+    assert.ok(Math.abs(totalUsd - (await spent())) < 1e-9, 'the rows add up to the meter');
+    assert.ok(Math.abs(rows.reduce((sum, r) => sum + r.costUsd, 0) - totalUsd) < 1e-9);
+
+    const log = (args) => c.query(api.ai.audit.browse, args);
+    const editor = await log({ model: 'claude-haiku-5-5' });
+    const reviewer = await log({ model: 'claude-sonnet-5-5' });
+    assert.ok(editor.rows.some((r) => r.action === 'tool.update_record') && editor.rows.some((r) => r.action === 'model.editor'), "the editor's actions and calls");
+    assert.ok(!editor.rows.some((r) => r.action.includes('review')), 'and none of the reviewer\'s');
+    assert.ok(reviewer.rows.some((r) => r.action === 'model.reviewer') && reviewer.rows.some((r) => r.action === 'review.approved'), "the reviewer's");
+    assert.ok(editor.models.includes('claude-haiku-5-5') && editor.models.includes('claude-sonnet-5-5'), 'the filter lists both');
+    const calls = await log({ category: 'models', model: 'claude-haiku-5-5' });
+    assert.ok(calls.rows.length > 0 && calls.rows.every((r) => r.category === 'models' && r.model === 'claude-haiku-5-5' && r.costUsd > 0));
+    assert.ok(calls.costUsd > 0 && calls.modelCalls === calls.total);
+    assert.ok((await log({ category: 'requests' })).rows.every((r) => r.action === 'prompt'));
+
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'each step of rollback and undo says what it did'() {
+    const item = (await live()).news[0];
+    const NEW = `Chain ${Date.now()}`;
+    const title = async () => (await live()).news.find((n) => n.id === item.id).title;
+    await control('script', { script: [{ tools: [['update_record', { table: 'news', id: item.id, field: 'title', value: NEW }], describe('Rename')] }, DONE, OK] });
+    const { threadId, changeSetId } = await say('Rename it');
+    await inState(threadId, 'ready');
+    await c.mutation(api.ai.publish.publish, { changeSetId });
+    const versions = () => c.query(api.ai.versions.list, {});
+    const [published] = await versions();
+    assert.equal(published.status, 'Live');
+    const about = published.summary;
+
+    const first = await c.mutation(api.ai.versions.rollback, { versionId: published.id });
+    assert.equal(first.undidRollback, false);
+    assert.equal(await title(), item.title);
+    let [newest, old] = await versions();
+    assert.deepEqual([newest.summary, newest.status, newest.isRollback], [`Rolled back: ${about}`, 'Rollback in effect', true]);
+    assert.equal(old.status, 'Rolled back');
+
+    const second = await c.mutation(api.ai.versions.rollback, { versionId: newest.id });
+    assert.equal(second.undidRollback, true);
+    assert.equal(await title(), NEW, 'the change is back');
+    const after = await versions();
+    assert.deepEqual([after[0].summary, after[0].status, after[0].isRollback, after[0].rolledBack], [`Put back: ${about}`, 'Live again', false, false], 'a put-back change offers Roll back, not Undo this rollback');
+    assert.equal(after[1].status, 'Undone');
+    assert.equal(after[2].status, 'Put back later', 'the original publish knows it is live again');
+    assert.ok(!after[0].summary.includes('Rolled back: Rolled back'));
+    await rejects(() => c.mutation(api.ai.versions.rollback, { versionId: after[1].id }), /already been undone/);
+    const log = await c.query(api.ai.audit.list, { changeSetId });
+    assert.ok(log.some((r) => r.action === 'rollback.undo'), 'the log says it was an undo');
+
+    await c.mutation(api.ai.versions.rollback, { versionId: after[0].id });
+    assert.equal(await title(), item.title);
+    const third = await versions();
+    assert.deepEqual([third[0].summary, third[0].status], [`Rolled back: ${about}`, 'Rollback in effect']);
+    assert.equal(third.find((v) => v.id === published.id).status, 'Rolled back', 'and it follows the last step');
+  },
+
   async 'rollback refuses to overwrite a later edit'() {
     const item = (await live()).startups[0];
     await script([{ tools: [['update_record', { table: 'startups', id: item.id, field: 'name', value: 'Agent Name' }]] }, DONE, OK]);
@@ -768,7 +907,12 @@ const tests = {
 const { tokens } = await c.action(api.auth.signIn, { provider: 'password', params: { email, password, flow: 'signIn' } });
 c.setAuth(tokens.token);
 await c.action(api.ai.settings.setProviderKey, { provider: 'anthropic', apiKey: 'sk-ant-fake-key-1234' });
-await c.mutation(api.ai.settings.save, { monthlyBudgetUsd: 20 });
+const contentPrint=(s)=>JSON.stringify([s.news.map(x=>x.title),s.gallery.map(x=>x.subtext),s.startups.map(x=>x.name),s.team.map(x=>x.name),s.sections,s.text].map(a=>JSON.stringify(a)).sort());
+const liveBefore = contentPrint(await live());
+// These tests choose their own models and budget. Put the admin's back afterwards.
+const saved = await c.query(api.ai.settings.get, {});
+const OPUS = { provider: 'anthropic', model: 'claude-opus-5-5' };
+await c.mutation(api.ai.settings.save, { editorModel: OPUS, reviewerModel: OPUS, monthlyBudgetUsd: 20 });
 
 let failed = 0;
 for (const [name, test] of Object.entries(tests)) {
@@ -782,5 +926,10 @@ for (const [name, test] of Object.entries(tests)) {
     console.log(`  FAIL  ${name}\n        ${String(e.data ?? e.message).slice(0, 600)}`);
   }
 }
+if (!only && contentPrint(await live()) !== liveBefore) {
+  failed++;
+  console.log('  FAIL  the tests left something different on the live site');
+}
+await c.mutation(api.ai.settings.save, { editorModel: saved.editorModel, reviewerModel: saved.reviewerModel, monthlyBudgetUsd: saved.monthlyBudgetUsd });
 console.log(failed ? `${failed} failed` : 'all passed');
 process.exit(failed ? 1 : 0);

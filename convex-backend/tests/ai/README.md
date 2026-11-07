@@ -28,6 +28,15 @@ npm i --no-save playwright-core
 TEST_EMAIL=test@aic.local TEST_PASSWORD=... SHOTS_DIR=/tmp REPO="$(cd ../ && pwd)" node tests/ai/ui.mjs
 ```
 
-**Afterwards remove `ANTHROPIC_BASE_URL` and `GOOGLE_BASE_URL`** (`npx convex env
+Also set `PRICE_FEED_BASE_URL` to `http://127.0.0.1:4599/feeds`, so the price check reads the fake sources.
+
+Both suites choose their own model and put the admin's back at the end, and both fail if the live site's content differs
+from when they started. They run against the real database, so give them time to finish (the backend suite takes
+about 5 minutes): one that's killed partway can't restore anything.
+
+When finished, run `npx convex run testCleanup:run`. It removes the test admin and what it made, so fake costs don't stay on
+the spend meter. Then run `npx convex run ai/prices:refresh` to read the real prices again.
+
+**Afterwards remove `ANTHROPIC_BASE_URL`, `GOOGLE_BASE_URL` and `PRICE_FEED_BASE_URL`** (`npx convex env
 remove NAME`), or the deployment will keep sending your real API key to the fake
 server. The Gemini check needs a Google key saved in the deployment.

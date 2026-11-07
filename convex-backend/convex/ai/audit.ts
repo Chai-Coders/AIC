@@ -15,7 +15,7 @@ function trim(value: unknown, depth = 0): unknown {
 
 export async function audit(
   ctx: MutationCtx,
-  entry: { userId?: Id<"users">; action: string; changeSetId?: Id<"changeSets">; detail?: unknown; costUsd?: number },
+  entry: { userId?: Id<"users">; action: string; changeSetId?: Id<"changeSets">; model?: string; detail?: unknown; costUsd?: number },
 ) {
   await ctx.db.insert("auditLog", { ...entry, detail: trim(entry.detail ?? null), at: Date.now() });
 }
@@ -25,10 +25,43 @@ export const log = internalMutation({
     userId: v.optional(v.id("users")),
     action: v.string(),
     changeSetId: v.optional(v.id("changeSets")),
+    model: v.optional(v.string()),
     detail: v.optional(v.any()),
     costUsd: v.optional(v.number()),
   },
   handler: async (ctx, entry) => audit(ctx, entry),
+});
+
+// How far back the log page looks, so one query stays small.
+const BROWSE_LOOKBACK = 1000;
+
+export function categoryOf(action: string) {
+  if (action === "prompt") return "requests";
+  if (action.startsWith("tool.")) return "edits";
+  if (action.startsWith("model.")) return "models";
+  if (action.startsWith("review.") || action === "publish.overrideReview") return "reviews";
+  if (action.startsWith("publish") || action.startsWith("rollback") || action === "discard") return "publishing";
+  if (action.startsWith("settings.") || action.startsWith("prices.")) return "settings";
+  return "other";
+}
+
+/** The log page: one category and one model at a time, with what they add up to. */
+export const browse = query({
+  args: { category: v.optional(v.string()), model: v.optional(v.string()), limit: v.optional(v.number()) },
+  handler: async (ctx, { category, model, limit }) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db.query("auditLog").withIndex("by_at").order("desc").take(BROWSE_LOOKBACK);
+    const withInfo = rows.map((row) => ({ ...row, category: categoryOf(row.action), model: row.model ?? (row.detail?.model as string | undefined) }));
+    const models = [...new Set(withInfo.flatMap((row) => (row.model ? [row.model] : [])))].sort();
+    const shown = withInfo.filter((row) => (!category || row.category === category) && (!model || row.model === model));
+    return {
+      rows: shown.slice(0, Math.min(limit ?? 100, 500)),
+      models,
+      total: shown.length,
+      modelCalls: shown.filter((row) => row.category === "models").length,
+      costUsd: shown.reduce((sum, row) => sum + (row.costUsd ?? 0), 0),
+    };
+  },
 });
 
 /** Most recent entries, optionally for one draft. */

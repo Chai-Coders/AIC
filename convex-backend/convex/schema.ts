@@ -289,6 +289,8 @@ export default defineSchema({
     userId: v.optional(v.id("users")),
     action: v.string(),
     changeSetId: v.optional(v.id("changeSets")),
+    // The model that did it, when one did.
+    model: v.optional(v.string()),
     detail: v.any(),
     costUsd: v.optional(v.number()),
     at: v.number(),
@@ -309,6 +311,23 @@ export default defineSchema({
     at: v.number(),
   }).index("by_month", ["month"]),
 
+  // Model names and prices, kept current by ai/prices.ts. What the admin sets in
+  // aiSettings.priceTable wins over these.
+  modelPrices: defineTable({
+    provider: providerName,
+    model: v.string(),
+    name: v.string(),
+    inputPerMTok: v.number(),
+    outputPerMTok: v.number(),
+    source: v.union(v.literal("official"), v.literal("agreed"), v.literal("unconfirmed")),
+    sourceLabel: v.string(),
+    // Whether the saved key can use it. Absent when that isn't known.
+    available: v.optional(v.boolean()),
+    // A new price looked wrong, so the last one is still in use.
+    held: v.optional(v.boolean()),
+    checkedAt: v.number(),
+  }),
+
   // One row of agent settings. API keys are encrypted (AES-GCM, key in the
   // AI_SETTINGS_KEY environment variable) and never sent to the browser.
   aiSettings: defineTable({
@@ -320,9 +339,11 @@ export default defineSchema({
     monthlyBudgetUsd: v.number(),
     // USD per million tokens.
     priceTable: v.array(
-      v.object({ provider: providerName, model: v.string(), inputPerMTok: v.number(), outputPerMTok: v.number() }),
+      v.object({ provider: providerName, model: v.string(), inputPerMTok: v.number(), outputPerMTok: v.number(), source: v.optional(v.string()) }),
     ),
     pricesUpdatedAt: v.number(),
+    // What the last automatic price check found.
+    priceCheck: v.optional(v.any()),
     updatedAt: v.number(),
   }),
 });

@@ -17,24 +17,47 @@ import { audit } from "./audit";
  * would leave the assistant on Claude, failing for want of a Claude key.
  */
 function withUsableModels<T extends Pick<Doc<"aiSettings">, "providers" | "editorModel" | "reviewerModel" | "priceTable">>(row: T): T {
-  const priceTable = [...row.priceTable, ...DEFAULT_PRICES.filter((d) => !row.priceTable.some((p) => p.provider === d.provider))];
   const usable = (ref: ModelRef) => {
     if (row.providers.length === 0 || row.providers.some((p) => p.name === ref.provider)) return ref;
     return row.providers.map((p) => PROVIDER_DEFAULT_MODEL[p.name]).find(Boolean) ?? ref;
   };
-  return { ...row, priceTable, editorModel: usable(row.editorModel), reviewerModel: usable(row.reviewerModel) };
+  return { ...row, editorModel: usable(row.editorModel), reviewerModel: usable(row.reviewerModel) };
+}
+
+type PriceRow = Doc<"aiSettings">["priceTable"][number] & Partial<Pick<Doc<"modelPrices">, "name" | "sourceLabel" | "available" | "held" | "checkedAt">>;
+
+/**
+ * The price of every known model: what the admin set, then the automatic check, then
+ * the built-in defaults. An older saved price for a model nothing else knows about
+ * can only have been entered by hand, so it counts as the admin's.
+ */
+function mergePrices(saved: Doc<"aiSettings">["priceTable"], catalog: Doc<"modelPrices">[]): PriceRow[] {
+  const merged = new Map<string, PriceRow>();
+  const put = (row: PriceRow) => merged.set(`${row.provider}/${row.model}`, row);
+  for (const p of DEFAULT_PRICES) put({ ...p, source: "default", sourceLabel: "Built in, not checked yet" });
+  for (const p of saved) {
+    if (p.source !== "admin" && merged.has(`${p.provider}/${p.model}`)) continue;
+    put({ ...p, source: "admin", sourceLabel: "Your own price" });
+  }
+  for (const { _id, _creationTime, ...row } of catalog) {
+    const current = merged.get(`${row.provider}/${row.model}`);
+    if (current?.source === "admin") merged.set(`${row.provider}/${row.model}`, { ...current, name: row.name, available: row.available });
+    else put(row);
+  }
+  return [...merged.values()];
 }
 
 /** The settings row, or the defaults when none has been saved yet. */
-export async function loadSettings(ctx: QueryCtx): Promise<Omit<Doc<"aiSettings">, "_id" | "_creationTime">> {
+export async function loadSettings(ctx: QueryCtx): Promise<Omit<Doc<"aiSettings">, "_id" | "_creationTime" | "priceTable"> & { priceTable: PriceRow[] }> {
   const row = await ctx.db.query("aiSettings").first();
-  if (row) return withUsableModels(row);
+  const catalog = await ctx.db.query("modelPrices").collect();
+  if (row) return withUsableModels({ ...row, priceTable: mergePrices(row.priceTable, catalog) });
   return {
     providers: [],
     editorModel: DEFAULT_MODEL,
     reviewerModel: DEFAULT_MODEL,
     monthlyBudgetUsd: DEFAULT_BUDGET_USD,
-    priceTable: DEFAULT_PRICES,
+    priceTable: mergePrices([], catalog),
     pricesUpdatedAt: 0,
     updatedAt: 0,
   };
@@ -60,6 +83,7 @@ export const get = query({
       monthlyBudgetUsd: s.monthlyBudgetUsd,
       priceTable: s.priceTable,
       pricesUpdatedAt: s.pricesUpdatedAt || null,
+      priceCheck: s.priceCheck ?? null,
       encryptionReady: !!process.env.AI_SETTINGS_KEY,
     };
   },
@@ -71,7 +95,8 @@ async function upsert(ctx: Parameters<typeof loadSettings>[0] & { db: any }, pat
   if (row) {
     await ctx.db.patch(row._id, { ...patch, updatedAt: now });
   } else {
-    await ctx.db.insert("aiSettings", { ...(await loadSettings(ctx)), ...patch, updatedAt: now });
+    // Only the admin's own prices are stored here.
+    await ctx.db.insert("aiSettings", { ...(await loadSettings(ctx)), priceTable: [], ...patch, updatedAt: now });
   }
 }
 
@@ -110,7 +135,7 @@ export const save = mutation({
           throw new ConvexError(`Please enter a price for ${p.model}; its cost can't be tracked at 0.`);
         }
       }
-      patch.priceTable = args.priceTable.map((p) => ({ ...p, model: p.model.trim() }));
+      patch.priceTable = args.priceTable.map((p) => ({ ...p, model: p.model.trim(), source: "admin" }));
       patch.pricesUpdatedAt = Date.now();
     }
     await upsert(ctx, patch);
@@ -149,7 +174,14 @@ export const storeProviderKey = internalMutation({
     await upsert(ctx, { providers });
     // Never log the key itself.
     await audit(ctx, { userId, action: "settings.setKey", detail: { provider, last4 } });
+    // So the model lists show what this key can use straight away.
+    await ctx.scheduler.runAfter(0, internal.ai.prices.refresh, {});
   },
+});
+
+export const keyedProviders = internalQuery({
+  args: {},
+  handler: async (ctx) => (await loadSettings(ctx)).providers.map((p) => p.name),
 });
 
 /** Encrypted key for a provider (server only). */

@@ -29,6 +29,15 @@ await step('sidebar has AI Assistant first, page loads the site',async()=>{
   await site().locator('h1,h2').first().waitFor({timeout:90000});
   await shot('1-empty');
 });
+const contentPrint=(s)=>JSON.stringify([s.news.map(x=>x.title),s.gallery.map(x=>x.subtext),s.startups.map(x=>x.name),s.team.map(x=>x.name),s.sections,s.text].map(a=>JSON.stringify(a)).sort());
+// Anything left on the live site by a failed check is reported at the end.
+const liveBefore=contentPrint(await live());
+// These checks read the fake Claude's requests. Put the admin's model back at the end.
+const modelPicker=page.getByRole('combobox',{name:'AI model'});
+await modelPicker.waitFor({timeout:15000});
+const adminsModel=await modelPicker.inputValue();
+await modelPicker.selectOption('anthropic/claude-opus-5-5');
+await page.waitForTimeout(500);
 await step('the preview IS the real site: same images, buttons, links and text as the public website',async()=>{
   const facts=()=>{const seen=(e)=>{const r=e.getBoundingClientRect();const c=getComputedStyle(e);return r.width>0&&r.height>0&&c.visibility!=='hidden'&&c.display!=='none'};const q=(s)=>[...document.querySelectorAll(s)].filter(seen);return {sources:[...document.querySelectorAll('img')].map(i=>i.getAttribute('src')).join(' '),imgs:q('img').length,broken:q('img').filter(i=>i.complete&&i.naturalWidth===0).length,buttons:q('button,.btn').length,links:q('a[href]').length,headings:q('h1,h2,h3').map(h=>h.innerText.trim().replace(/\s+/g,' ')),height:document.documentElement.scrollHeight,headerLinks:q('header a').length,headerButtons:q('header button').length,h1Size:getComputedStyle(document.querySelector('h1')||document.body).fontSize,columns:q('.grid,.split').map(g=>getComputedStyle(g).gridTemplateColumns.split(' ').length).join(','),font:getComputedStyle(document.querySelector('h1')||document.body).fontFamily}};
   // Compare with the public site in a window the same size as this one, as the admin
@@ -265,15 +274,62 @@ await step('a reload of the public site shows a publish and a rollback straight 
   await publishEnabled().waitFor({timeout:40000});
   await publishEnabled().click();
   await page.getByText('Published.').first().waitFor({timeout:10000});
-  await pub.reload();await pub.getByText(HEADLINE).first().waitFor({timeout:4000});
-  // Straight after, well inside the minute the site used to trust its copy for.
-  await page.locator('nav a',{hasText:'AI history'}).click();
-  await page.getByRole('button',{name:'Roll back'}).first().click();
-  await page.getByText('Rolled back.').first().waitFor({timeout:15000});
+  // Always rolled back, even if this check fails: the headline is on the live site.
+  try{
+    await pub.reload();await pub.getByText(HEADLINE).first().waitFor({timeout:4000});
+  }finally{
+    // Straight after, well inside the minute the site used to trust its copy for.
+    await page.locator('nav a',{hasText:'AI history'}).click();
+    await page.getByRole('button',{name:'Roll back'}).first().click();
+    await page.getByText('Rolled back.').first().waitFor({timeout:15000});
+  }
   await pub.reload();await pub.getByText(item.title).first().waitFor({timeout:4000});
   assert.equal(await pub.getByText(HEADLINE).count(),0);
   await pub.context().close();
   await page.locator('nav a',{hasText:'AI Assistant'}).click();
+});
+await step('the spend meter moves by itself, and rollback buttons say what they do',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(800);
+  const item=(await live()).news[0];
+  const meter=page.getByRole('meter',{name:'Estimated AI spend this month'}).locator('xpath=..');
+  await meter.waitFor();
+  const before=await meter.innerText();
+  const HEADLINE=`Chain headline ${Date.now()}`;
+  await control('script',{script:[{tools:[['update_record',{table:'news',id:item.id,field:'title',value:HEADLINE}],['describe_change',{summary:'Rename',page:'/news',text:HEADLINE}]]},DONE,OK]});
+  await say('Rename the first news post');
+  await publishEnabled().waitFor({timeout:40000});
+  await page.waitForFunction((b)=>document.querySelector('[role=meter]').parentElement.innerText!==b,before,{timeout:10000});
+  await publishEnabled().click();
+  await page.getByText('Published.').first().waitFor({timeout:10000});
+  await page.locator('nav a',{hasText:'AI history'}).click();
+  const row=(summary)=>page.locator('li',{hasText:summary}).first();
+  await row(`Rolled back: `).or(row('Rename')).first().waitFor();
+  const newest=page.locator('section',{hasText:'Published versions'}).locator('li').first();
+  await newest.getByRole('button',{name:'Roll back'}).click();
+  await page.getByText('Rolled back.').first().waitFor({timeout:10000});
+  await newest.getByText('Rollback in effect').waitFor({timeout:5000});
+  await newest.getByRole('button',{name:'Undo this rollback'}).click();
+  await page.getByText('Rollback undone. The change is live again.').first().waitFor({timeout:10000});
+  await newest.getByText('Live again').waitFor({timeout:5000});
+  assert.match(await newest.innerText(),/^Put back: /,'it says the change was put back');
+  await newest.getByRole('button',{name:'Roll back',exact:true}).waitFor();
+  assert.equal(await newest.getByRole('button',{name:'Undo this rollback'}).count(),0,'nothing to undo on a change that is live');
+  assert.equal((await live()).news.find(n=>n.id===item.id).title,HEADLINE);
+  await shot('15-rollback-labels');
+  // The log, one model and one category at a time.
+  const body=page.locator('section',{hasText:'Activity log'}).locator('tbody tr');
+  await page.getByRole('combobox',{name:'Show category'}).selectOption('models');
+  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr')].length>0&&[...document.querySelectorAll('section tbody tr td:nth-child(2)')].every(t=>t.textContent==='Model calls'),null,{timeout:5000});
+  const model=(await body.first().locator('td').nth(2).innerText()).trim();
+  await page.getByRole('combobox',{name:'Show model'}).selectOption(model);
+  await page.waitForTimeout(400);
+  for(const m of await body.locator('td:nth-child(3)').allInnerTexts())assert.equal(m.trim(),model);
+  await shot('16-log-filter');
+  await newest.getByRole('button',{name:'Roll back',exact:true}).click();
+  await page.waitForTimeout(800);
+  assert.equal((await live()).news.find(n=>n.id===item.id).title,item.title);
+  await page.locator('nav a',{hasText:'AI Assistant'}).click(); await page.waitForURL('**/ai');
 });
 await step('delete shows a confirm card',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();
@@ -380,10 +436,31 @@ await step('settings page and phone width',async()=>{
   await page.locator('nav a',{hasText:'AI settings'}).click();
   await page.getByRole('heading',{name:'AI settings'}).waitFor();
   assert.ok(!(await page.content()).includes('sk-ant-fake'));
+  // Prices by name, without typing anything.
+  await page.getByRole('button',{name:'Check prices now'}).click();
+  await page.getByText(/prices? changed/).first().waitFor({timeout:20000});
+  const picker=page.getByRole('combobox',{name:'Editing model model'});
+  assert.match(await picker.locator('option',{hasText:'Claude Opus 5.5'}).innerText(),/Claude Opus 5\.5 \(\$4\.00 in, \$20\.00 out\)/);
+  assert.equal(await picker.locator('option',{hasText:'Claude Test Only'}).count(),0,"a model the key can't use isn't offered");
+  await page.getByText("Anthropic's price page").first().waitFor();
+  await page.getByRole('searchbox',{name:'Search models'}).fill('Test Differ');
+  await page.getByText('LiteLLM and OpenRouter differ').first().waitFor();
+  await page.getByRole('searchbox',{name:'Search models'}).fill('');
+  await page.getByRole('combobox',{name:'Usage month'}).waitFor();
+  await page.getByRole('cell',{name:'Anthropic (Claude)'}).first().waitFor();
+  await page.getByText(/^Total for /).waitFor();
   await shot('10-settings');
   await page.locator('nav a',{hasText:'AI Assistant'}).click();
   await page.setViewportSize({width:390,height:800}); await page.waitForTimeout(800);
   const w=await page.evaluate(()=>document.documentElement.scrollWidth); assert.ok(w<=390,`page scrolls sideways: ${w}`);
   await shot('11-phone');
 });
+await step('the checks left the live site as they found it',async()=>{
+  assert.equal(contentPrint(await live()),liveBefore);
+});
+await page.setViewportSize({width:1500,height:950});
+await modelPicker.waitFor({timeout:15000});
+await modelPicker.selectOption(adminsModel);
+await page.waitForTimeout(800);
+assert.equal(await modelPicker.inputValue(),adminsModel,"the admin's model is back");
 await browser.close();

@@ -43,20 +43,57 @@ async function rollbackConflicts(ctx: QueryCtx, version: Doc<"versions">) {
   return conflicts;
 }
 
+/**
+ * A publish, its rollback, the undo of that rollback, and so on form a chain. Every
+ * other step takes the change off the site, so a version's place in the chain says
+ * what it did, and the last step says where things stand now.
+ */
+async function chainOf(ctx: QueryCtx, version: Doc<"versions">) {
+  let root = version;
+  let depth = 0;
+  while (root.revertOf) {
+    const parent = await ctx.db.get(root.revertOf);
+    if (!parent) break;
+    root = parent;
+    depth += 1;
+  }
+  let lastDepth = depth;
+  for (let row: Doc<"versions"> | null = version; row?.revertedBy; lastDepth += 1) row = await ctx.db.get(row.revertedBy);
+  return { root, depth, takesItOff: depth % 2 === 1, isOffNow: lastDepth % 2 === 1, isLast: !version.revertedBy };
+}
+
+const rollbackSummary = (rootSummary: string) => `Rolled back: ${rootSummary}`;
+const putBackSummary = (rootSummary: string) => `Put back: ${rootSummary}`;
+
+function statusOf(chain: Awaited<ReturnType<typeof chainOf>>) {
+  if (chain.takesItOff) return chain.isLast ? "Rollback in effect" : "Undone";
+  if (chain.isLast) return chain.depth === 0 ? "Live" : "Live again";
+  return chain.isOffNow ? "Rolled back" : "Put back later";
+}
+
 /** Newest first. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const rows = await ctx.db.query("versions").withIndex("by_publishedAt").order("desc").take(100);
-    return rows.map((r) => ({
-      id: r._id,
-      summary: r.summary,
-      records: r.contentSnapshot.length,
-      publishedAt: r.publishedAt,
-      isRollback: !!r.revertOf,
-      rolledBack: !!r.revertedBy,
-    }));
+    return await Promise.all(
+      rows.map(async (r) => {
+        const chain = await chainOf(ctx, r);
+        const about = chain.root.summary;
+        return {
+          id: r._id,
+          // Worked out here so older rows read properly too.
+          summary: chain.depth === 0 ? about : chain.takesItOff ? rollbackSummary(about) : putBackSummary(about),
+          about,
+          records: r.contentSnapshot.length,
+          publishedAt: r.publishedAt,
+          isRollback: chain.takesItOff,
+          rolledBack: !!r.revertedBy,
+          status: statusOf(chain),
+        };
+      }),
+    );
   },
 });
 
@@ -66,7 +103,10 @@ export const rollback = mutation({
     const userId = await requireAdmin(ctx);
     const version = await ctx.db.get(versionId);
     if (!version) throw new ConvexError("That version no longer exists.");
-    if (version.revertedBy) throw new ConvexError("This version has already been rolled back.");
+    const chain = await chainOf(ctx, version);
+    if (version.revertedBy) {
+      throw new ConvexError(chain.takesItOff ? "This rollback has already been undone." : "This version has already been rolled back.");
+    }
     const conflicts = await rollbackConflicts(ctx, version);
     if (conflicts.length) {
       throw new ConvexError(`This can't be rolled back automatically: ${conflicts.join("; ")}. Nothing was changed.`);
@@ -97,13 +137,14 @@ export const rollback = mutation({
     const newVersion = await ctx.db.insert("versions", {
       changeSetId: version.changeSetId,
       kind: "content",
-      summary: `Rolled back: ${version.summary}`.slice(0, 500),
+      summary: (chain.takesItOff ? putBackSummary(chain.root.summary) : rollbackSummary(chain.root.summary)).slice(0, 500),
       contentSnapshot,
       revertOf: versionId,
       publishedBy: userId,
       publishedAt: Date.now(),
     });
     await ctx.db.patch(versionId, { revertedBy: newVersion });
-    await audit(ctx, { userId, changeSetId: version.changeSetId, action: "rollback", detail: { versionId, newVersion } });
+    await audit(ctx, { userId, changeSetId: version.changeSetId, action: chain.takesItOff ? "rollback.undo" : "rollback", detail: { versionId, newVersion } });
+    return { undidRollback: chain.takesItOff };
   },
 });

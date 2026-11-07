@@ -27,6 +27,8 @@ export async function spendState(ctx: QueryCtx) {
     budgetUsd: budget,
     ratio,
     level: ratio >= 1 ? ("blocked" as const) : ratio >= WARN_AT ? ("warning" as const) : ("ok" as const),
+    // Google's free plan bills nothing, but the plan can't be read from a key.
+    onGoogle: settings.editorModel.provider === "google",
   };
 }
 
@@ -106,6 +108,15 @@ export const summary = query({
       cur.calls += 1;
       byModel.set(key, cur);
     }
-    return { month: m, rows: [...byModel.values()] };
+    const settings = await loadSettings(ctx);
+    const nameOf = (provider: string, model: string) => settings.priceTable.find((p) => p.provider === provider && p.model === model)?.name ?? model;
+    return {
+      month: m,
+      // Grouped by provider, then model, with each model's two jobs together.
+      rows: [...byModel.values()]
+        .map((row) => ({ ...row, name: nameOf(row.provider, row.model) }))
+        .sort((a, b) => a.provider.localeCompare(b.provider) || a.model.localeCompare(b.model) || a.role.localeCompare(b.role)),
+      totalUsd: rows.reduce((sum, r) => sum + r.costUsd, 0),
+    };
   },
 });

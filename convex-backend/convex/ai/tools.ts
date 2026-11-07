@@ -13,7 +13,7 @@ const table = z.enum(["gallery", "startups", "news", "teamMembers", "backgroundV
 
 const errorText = (e: unknown) => (e instanceof ConvexError ? String(e.data) : e instanceof Error ? e.message : String(e));
 
-type Env = { ctx: ActionCtx; changeSetId: Id<"changeSets">; userId?: Id<"users"> };
+type Env = { ctx: ActionCtx; changeSetId: Id<"changeSets">; userId?: Id<"users">; model?: string };
 type EditorEnv = Env & { runSeq: number };
 
 function define<S extends z.ZodType>(env: Env, name: string, description: string, inputSchema: S, run: (input: z.infer<S>) => Promise<unknown>) {
@@ -30,6 +30,7 @@ function define<S extends z.ZodType>(env: Env, name: string, description: string
       await env.ctx.runMutation(internal.ai.audit.log, {
         userId: env.userId,
         changeSetId: env.changeSetId,
+        model: env.model,
         action: `tool.${name}`,
         detail: { input, ...(result && typeof result === "object" && "error" in result ? { error: (result as { error: unknown }).error } : {}) },
       });
