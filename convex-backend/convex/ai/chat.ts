@@ -15,7 +15,7 @@ const OPEN: Doc<"changeSets">["status"][] = ["drafting", "reviewing", "needs_adm
 const MAX_PROMPT_CHARS = 8000;
 const MAX_POINTED = 10;
 const MAX_POINTED_CHARS = 20_000;
-const MAX_PICTURES = 5;
+const MAX_PICTURES = 3;
 // Chat messages go to the provider and the activity log, so keys must not get in.
 const LOOKS_LIKE_A_KEY = /\b(AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/;
 

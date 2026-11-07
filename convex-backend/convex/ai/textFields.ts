@@ -22,6 +22,18 @@ for (const page of PAGES as unknown as { id: string; name: string; path: string;
 
 export const textField = (key: string): Field | undefined => (Object.hasOwn(fields, key) ? fields[key] : undefined);
 
+/**
+ * The route a change shows on, which is what lets the preview go there. Models tend to
+ * copy the page's name ("Home") from search results, and a text's key settles it anyway.
+ */
+export function routeOfChange(page: string | undefined, textKey: string | undefined) {
+  const place = textKey ? places.get(textKey) : undefined;
+  if (place) return place.path ?? place.page;
+  const name = page?.trim().toLowerCase();
+  if (!name || name.startsWith("/")) return page;
+  return (PAGES as unknown as { id: string; name: string; path: string }[]).find((p) => p.name.toLowerCase() === name || p.id === name)?.path ?? page;
+}
+
 const plain = (text: string) => text.replace(/\*+/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 
 /** Every text matching the filters, with what it shows now given `published` values. */

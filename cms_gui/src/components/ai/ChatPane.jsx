@@ -9,6 +9,11 @@ import SpendMeter from './SpendMeter';
 
 const api = anyApi.ai;
 
+const MAX_PICTURES = 3; // Same limit as convex-backend/convex/ai/chat.ts.
+
+// Models mark up lists like "**Name**", which should read as bold, not as asterisks.
+const withBold = (text) => text.split(/\*\*([^*\n]+)\*\*/).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
+
 // What the agent is doing, in the admin's words.
 const TOOL_LABELS = {
   get_site_content: 'Read the site content',
@@ -57,7 +62,7 @@ function Message({ message }) {
           · {line}
         </p>
       ))}
-      {message.text && <p className="text-sm whitespace-pre-wrap text-foreground">{message.text}</p>}
+      {message.text && <p className="text-sm whitespace-pre-wrap text-foreground">{withBold(message.text)}</p>}
       {message.failed && <p className="text-xs text-destructive">This step failed.</p>}
     </div>
   );
@@ -153,9 +158,12 @@ export default function ChatPane({ threadId, draft, closedNotice, messages, sele
   const attach = async (e) => {
     const files = [...e.target.files];
     e.target.value = '';
+    const room = MAX_PICTURES - pictures.length;
+    if (files.length > room) showToast(`You can attach up to ${MAX_PICTURES} pictures to a message.`, 'error');
+    if (room <= 0) return;
     setUploading(true);
     try {
-      for (const file of files) {
+      for (const file of files.slice(0, room)) {
         const imageId = await uploadImage(file);
         setPictures((list) => [...list, { imageId, name: file.name }]);
       }

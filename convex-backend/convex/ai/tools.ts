@@ -210,7 +210,7 @@ export function editorTools(env: EditorEnv) {
       "Add a plain-English item to the change list the admin steps through. Call it once per change.",
       z.object({
         summary: z.string().describe('One short line, e.g. "Changed the home page heading to Who we are".'),
-        page: z.string().optional().describe('Website route where it shows, e.g. "/summary".'),
+        page: z.string().optional().describe('Website route where it shows, starting with a slash: "/" for the home page, "/summary". Not the page\'s name.'),
         textKey: z.string().optional().describe("For a website text change: its key."),
         selector: z.string().optional().describe("CSS selector of the changed element, if you know one."),
         text: z.string().optional().describe("Text the changed element contains after the change, used to find it."),

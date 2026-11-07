@@ -12,6 +12,7 @@ const api = anyApi.ai;
 
 const OPEN_DRAFT = ['drafting', 'reviewing', 'needs_admin', 'ready'];
 const MAX_POINTED = 10; // Same limit as convex-backend/convex/ai/chat.ts.
+const TOUR_STEP_MS = 3500;
 const sameElement = (a, b) => a.path === b.path && a.selector === b.selector;
 
 export default function AiAssistantPage() {
@@ -52,10 +53,6 @@ export default function AiAssistantPage() {
   const [selected, setSelected] = useState([]);
   const [chatWidth, setChatWidth] = useStoredSize('aic-cms:ai-chat-width', 384);
 
-  useEffect(() => {
-    preview.current?.marks(selected.map((item, i) => ({ n: i + 1, path: item.path, key: item.key, selector: item.selector, text: item.text })));
-  }, [selected]);
-
   const onPicked = (element) => {
     if (selected.length >= MAX_POINTED && !selected.some((s) => sameElement(s, element))) {
       showToast(`You can point at up to ${MAX_POINTED} things at a time.`, 'error');
@@ -69,6 +66,7 @@ export default function AiAssistantPage() {
 
   const togglePick = () => {
     const next = !picking;
+    setTour([]);
     setPicking(next);
     if (next && tab === 'changes') setTab('preview');
     preview.current?.pick(next);
@@ -107,25 +105,60 @@ export default function AiAssistantPage() {
   );
 
   const onStep = (index) => {
+    setTour([]);
     setStep(index);
     if (tab === 'changes') setTab('preview');
     highlightStep(index, mode);
   };
 
-  // Show the first change once the draft is ready.
+  // Everything the draft changes stays marked and numbered on the page. What the admin
+  // pointed at is marked too, in another colour.
+  useEffect(() => {
+    const pointed = selected.map((item, i) => ({ n: i + 1, path: item.path, key: item.key, selector: item.selector, text: item.text, selectorFirst: true }));
+    const changes = changeList.map((item, i) => ({
+      n: i + 1,
+      kind: 'change',
+      path: item.page?.startsWith('/') ? item.page : null,
+      key: item.textKey,
+      selector: mode === 'before' ? undefined : item.selector,
+      text: mode === 'before' ? item.beforeText || item.text : item.text,
+    }));
+    preview.current?.marks([...changes.filter((c) => c.key || c.selector || c.text), ...pointed]);
+  }, [selected, changeList, mode]);
+
+  // When the agent finishes, go to what it just changed, one change after another.
+  // What was there before the admin's last message isn't news. A manual step stops this.
   const ready = openDraft?.status === 'ready';
+  const [known, setKnown] = useState(null);
+  const [tour, setTour] = useState([]);
   const [wasReady, setWasReady] = useState(false);
   if (ready !== wasReady) {
     setWasReady(ready);
-    if (ready && changeList.length) setStep(0);
+    if (ready && changeList.length) {
+      const fresh = known ? changeList.flatMap((item, i) => (known.has(item.summary) ? [] : [i])) : [];
+      setKnown(null);
+      setStep(fresh[0] ?? 0);
+      setTour(fresh.slice(1));
+    }
   }
   useEffect(() => {
-    if (ready) highlightStep(0, 'after');
+    if (ready) highlightStep(step, 'after');
     // Only when the draft becomes ready.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
+  useEffect(() => {
+    if (!tour.length) return undefined;
+    const timer = setTimeout(() => {
+      setStep(tour[0]);
+      highlightStep(tour[0], 'after');
+      setTour(tour.slice(1));
+    }, TOUR_STEP_MS);
+    return () => clearTimeout(timer);
+  }, [tour, highlightStep]);
+
   const onMode = (next) => {
+    setTour([]);
     setMode(next);
     highlightStep(step, next);
   };
@@ -133,6 +166,8 @@ export default function AiAssistantPage() {
   // ---- Actions ---------------------------------------------------------------
 
   const onSend = async (prompt, pictures) => {
+    setKnown(new Set(changeList.map((item) => item.summary)));
+    setTour([]);
     const result = await run(() =>
       send({ prompt, ...(threadId ? { threadId } : {}), ...(selected.length ? { selectedElements: selected } : {}), ...(pictures.length ? { pictures } : {}) }),
     );

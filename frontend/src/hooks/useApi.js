@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { readCache } from '../api/cache';
+import { markStale, readCache } from '../api/cache';
 import { getPreviewContent, onPreviewContent } from '../api/content';
 
 /**
@@ -34,7 +34,13 @@ function useApi(fetcher, emptyValue = []) {
 
     fetcher()
       .then((result) => {
-        if (!cancelled) setState({ data: result, loading: false, error: null });
+        if (cancelled) return;
+        // A refresh that found nothing new shouldn't redraw the page.
+        setState((prev) =>
+          !prev.loading && !prev.error && JSON.stringify(prev.data) === JSON.stringify(result)
+            ? prev
+            : { data: result, loading: false, error: null }
+        );
       })
       .catch((err) => {
         if (cancelled) return;
@@ -53,6 +59,21 @@ function useApi(fetcher, emptyValue = []) {
 
   // A new draft from the CMS preview: read it again.
   useEffect(() => onPreviewContent(() => setAttempt((n) => n + 1)), []);
+
+  // Back on this tab, perhaps after publishing or rolling back in the CMS: look again.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      markStale();
+      setAttempt((n) => n + 1);
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   const retry = useCallback(() => {
     setState((prev) => ({ ...prev, loading: true, error: null }));

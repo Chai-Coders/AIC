@@ -57,6 +57,35 @@ await step('the preview IS the real site: same images, buttons, links and text a
   await real.context().close();
   await fr.evaluate(()=>{history.pushState({},'','/');dispatchEvent(new PopStateEvent('popstate'))});
 });
+await step('every element on every page sits exactly where it does on the public website',async()=>{
+  // Whole pages, not just the top: a rule like `.program__stage span` once restyled a
+  // wrapper in the preview, halfway down the home page.
+  const boxes=()=>{const out={},seen={};for(const e of document.querySelectorAll('#main-content *, .site-footer *, .site-header *')){const cls=e.getAttribute('class')||'';
+    // Things that move by themselves.
+    if(e.closest('[data-aic]')||e.tagName==='AIC-TEXT'||e.tagName==='IMG'||/hero|about__(ring|circle)|logo-(marquee|tile)/.test(cls)||e.closest('.logo-marquee'))continue;
+    const r=e.getBoundingClientRect();if(!r.width||!r.height)continue;const c=getComputedStyle(e);
+    const k=`${e.tagName}.${cls.replace(/\b(is-|reveal)\S*/g,'').trim()}|${(e.innerText||'').slice(0,30)}`;const i=seen[k]=(seen[k]||0)+1;
+    out[`${k}#${i}`]={x:r.left,y:r.top+scrollY,w:r.width,h:r.height,font:c.fontSize,color:c.color,border:c.borderTopWidth};}return out;};
+  const win=page.viewportSize();
+  const real=await (await browser.newContext({viewport:win})).newPage();
+  await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
+  const fr=page.frames().find(f=>f.url().includes('5174'));
+  const through=async()=>{for(let y=0;y<=document.documentElement.scrollHeight;y+=400){scrollTo(0,y);await new Promise(r=>setTimeout(r,70));}scrollTo(0,0);await new Promise(r=>setTimeout(r,900));};
+  for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
+    await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
+    await real.goto('http://localhost:5174'+path,{waitUntil:'load'});
+    await page.waitForTimeout(1800);
+    await Promise.all([real.evaluate(through),fr.evaluate(through)]);
+    const a=await real.evaluate(boxes),b=await fr.evaluate(boxes);
+    assert.deepEqual(Object.keys(b).sort(),Object.keys(a).sort(),`${path}: different elements`);
+    for(const k of Object.keys(a))for(const f of Object.keys(a[k])){
+      const same=typeof a[k][f]==='number'?Math.abs(a[k][f]-b[k][f])<=2:a[k][f]===b[k][f];
+      assert.ok(same,`${path}: "${k}" ${f} is ${a[k][f]} on the site and ${b[k][f]} in the preview`);
+    }
+  }
+  await real.context().close();
+  await fr.evaluate(()=>{history.pushState({},'','/');dispatchEvent(new PopStateEvent('popstate'))});
+});
 await step('every page part lines up with the section map',async()=>{
   const {SECTION_MAP}=await import(`${process.env.REPO}/frontend/src/content/sectionMap.js`);
   const fr=page.frames().find(f=>f.url().includes('5174'));
@@ -160,12 +189,91 @@ await step('a picture attached in the chat reaches the agent',async()=>{
   const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==','base64');
   await page.locator('input[type=file]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:png});
   await page.getByRole('list',{name:'Attached pictures'}).getByText('logo.png').waitFor({timeout:15000});
-  await control('script',{script:[{text:'Got the picture.'}]});
+  await control('script',{script:[{text:'Got the **picture**.'}]});
   await say('Here is a logo');
-  await page.getByText('Got the picture.').waitFor({timeout:30000});
+  await page.locator('strong',{hasText:'picture'}).waitFor({timeout:30000});
   const {calls}=await control('state');
   assert.match(JSON.stringify(calls[0].messages),/attached a picture, .*logo\.png/);
   assert.equal(await page.getByRole('list',{name:'Attached pictures'}).count(),0,'the list clears after sending');
+});
+await step('no more than three pictures on a message',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(500);
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==','base64');
+  await page.locator('input[type=file]').setInputFiles([1,2,3,4].map((n)=>({name:`p${n}.png`,mimeType:'image/png',buffer:png})));
+  await page.getByText('You can attach up to 3 pictures to a message.').first().waitFor({timeout:5000});
+  const list=page.getByRole('list',{name:'Attached pictures'});
+  await list.getByText('p3.png').waitFor({timeout:15000});
+  assert.equal(await list.locator('li').count(),3);
+  await page.locator('input[type=file]').setInputFiles({name:'p5.png',mimeType:'image/png',buffer:png});
+  await page.waitForTimeout(800);
+  assert.equal(await list.locator('li').count(),3,'a later pick can\'t go over the limit');
+  for(const n of [1,2,3])await page.getByRole('button',{name:/^Remove/}).first().click();
+});
+await step('every change stays marked, and the preview goes to each new one',async()=>{
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(800);
+  const tag=Date.now();
+  // Far apart on the page, so seeing one doesn't mean seeing the other.
+  await control('script',{script:[{tools:[
+    ['update_site_text',{key:'home.hero.eyebrow',value:`Top ${tag}`}],
+    ['update_site_text',{key:'home.programs.0.title',value:`Mid ${tag}`}],
+    ['describe_change',{summary:`Top ${tag}`,page:'/',textKey:'home.hero.eyebrow'}],
+  ]},
+  // One call at a time: calls made together can land in the list in any order.
+  {tools:[['describe_change',{summary:`Mid ${tag}`,page:'/',textKey:'home.programs.0.title'}]]},DONE,OK]});
+  await say('Change the two lines');
+  await publishEnabled().waitFor({timeout:40000});
+  const fr=page.frames().find(f=>f.url().includes('5174'));
+  const marks=()=>fr.evaluate(()=>[...document.querySelectorAll('[data-aic-mark]')].map((m)=>m.dataset.aicMark).sort().join());
+  await fr.waitForFunction(()=>document.querySelectorAll('[data-aic-mark]').length===2,null,{timeout:10000});
+  assert.equal(await marks(),'1,2','both changes are marked at once');
+  // It moves on to the second change by itself, and scrolls to it.
+  await page.getByText('Change 2 of 2').waitFor({timeout:8000});
+  await fr.waitForFunction(()=>{const r=document.querySelector('[data-cms-key="home.programs.0.title"]').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;},null,{timeout:6000});
+  await shot('14-both-marked');
+  // A second message: straight to what's new, not back to the start.
+  await control('script',{script:[{tools:[
+    ['update_site_text',{key:'home.contact.title',value:`Low ${tag}`}],
+    // The page's name, which is what models copy from search results.
+    ['describe_change',{summary:`Low ${tag}`,page:'Home',textKey:'home.contact.title'}],
+  ]},DONE,OK]});
+  // From another page: it has to come back here.
+  await fr.evaluate(()=>{history.pushState({},'','/gallery');dispatchEvent(new PopStateEvent('popstate'))});
+  await say('And this one');
+  await page.getByText('Change 3 of 3').waitFor({timeout:40000});
+  await publishEnabled().waitFor({timeout:40000});
+  await page.waitForTimeout(800);
+  assert.ok(await page.getByText('Change 3 of 3').isVisible(),'stays on the new change');
+  await fr.waitForFunction(()=>{const e=document.querySelector('[data-cms-key="home.contact.title"]');if(!e)return false;const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;},null,{timeout:6000});
+  // Stepping by hand still works.
+  await page.getByRole('button',{name:'Previous change'}).click();
+  await page.getByText('Change 2 of 3').waitFor({timeout:3000});
+  await page.getByRole('button',{name:'Discard'}).click();
+  await fr.waitForFunction(()=>document.querySelectorAll('[data-aic-mark]').length===0,null,{timeout:10000});
+});
+await step('a reload of the public site shows a publish and a rollback straight away',async()=>{
+  const item=(await live()).news[0];
+  const pub=await (await browser.newContext({viewport:{width:1200,height:800}})).newPage();
+  await pub.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
+  await pub.goto('http://localhost:5174/news');await pub.getByText(item.title).first().waitFor({timeout:15000});
+  await page.getByRole('button',{name:'New chat'}).click();
+  await page.waitForTimeout(800);
+  const HEADLINE=`Fast headline ${Date.now()}`;
+  await control('script',{script:[{tools:[['update_record',{table:'news',id:item.id,field:'title',value:HEADLINE}],['describe_change',{summary:'Rename',page:'/news',text:HEADLINE}]]},DONE,OK]});
+  await say('Rename the first news post');
+  await publishEnabled().waitFor({timeout:40000});
+  await publishEnabled().click();
+  await page.getByText('Published.').first().waitFor({timeout:10000});
+  await pub.reload();await pub.getByText(HEADLINE).first().waitFor({timeout:4000});
+  // Straight after, well inside the minute the site used to trust its copy for.
+  await page.locator('nav a',{hasText:'AI history'}).click();
+  await page.getByRole('button',{name:'Roll back'}).first().click();
+  await page.getByText('Rolled back.').first().waitFor({timeout:15000});
+  await pub.reload();await pub.getByText(item.title).first().waitFor({timeout:4000});
+  assert.equal(await pub.getByText(HEADLINE).count(),0);
+  await pub.context().close();
+  await page.locator('nav a',{hasText:'AI Assistant'}).click();
 });
 await step('delete shows a confirm card',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();

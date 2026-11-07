@@ -7,11 +7,12 @@ import { CMS_ORIGIN } from './editMode';
 // and are only exchanged with the CMS's address.
 //   CMS -> site  content { content }   navigate { path }   clearHighlight
 //                highlight { path, key?, selector?, text?, label? }
-//                pick { on }   marks { items: [{ n, path, key?, selector, text }] }
+//                pick { on }   marks { items: [{ n, kind?, path, key?, selector, text, selectorFirst? }] }
 //   site -> CMS  agent-ready   location { path }   picked { element }   pick-ended
 
 const SOURCE = 'aic-site';
 const ACCENT = '#2f7fd8';
+const CHANGE_COLOR = '#16803c';
 const KEEP_IN_VIEW_MS = 4000;
 const GIVE_UP_FINDING_MS = 10000;
 const RETRY_MISSING_MS = 1000;
@@ -148,7 +149,8 @@ function drawBox(id, el, label) {
   document.body.appendChild(box);
 }
 
-function drawMark(n, el) {
+function drawMark({ n, kind, el }) {
+  const color = kind === 'change' ? CHANGE_COLOR : ACCENT;
   const box = document.createElement('div');
   box.dataset.aic = '1';
   box.dataset.aicMark = String(n);
@@ -159,9 +161,9 @@ function drawMark(n, el) {
     top: `${top - 3}px`,
     width: `${width + 6}px`,
     height: `${height + 6}px`,
-    border: `2px solid ${ACCENT}`,
+    border: `2px solid ${color}`,
     borderRadius: '6px',
-    background: 'rgba(47, 127, 216, 0.10)',
+    background: `${color}1a`,
     pointerEvents: 'none',
     zIndex: 2147483645,
   });
@@ -174,7 +176,7 @@ function drawMark(n, el) {
     width: '20px',
     height: '20px',
     borderRadius: '50%',
-    background: ACCENT,
+    background: color,
     color: '#fff',
     font: '700 11px/20px system-ui, sans-serif',
     textAlign: 'center',
@@ -239,22 +241,22 @@ export default function AgentBridge() {
           }
         }
       }
-      const here = pathNow();
       const found = [];
       for (const mark of marks) {
-        if (mark.path !== here) continue;
+        // No path: it shows on every page, like the footer.
+        if (mark.path && mark.path.split('#')[0] !== window.location.pathname) continue;
         // Searching the page is costly, so keep what was found, and look less often for what wasn't.
         if (!mark.el?.isConnected && Date.now() - (mark.tried ?? 0) >= RETRY_MISSING_MS) {
           mark.tried = Date.now();
-          mark.el = findElement({ ...mark, selectorFirst: true });
+          mark.el = findElement(mark);
         }
         if (mark.el?.isConnected) found.push(mark);
       }
-      const drawn = found.map((m) => `${m.n}@${keyOf(m.el)}`).join('|');
+      const drawn = found.map((m) => `${m.kind}${m.n}@${keyOf(m.el)}`).join('|');
       if (drawn !== marksDrawn) {
         marksDrawn = drawn;
         document.querySelectorAll('[data-aic-mark]').forEach((node) => node.remove());
-        found.forEach((m) => drawMark(m.n, m.el));
+        found.forEach(drawMark);
       }
     };
     const timer = setInterval(tick, 200);

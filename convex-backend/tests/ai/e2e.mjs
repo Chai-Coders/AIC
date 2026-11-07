@@ -562,10 +562,16 @@ const tests = {
       DONE,
       OK,
     ]);
+    await assert.rejects(
+      c.mutation(api.ai.chat.send, { prompt: 'Four pictures', pictures: [1, 2, 3, 4].map((n) => ({ imageId, name: `${n}.png` })) }),
+      /no more than 3 pictures/,
+      'the server holds the picture limit too',
+    );
     const { threadId, changeSetId } = await c.mutation(api.ai.chat.send, { prompt: 'Add a startup and a news post', pictures: [{ imageId, name: 'logo.png' }] });
     const d = await inState(threadId, 'ready');
     const { calls } = await control('state');
     assert.ok(JSON.stringify(calls[0].messages).includes(imageId), 'the agent is told about the attached picture');
+    assert.match(JSON.stringify(calls.at(-1).messages), /What the editing agent told the admin:\\n(?!\(nothing\))/, 'the review sees what the editor told the admin');
     assert.match(toolResults(calls[1]), /needs: logoId\. Ask the admin to attach/, 'no picture is refused');
     assert.match(toolResults(calls[1]), /only use a picture the admin attached/, 'another startup\'s logo is refused');
     assert.equal(d.contentOps.length, 2);

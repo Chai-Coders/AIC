@@ -66,6 +66,9 @@ Google's pricing page still lists it.
 
 - The agent can't change styling or layout, which the doc's goals include. Left out for now by decision.
 - Sections have no CMS page of their own: they are added, changed and removed through the assistant.
+- The site's own logo is a file in the code, so the agent can't change it and says so.
+- Not yet run on real Gemini (daily free limit reached on 2026-11-07): the review seeing the editor's reply, so a draft isn't rejected
+  because the agent said it can't change the site's logo. Checked with the fake model only.
 
 ## Follow-ups
 

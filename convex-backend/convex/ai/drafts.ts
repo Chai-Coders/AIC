@@ -7,7 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { contentTable, type ContentOp, type ContentTable } from "../schema";
 import { imageUrl } from "../images";
 import { checkSiteText } from "../siteText";
-import { findTextFields, pagesWithParts, partsOfPage, textField, textKeyForValue } from "./textFields";
+import { findTextFields, pagesWithParts, partsOfPage, routeOfChange, textField, textKeyForValue } from "./textFields";
 import { applyTextOps, canReorder, applyOps, checkTextField, createDefaults, imageFieldOf, missingForCreate, sameValue, textFieldsOf, type Tables } from "./records";
 
 export async function loadTables(ctx: QueryCtx): Promise<Tables> {
@@ -347,7 +347,7 @@ export const describeChange = internalMutation({
   },
   handler: async (ctx, { changeSetId, runSeq, ...item }) => {
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
-    await patchDraft(ctx, cs, { changeList: [...cs.changeList, item] });
+    await patchDraft(ctx, cs, { changeList: [...cs.changeList, { ...item, page: routeOfChange(item.page, item.textKey) }] });
     return { ok: true, changeNumber: cs.changeList.length + 1 };
   },
 });

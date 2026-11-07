@@ -85,6 +85,25 @@ that mode, and only exchanges messages with `VITE_CMS_URL`. On Desktop the frame
 the admin's window and scaled down to fit the pane, since the site's layout changes with width. The CMS sends it the draft; it's held in memory
 and never written to the browser cache the public site reads. A draft applies without a reload.
 
+The preview wraps each website text in an `<aic-text>` element so it can be found and pointed at. It isn't a `<span>`
+because the site's styles have rules like `.program__stage span`, which would restyle the wrapper too.
+
+Every change in a draft stays marked and numbered on the page, in green. When the agent finishes, the preview goes to each
+change made since the admin's last message, one every few seconds, and stops on the last. The arrows take over at any time.
+
+## The public site's cache
+
+The site renders from its last known copy, then refreshes in the background. A copy this page load fetched in the last
+minute is used without asking the server, so moving between pages stays instant. A reload, or coming back to the tab, always
+asks, so a publish or rollback shows at once. A tab left open and untouched keeps what it has until the visitor moves between
+pages or comes back to it.
+
+## When the agent asks
+
+It works for AIC IIITK: "our", "we" and "our logo" mean the incubator, and startups are other companies. It asks instead of
+guessing when it doesn't know what to change, what it should become, or a new item's required details. The site's own logo is
+in the code, so it says it can't change that. Up to 3 pictures can be attached to a message.
+
 ## Known limits
 
 - **Busy models and limits:** when a provider is overloaded or a limit is hit, the assistant waits and retries

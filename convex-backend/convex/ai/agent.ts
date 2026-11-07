@@ -1,7 +1,7 @@
 // The agents. Each editor step is one scheduled action making one model call,
 // saving its progress before the next is scheduled. That keeps long tasks inside
 // Convex's action time limit, and checks the spend cap before every call.
-import { Agent, stepCountIs } from "@convex-dev/agent";
+import { Agent, listMessages, stepCountIs } from "@convex-dev/agent";
 import { generateText, hasToolCall } from "ai";
 import { ConvexError, v } from "convex/values";
 import { internalAction, internalMutation, type ActionCtx } from "../_generated/server";
@@ -221,8 +221,13 @@ export const reviewStep = internalAction({
       let verdict: { approved: boolean; reasons: string[] } | null = null;
       let overBudget = false;
 
+      // Newest first. Says what the editor told the admin it couldn't do.
+      const recent = await listMessages(ctx, components.agent, { threadId: cs.threadId, paginationOpts: { numItems: 10, cursor: null } });
+      const editorReply = recent.page.find((doc) => doc.message?.role === "assistant" && doc.text?.trim())?.text?.trim();
+
       const prompt = [
         `What the admin asked for:\n${cs.title}`,
+        `What the editing agent told the admin:\n${editorReply ?? "(nothing)"}`,
         `Change list shown to the admin:\n${cs.changeList.map((c) => `- ${c.summary}${c.page ? ` (${c.page})` : ""}`).join("\n") || "(empty)"}`,
         `Edits in the draft:\n${cs.contentOps.map(describeOp).join("\n") || "(none)"}`,
       ].join("\n\n");

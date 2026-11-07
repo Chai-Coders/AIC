@@ -188,6 +188,11 @@ ol {
   }
 }
 
+/* Stronger than rules like `.program__stage span`, which would otherwise show it. */
+[data-empty-text] {
+  display: none !important;
+}
+
 /* A text removed in the CMS leaves no gap (see Text in content/Text.jsx): its heading
    or paragraph goes, unless something else is in there too, like a link. */
 :is(h1, h2, h3, h4, p, a, li, button, dt, dd, .chip):has(> [data-empty-text]):not(:has(> :not([data-empty-text]))),
