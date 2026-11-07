@@ -45,7 +45,7 @@ Set this on the Convex deployment with `npx convex env set NAME value`:
 The website needs `VITE_CMS_URL` set to the CMS's address, and the CMS needs `VITE_SITE_URL` set to the
 website's. The preview won't load without them; the page says so if it doesn't.
 
-Then, in the CMS, open **AI settings**, add a provider key, and check the model and budget. Saving a key
+Then, in the CMS, open **Settings → AI model config**, add a provider key, and check the model and budget. Saving a key
 is enough to start: if the chosen model's provider has no key, the assistant uses a default from a
 provider that has one.
 
@@ -120,11 +120,11 @@ and it isn't in use. Prices the admin enters always win. Names come from the pro
 and only plain characters get through. Keys only go to their own provider, to ask which models they can use; that isn't a
 model call, so it costs nothing. Past usage keeps the cost worked out at the time.
 
-## Usage
+## Usage and the log
 
-The settings page splits usage by month, provider, model and job (editing or review), with a total that matches the meter.
-Every prompt, tool call, verdict and model call is also written to the `auditLog` table, for looking into a problem from the
-Convex dashboard; there is no CMS page for it, since the changes themselves are on the Versions page.
+Settings → AI model config splits usage by month, provider, model and job (editing or review), with a total that matches
+the meter. The **AI activity** tab on the Versions page lists every request, tool call, review verdict and model call,
+filtered by category and model, with what the selection adds up to. It looks at the latest 1,000 entries.
 
 ## When the agent asks
 

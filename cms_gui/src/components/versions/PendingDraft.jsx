@@ -318,9 +318,9 @@ export default function PendingDraft() {
         <Inbox className="mx-auto h-10 w-10 text-muted-foreground/60" />
         <h2 className="font-semibold text-foreground">Nothing waiting for approval</h2>
         <p className="text-sm text-muted-foreground">
-          When you ask a connected AI app to change the website, its changes wait here until you approve them.
+          When you ask the AI Assistant or a connected AI app to change the website, its changes wait here until you approve them.
         </p>
-        <Link to="/ai-connection" className="btn-secondary">
+        <Link to="/settings?tab=mcp" className="btn-secondary">
           <Bot className="h-4 w-4" />
           Connect an AI app
         </Link>

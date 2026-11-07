@@ -272,10 +272,10 @@ export default function ChatPane({ threadId, draft, sent, closedNotice, messages
       {noKey ? (
         <p className="shrink-0 border-t border-border p-4 text-sm text-foreground">
           Add an API key on the{' '}
-          <Link to="/ai/settings" className="font-semibold underline">
-            AI settings
+          <Link to="/settings?tab=ai" className="font-semibold underline">
+            Settings
           </Link>{' '}
-          page to start.
+          page (AI model config) to start.
         </p>
       ) : (
         <form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border p-3">

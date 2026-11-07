@@ -18,8 +18,9 @@ rules as AI apps over MCP:
   draft applied.
 - **Removed for now:** added page sections, the background video, gallery and startup reordering, and setting a news
   date, since the version history doesn't track them yet.
-- **No AI history page**: the Versions page is where changes are reviewed and undone. Spending is on AI settings; the
-  step-by-step log stays in the `auditLog` table only.
+- **One Settings page** (tabs: AI model config, MCP, Version history) replaces AI settings and AI connection. The
+  assistant's step-by-step log is the **AI activity** tab on the Versions page. Price sources, hand-entered prices
+  and the MCP how-to/examples were removed.
 
 ## Decisions
 

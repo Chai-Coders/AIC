@@ -268,7 +268,7 @@ await step('a reload of the public site shows an approval and an undo straight a
   await pub.context().close();
   await backToAssistant();
 });
-await step('the spend meter moves by itself',async()=>{
+await step('the spend meter moves by itself, and the AI activity tab filters',async()=>{
   await page.getByRole('button',{name:'New chat'}).click();
   await page.waitForTimeout(800);
   const item=(await live()).news[0];
@@ -280,7 +280,19 @@ await step('the spend meter moves by itself',async()=>{
   await say('Rename the first news post');
   await sent().waitFor({timeout:40000});
   await page.waitForFunction((b)=>document.querySelector('[role=meter]').parentElement.innerText!==b,before,{timeout:10000});
-  assert.equal(await page.locator('nav a',{hasText:'AI activity'}).count(),0,'changes are reviewed on Versions only');
+  // The log is a tab on Versions now.
+  await page.locator('nav a',{hasText:'Versions'}).click();
+  await page.getByRole('tab',{name:'AI activity'}).click();
+  const body=page.locator('section',{hasText:'AI Assistant activity'}).locator('tbody tr');
+  await page.getByRole('combobox',{name:'Show category'}).selectOption('sending');
+  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr td:nth-child(4)')].some(t=>t.textContent==='sent'),null,{timeout:5000});
+  await page.getByRole('combobox',{name:'Show category'}).selectOption('models');
+  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr')].length>0&&[...document.querySelectorAll('section tbody tr td:nth-child(2)')].every(t=>t.textContent==='Model calls'),null,{timeout:5000});
+  const model=(await body.first().locator('td').nth(2).innerText()).trim();
+  await page.getByRole('combobox',{name:'Show model'}).selectOption(model);
+  await page.waitForTimeout(400);
+  for(const m of await body.locator('td:nth-child(3)').allInnerTexts())assert.equal(m.trim(),model);
+  await shot('16-log-filter');
   await page.goto(CMS+'/versions?tab=pending');
   await page.getByRole('button',{name:'Reject all'}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Reject all'}).click();await page.getByText('The draft was rejected.').first().waitFor({timeout:15000});
   assert.equal((await live()).news.find(n=>n.id===item.id).title,item.title);
@@ -388,23 +400,24 @@ await step("Abhijith's Site text page: click to edit, live preview, publish",asy
   assert.ok(!(await live()).text.some(t=>t.value===before+' edited'));
 });
 await step('settings page and phone width',async()=>{
-  await page.locator('nav a',{hasText:'AI settings'}).click();
-  await page.getByRole('heading',{name:'AI settings'}).waitFor();
+  await page.locator('nav a',{hasText:'Settings'}).click();
+  await page.getByRole('heading',{name:'Settings'}).waitFor();
   assert.ok(!(await page.content()).includes('sk-ant-fake'));
-  // Prices by name, without typing anything.
-  await page.getByRole('button',{name:'Check prices now'}).click();
+  await page.getByRole('button',{name:'Check now'}).click();
   await page.getByText(/prices? changed/).first().waitFor({timeout:20000});
   const picker=page.getByRole('combobox',{name:'Editing model model'});
   assert.match(await picker.locator('option',{hasText:'Claude Opus 5.5'}).innerText(),/Claude Opus 5\.5 \(\$4\.00 in, \$20\.00 out\)/);
   assert.equal(await picker.locator('option',{hasText:'Claude Test Only'}).count(),0,"a model the key can't use isn't offered");
-  await page.getByText("Anthropic's price page").first().waitFor();
-  await page.getByRole('searchbox',{name:'Search models'}).fill('Test Differ');
-  await page.getByText('LiteLLM and OpenRouter differ').first().waitFor();
-  await page.getByRole('searchbox',{name:'Search models'}).fill('');
   await page.getByRole('combobox',{name:'Usage month'}).waitFor();
-  await page.getByRole('cell',{name:'Anthropic (Claude)'}).first().waitFor();
-  await page.getByText(/^Total for /).waitFor();
   await shot('10-settings');
+  await page.getByRole('tab',{name:'MCP'}).click();
+  await page.getByRole('heading',{name:'Connection address'}).waitFor();
+  await page.getByRole('tab',{name:'Version history'}).click();
+  await page.getByText('Start a new version after').waitFor();
+  // The old pages lead to the new places.
+  await page.goto(CMS+'/ai/history');await page.waitForURL('**/versions?tab=activity');
+  await page.locator('section',{hasText:'AI Assistant activity'}).locator('tbody tr').first().waitFor({timeout:10000});
+  await page.goto(CMS+'/ai-connection');await page.waitForURL('**/settings?tab=mcp');
   await page.locator('nav a',{hasText:'AI Assistant'}).click();
   await page.setViewportSize({width:390,height:800}); await page.waitForTimeout(800);
   const w=await page.evaluate(()=>document.documentElement.scrollWidth); assert.ok(w<=390,`page scrolls sideways: ${w}`);

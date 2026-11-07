@@ -11,11 +11,10 @@ import BackgroundVideoPage from './pages/BackgroundVideoPage';
 import VersionsPage from './pages/VersionsPage';
 import VersionDetailPage from './pages/VersionDetailPage';
 import RestorePage from './pages/RestorePage';
-import AiConnectionPage from './pages/AiConnectionPage';
+import SettingsPage from './pages/SettingsPage';
 import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
 import UploadPage from './pages/UploadPage';
 import AiAssistantPage from './pages/AiAssistantPage';
-import AiSettingsPage from './pages/AiSettingsPage';
 import SiteTextPage from './pages/SiteTextPage';
 import LoginPage from './components/LoginPage';
 import { Loader2 } from 'lucide-react';
@@ -52,7 +51,8 @@ export default function App() {
               <Route path="/" element={<DashboardLayout />}>
                 {/* AI Assistant */}
                 <Route path="ai" element={<AiAssistantPage />} />
-                <Route path="ai/settings" element={<AiSettingsPage />} />
+                <Route path="ai/settings" element={<Navigate to="/settings?tab=ai" replace />} />
+                <Route path="ai/history" element={<Navigate to="/versions?tab=activity" replace />} />
 
                 {/* Home / Overview */}
                 <Route index element={<HomePage />} />
@@ -88,7 +88,8 @@ export default function App() {
                 <Route path="versions/:versionId/restore" element={<RestorePage />} />
 
                 {/* Connecting AI apps */}
-                <Route path="ai-connection" element={<AiConnectionPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="ai-connection" element={<Navigate to="/settings?tab=mcp" replace />} />
               </Route>
 
               {/* Fallback Catch-All Route */}
