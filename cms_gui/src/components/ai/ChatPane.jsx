@@ -129,33 +129,48 @@ const visibleMessages = (messages) => messages.filter((m) => m.role === 'user' |
 const pageName = (page) => (!page ? '' : page === '/' ? 'Home page' : page);
 
 /** The draft's changes, numbered as on the website. Choosing one shows it there. */
-function ChangeCards({ changes, step, onShow }) {
+function ChangeCards({ changes, step, onShow, sent, running, onDiscard, deciding }) {
   if (!changes.length) return null;
   return (
-    <ol aria-label="The changes" className="space-y-2">
-      {changes.map((c, i) => (
-        <li key={`${i} ${c.summary}`}>
-          <button
-            type="button"
-            onClick={() => onShow(i)}
-            aria-current={i === step ? 'true' : undefined}
-            className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
-              i === step ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted'
-            }`}
-          >
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{i + 1}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-foreground">{c.summary}</span>
-              <span className="text-xs text-muted-foreground">
-                {pageName(c.page)}
-                {c.page ? ' · ' : ''}
-                <span className="font-semibold text-primary">Show on page</span>
+    <div className="space-y-2">
+      {/* Until the check passes, these are only this chat's draft: say so, so they aren't taken for changes waiting on Versions. */}
+      {!sent && (
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Draft, not sent to Versions yet.</span> {running ? 'It goes there once checked.' : 'Ask for changes, or discard it.'}
+          </p>
+          {!running && (
+            <button type="button" onClick={onDiscard} disabled={deciding} className="btn-ghost shrink-0 rounded-full px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10">
+              <Trash2 className="h-3.5 w-3.5" /> Discard
+            </button>
+          )}
+        </div>
+      )}
+      <ol aria-label="The changes" className="space-y-2">
+        {changes.map((c, i) => (
+          <li key={`${i} ${c.summary}`}>
+            <button
+              type="button"
+              onClick={() => onShow(i)}
+              aria-current={i === step ? 'true' : undefined}
+              className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+                i === step ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted'
+              }`}
+            >
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{i + 1}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-foreground">{c.summary}</span>
+                <span className="text-xs text-muted-foreground">
+                  {pageName(c.page)}
+                  {c.page ? ' · ' : ''}
+                  <span className="font-semibold text-primary">Show on page</span>
+                </span>
               </span>
-            </span>
-          </button>
-        </li>
-      ))}
-    </ol>
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
@@ -439,7 +454,9 @@ export default function ChatPane({ threadId, draft, sent, outcome, deciding, onS
             </div>
           )}
 
-          {changes.length > 0 && (draft || sent) && <ChangeCards changes={changes} step={step} onShow={onShowChange} />}
+          {changes.length > 0 && (draft || sent) && (
+            <ChangeCards changes={changes} step={step} onShow={onShowChange} sent={sent} running={!!draft?.running || draft?.status === 'reviewing'} onDiscard={onDiscard} deciding={deciding} />
+          )}
 
           {sent && (
             <div role="status" className="space-y-3 rounded-xl border border-success/40 bg-success/10 p-4">

@@ -352,6 +352,38 @@ export const describeChange = internalMutation({
   },
 });
 
+/**
+ * Takes the agent's own edits out of the draft, as if never made: when the admin
+ * says not to make them. A website text by `key`; a record by `table` and `id`,
+ * one field or (without `field`) everything done to it. `all` empties the draft.
+ */
+export const dropEdits = internalMutation({
+  args: {
+    changeSetId: v.id("changeSets"),
+    runSeq: v.number(),
+    all: v.optional(v.boolean()),
+    key: v.optional(v.string()),
+    table: v.optional(contentTable),
+    id: v.optional(v.string()),
+    field: v.optional(v.string()),
+  },
+  handler: async (ctx, { changeSetId, runSeq, all, key, table, id, field }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
+    if (!all && !key && !(table && id)) throw new ConvexError("Say which edit to drop: all, a website text's key, or a record's table and id.");
+    const drop = (op: ContentOp) => {
+      if (all) return true;
+      if (op.op === "text") return op.key === key;
+      if (op.table !== table || op.id !== id) return false;
+      return !field || op.op !== "update" || op.field === field;
+    };
+    const contentOps = cs.contentOps.filter((op) => !drop(op));
+    const dropped = cs.contentOps.length - contentOps.length;
+    if (!dropped) throw new ConvexError("No edit in the draft matches that. The draft has: " + (cs.contentOps.map((op) => (op.op === "text" ? `text ${op.key}` : `${op.op} ${op.table} ${op.id}`)).join("; ") || "nothing"));
+    await patchDraft(ctx, cs, { contentOps, ...(all || !contentOps.length ? { changeList: [] } : {}) });
+    return { ok: true, dropped, left: contentOps.length };
+  },
+});
+
 /** For a change that no longer applies, so the walkthrough stays true. */
 export const removeChange = internalMutation({
   args: { changeSetId: v.id("changeSets"), runSeq: v.number(), summary: v.string() },

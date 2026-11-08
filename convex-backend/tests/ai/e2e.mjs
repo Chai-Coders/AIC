@@ -266,6 +266,19 @@ const tests = {
     await rejectWaiting();
   },
 
+  async 'the assistant can take its own edits back out when told not to make them'() {
+    const item = (await live()).news[0];
+    await script([{ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'Unwanted' }], describe('Summary')] }, { text: 'Changed it.' }, { tools: [['reject', { reasons: ['Not asked for'] }]] }, { text: 'Fixing.' }, { tools: [['reject', { reasons: ['Still'] }]] }, { text: 'Fixing.' }, { tools: [['reject', { reasons: ['Still'] }]] }]);
+    const { threadId, changeSetId } = await say('Change the summary');
+    await inState(threadId, 'needs_admin');
+    await script([{ tools: [['drop_edits', { all: true }]] }, { text: 'Done, nothing is changed now.' }]);
+    await say('Forget those changes', threadId);
+    const d = await inState(threadId, 'drafting');
+    assert.deepEqual([d.contentOps.length, d.changeList.length], [0, 0], 'the draft is empty again');
+    assert.equal(await waiting(), null, 'and nothing went to Versions');
+    await rejects(() => c.mutation(api.ai.chat.discard, { changeSetId }).then(() => c.mutation(api.ai.chat.discard, { changeSetId })), /can't be discarded/);
+  },
+
   async 'the agent only changes data: it has no code or GitHub tools'() {
     await script([{ text: 'A developer has to do that.' }]);
     const { threadId, changeSetId } = await say('Make the button red');
