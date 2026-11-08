@@ -407,11 +407,14 @@ await step('settings page and phone width',async()=>{
   await page.locator('nav a',{hasText:'Settings'}).click();
   await page.getByRole('heading',{name:'Settings'}).waitFor();
   assert.ok(!(await page.content()).includes('sk-ant-fake'));
+  // Rarely needed, so under Advanced.
+  await page.getByText('Advanced',{exact:true}).click();
   await page.getByRole('button',{name:'Check now'}).click();
   await page.getByText(/prices? changed/).first().waitFor({timeout:20000});
   const picker=page.getByRole('combobox',{name:'AI model'});
-  assert.match(await picker.locator('option',{hasText:'Claude Opus 5.5'}).innerText(),/Claude Opus 5\.5 \(\$4\.00 in, \$20\.00 out\)/);
+  assert.match(await picker.locator('option',{hasText:'Claude Opus 5.5'}).innerText(),/Claude Opus 5\.5 \(\$4\.00 in, \$20\.00 out per million tokens\)/);
   assert.equal(await picker.locator('option',{hasText:'Claude Test Only'}).count(),0,"a model the key can't use isn't offered");
+  await page.getByText('Show details',{exact:true}).click();
   await page.getByRole('combobox',{name:'Usage month'}).waitFor();
   await shot('10-settings');
   await page.getByRole('tab',{name:/MCP/}).click();
@@ -431,6 +434,8 @@ await step('the checks left the live site as they found it',async()=>{
   assert.equal(contentPrint(await live()),liveBefore);
 });
 await page.setViewportSize({width:1500,height:950});
+// Wherever the last check stopped, put the admin's model back from the assistant page.
+await page.goto(CMS+'/ai');
 await modelButton.waitFor({timeout:15000});
 await pickModel(adminsModel);
 await page.waitForTimeout(800);
