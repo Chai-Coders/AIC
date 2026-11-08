@@ -316,6 +316,33 @@ const tests = {
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 
+  async 'an edit made by hand keeps the date and place, as an approved AI edit does'() {
+    const before = await live();
+    const news = before.news.at(-1);
+    // One with every required field, so the hand edit is accepted.
+    const startupIndex = before.startups.findLastIndex((x) => x.description?.trim());
+    const startup = before.startups[startupIndex];
+    await c.mutation(api.news.update, { id: news.id, title: `${news.title} (edited)`, subtitle: news.subtitle, content: news.content });
+    await c.mutation(api.startups.update, { id: startup.id, name: `${startup.name} (edited)`, description: startup.description, website_url: startup.website_url ?? undefined });
+    let after = await live();
+    assert.equal(after.news.find((n) => n.id === news.id).published_date, news.published_date, 'the article kept its date');
+    assert.equal(after.news.at(-1).id, news.id, 'and its place');
+    assert.equal(after.startups[startupIndex].id, startup.id, 'the startup kept its place');
+    await c.mutation(api.news.update, { id: news.id, title: news.title, subtitle: news.subtitle, content: news.content });
+    await c.mutation(api.startups.update, { id: startup.id, name: startup.name, description: startup.description, website_url: startup.website_url ?? undefined });
+    after = await live();
+    assert.equal(after.news.find((n) => n.id === news.id).title, news.title);
+  },
+
+  async 'a person can be added by hand without a photo, as an AI can'() {
+    const name = `No photo ${Date.now()}`;
+    const id = await c.mutation(api.team.create, { name, role: 'Advisor', category: 'governor' });
+    const person = (await live()).team.find((m) => m.id === id);
+    assert.equal(person.name, name);
+    assert.ok(!person.photo, 'no photo');
+    await c.mutation(api.team.remove, { id });
+  },
+
   async 'Site text page backend still works alongside the agent'() {
     await rejects(() => anon.mutation(api.siteText.publish, { changes: [] }), /session/i);
     await c.mutation(api.siteText.publish, { changes: [{ key: 'notFound.hero.home', value: 'Home please' }] });

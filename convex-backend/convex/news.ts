@@ -46,8 +46,8 @@ export const update = mutation({
     if (thumbnailId && thumbnailId !== doc.thumbnailId) await requireImage(ctx, thumbnailId);
     await ctx.db.patch(id, {
       ...fields(args),
+      // An edit keeps the article's date, as approving an AI edit does.
       thumbnailId: thumbnailId ?? doc.thumbnailId,
-      publishedDate: todayIso(),
     });
     await recordCmsEdit(ctx, "news", id, doc, await ctx.db.get(id));
   },

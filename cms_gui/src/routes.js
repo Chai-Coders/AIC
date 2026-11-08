@@ -154,6 +154,8 @@ export const SECTIONS = {
     layout: 'tiles',
     imageField: 'photo',
     imageLabel: 'Photo',
+    // Same as for AI changes: a person may have no photo (the imported board has none).
+    imageOptional: true,
     imageFit: 'cover',
     fields: [
       { name: 'name', label: 'Full name', type: 'text', required: true, maxLength: 150, placeholder: 'e.g. Dr. Jane Doe' },

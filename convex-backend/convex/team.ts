@@ -23,12 +23,13 @@ const fields = (args: { name: string; role: string; category: TeamCategory; bio?
 });
 
 export const create = mutation({
-  args: { ...fieldArgs, photoId: v.id("images") },
+  // The photo is optional, as it is for people an AI adds.
+  args: { ...fieldArgs, photoId: v.optional(v.id("images")) },
   handler: async (ctx, { photoId, ...args }) => {
     await requireAdmin(ctx);
     const id = await ctx.db.insert("teamMembers", {
       ...fields(args),
-      photoId: await requireImage(ctx, photoId),
+      ...(photoId ? { photoId: await requireImage(ctx, photoId) } : {}),
       createdAt: Date.now(),
     });
     await recordCmsEdit(ctx, "teamMembers", id, null, await ctx.db.get(id));
@@ -45,7 +46,8 @@ export const update = mutation({
     if (!doc) return;
     // The old picture is kept: the version history can put it back.
     if (photoId && photoId !== doc.photoId) await requireImage(ctx, photoId);
-    await ctx.db.patch(id, { ...fields(args), photoId: photoId ?? doc.photoId, createdAt: Date.now() });
+    // An edit keeps its place, as approving an AI edit does.
+    await ctx.db.patch(id, { ...fields(args), photoId: photoId ?? doc.photoId });
     await recordCmsEdit(ctx, "teamMembers", id, doc, await ctx.db.get(id));
   },
 });
