@@ -100,7 +100,7 @@ export default function EditBar({ section, item, onClose, onSaved, onDelete, sho
       document.getElementById(`field-${missing.name}`)?.focus();
       return;
     }
-    if (!isEditing && !selectedFile) {
+    if (!isEditing && !selectedFile && !section.imageOptional) {
       setError(`Please add a ${section.imageLabel.toLowerCase()}.`);
       return;
     }
@@ -158,7 +158,7 @@ export default function EditBar({ section, item, onClose, onSaved, onDelete, sho
           <div className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
               {section.imageLabel}
-              {!isEditing && <span className="text-destructive"> *</span>}
+              {!isEditing && !section.imageOptional && <span className="text-destructive"> *</span>}
             </span>
 
             {previewUrl ? (

@@ -13,9 +13,9 @@ export default function SpendMeter({ compact = false }) {
   const label = `$${meter.spentUsd.toFixed(2)} of $${meter.budgetUsd.toFixed(2)}`;
 
   return (
-    <div className={compact ? 'space-y-1' : 'space-y-1.5'} title={`Estimated AI spend this month: ${label}. Worked out from the tokens each provider reports and the prices on the AI settings page. Your provider's bill is the final figure.`}>
+    <div className={compact ? 'space-y-1' : 'space-y-1.5'} title={`Estimated AI spend this month: ${label}. Worked out from the tokens each provider reports and the prices checked every day. Your provider's bill is the final figure.`}>
       <div className="flex items-baseline justify-between gap-3 text-xs">
-        <span className="text-muted-foreground">{compact ? 'Estimated AI spend' : 'Estimated spend this month'}</span>
+        <span className="text-muted-foreground">{compact ? 'AI spend' : 'Estimated spend this month'}</span>
         <span className="tabular-nums text-foreground">{label}</span>
       </div>
       <div

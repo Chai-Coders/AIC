@@ -208,6 +208,46 @@ const tests = {
     assert.ok(!(await live()).team.some((m) => m.name === `Proposed ${stamp}`));
   },
 
+  async 'the assistant is told when its changes were rejected or approved on Versions'() {
+    const item = (await live()).news[0];
+    const edit = (value) => ({ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value }], describe('Summary')] });
+    await script([edit('Will be rejected'), DONE, OK]);
+    const { threadId } = await say('Change the summary');
+    await inState(threadId, 'sent');
+    await rejectWaiting();
+    await script([{ text: 'Understood.' }]);
+    await say('Try again', threadId);
+    await until('the reply', async () => (await control('state')).calls.length > 0);
+    assert.match(JSON.stringify((await control('state')).calls[0].messages), /rejected the changes you sent earlier/);
+    await inState(threadId, 'drafting');
+    // Approved, then a new message: told it is live.
+    await script([edit('Will be approved'), DONE, OK]);
+    await say('Once more', threadId);
+    await until('sent again', async () => {
+      const d = await draftOf(threadId);
+      return d.status === 'sent' && d.contentOps[0]?.to === 'Will be approved';
+    });
+    const { versionId } = await approveWaiting();
+    await script([{ text: 'Good.' }]);
+    await say('Thanks', threadId);
+    await until('the reply', async () => (await control('state')).calls.length > 0);
+    assert.match(JSON.stringify((await control('state')).calls[0].messages), /approved the changes you sent earlier/);
+    await undoVersion(versionId);
+  },
+
+  async 'an item waiting to be deleted on Versions is explained, not "not found"'() {
+    const imageId = await upload();
+    const id = await c.mutation(api.gallery.create, { imageId, subtext: `Doomed ${Date.now()}` });
+    mcpProposes('proposeDelete', { type: 'gallery', id });
+    await script([{ tools: [['update_record', { table: 'gallery', id, field: 'subtext', value: 'x' }]] }, { text: 'It is being deleted.' }]);
+    const { threadId, changeSetId } = await say('Recaption that photo');
+    await inState(threadId, 'drafting');
+    assert.match(toolResults((await control('state')).calls[1]), /waiting to be deleted on the Versions page/);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+    await rejectWaiting();
+    await c.mutation(api.gallery.remove, { id });
+  },
+
   async 'the agent only changes data: it has no code or GitHub tools'() {
     await script([{ text: 'A developer has to do that.' }]);
     const { threadId, changeSetId } = await say('Make the button red');
@@ -314,6 +354,33 @@ const tests = {
     const results = toolResults((await control('state')).calls[1]);
     assert.ok(/no website text called/.test(results) && /not a valid text name/.test(results) && /at most 5000/.test(results), results.slice(0, 400));
     await c.mutation(api.ai.chat.discard, { changeSetId });
+  },
+
+  async 'an edit made by hand keeps the date and place, as an approved AI edit does'() {
+    const before = await live();
+    const news = before.news.at(-1);
+    // One with every required field, so the hand edit is accepted.
+    const startupIndex = before.startups.findLastIndex((x) => x.description?.trim());
+    const startup = before.startups[startupIndex];
+    await c.mutation(api.news.update, { id: news.id, title: `${news.title} (edited)`, subtitle: news.subtitle, content: news.content });
+    await c.mutation(api.startups.update, { id: startup.id, name: `${startup.name} (edited)`, description: startup.description, website_url: startup.website_url ?? undefined });
+    let after = await live();
+    assert.equal(after.news.find((n) => n.id === news.id).published_date, news.published_date, 'the article kept its date');
+    assert.equal(after.news.at(-1).id, news.id, 'and its place');
+    assert.equal(after.startups[startupIndex].id, startup.id, 'the startup kept its place');
+    await c.mutation(api.news.update, { id: news.id, title: news.title, subtitle: news.subtitle, content: news.content });
+    await c.mutation(api.startups.update, { id: startup.id, name: startup.name, description: startup.description, website_url: startup.website_url ?? undefined });
+    after = await live();
+    assert.equal(after.news.find((n) => n.id === news.id).title, news.title);
+  },
+
+  async 'a person can be added by hand without a photo, as an AI can'() {
+    const name = `No photo ${Date.now()}`;
+    const id = await c.mutation(api.team.create, { name, role: 'Advisor', category: 'governor' });
+    const person = (await live()).team.find((m) => m.id === id);
+    assert.equal(person.name, name);
+    assert.ok(!person.photo, 'no photo');
+    await c.mutation(api.team.remove, { id });
   },
 
   async 'Site text page backend still works alongside the agent'() {

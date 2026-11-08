@@ -95,6 +95,15 @@ async function patchDraft(ctx: MutationCtx, cs: Doc<"changeSets">, patch: Partia
   await ctx.db.patch(cs._id, { ...patch, review: undefined, updatedAt: Date.now() });
 }
 
+/** Why a record can't be found: gone, or waiting to be deleted on the Versions page. */
+async function missingRecord(ctx: QueryCtx, table: ContentTable, id: string) {
+  const docId = ctx.db.normalizeId(table, id);
+  if (docId && (await ctx.db.get(docId))) {
+    return `That ${table} record is waiting to be deleted on the Versions page, so it can't be changed. Tell the admin; they can untick the delete there.`;
+  }
+  return `No ${table} record with id ${id}.`;
+}
+
 /** A record as the agent sees it: live, or waiting to be added in the pending AI draft. */
 const baseDoc = async (ctx: QueryCtx, table: ContentTable, id: string) =>
   ((await loadTables(ctx))[table].find((d) => d._id === id) as Record<string, any> | undefined) ?? null;
@@ -220,7 +229,7 @@ async function setField(ctx: MutationCtx, cs: Doc<"changeSets">, table: ContentT
     return;
   }
   const doc = await baseDoc(ctx, table, id);
-  if (!doc) throw new ConvexError(`No ${table} record with id ${id}.`);
+  if (!doc) throw new ConvexError(await missingRecord(ctx, table, id));
   if (cs.contentOps.some((op) => op.op === "delete" && op.id === id)) throw new ConvexError("That record is being deleted in this draft.");
   const existing = cs.contentOps.find((op) => op.op === "update" && op.id === id && op.field === field);
   const from = existing?.op === "update" ? existing.from : (doc[field] ?? null);
@@ -302,7 +311,7 @@ export const queueDeleteRecord = internalMutation({
       return { ok: true };
     }
     const doc = await baseDoc(ctx, table, id);
-    if (!doc) throw new ConvexError(`No ${table} record with id ${id}.`);
+    if (!doc) throw new ConvexError(await missingRecord(ctx, table, id));
     const label = String(doc.title || doc.name || doc.subtext || id);
     await ctx.db.patch(cs._id, {
       status: "needs_admin",

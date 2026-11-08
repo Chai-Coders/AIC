@@ -146,7 +146,7 @@ export default function OAuthAuthorizePage() {
       </div>
 
       <p className="rounded-lg bg-muted px-3 py-2.5 text-[13px] text-muted-foreground">
-        Only connect apps you started connecting yourself. You can disconnect it at any time on the AI connection page.
+        Only connect apps you started connecting yourself. You can disconnect it at any time on the MCP tab of the Settings page.
       </p>
 
       {error && (

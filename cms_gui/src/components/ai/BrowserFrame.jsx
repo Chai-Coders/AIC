@@ -4,7 +4,7 @@ import { SITE_URL } from '../../routes';
 const host = SITE_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'website';
 
 // The preview in a browser-like window, matching the Site text page.
-export default function BrowserFrame({ path, device, scale = 1, onDeviceChange, picking, onDonePicking, children }) {
+export default function BrowserFrame({ path, device, scale = 1, caption = 'Your website', onDeviceChange, picking, onDonePicking, children }) {
   return (
     <section aria-label="Website preview" className="flex h-full min-h-0 min-w-0 flex-col gap-3 bg-background p-3">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -15,7 +15,7 @@ export default function BrowserFrame({ path, device, scale = 1, onDeviceChange, 
           </button>
         ) : (
           <p className="min-w-0 truncate text-sm text-muted-foreground">
-            Your website, with the draft applied{scale < 1 ? `. Shown at ${Math.round(scale * 100)}% to fit.` : '.'}
+            {caption}{scale < 1 ? `. Shown at ${Math.round(scale * 100)}% to fit.` : '.'}
           </p>
         )}
         <div role="group" aria-label="Preview width" className="ml-auto inline-flex gap-0.5 rounded-lg bg-muted p-[3px]">

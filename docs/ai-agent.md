@@ -45,7 +45,7 @@ Set this on the Convex deployment with `npx convex env set NAME value`:
 The website needs `VITE_CMS_URL` set to the CMS's address, and the CMS needs `VITE_SITE_URL` set to the
 website's. The preview won't load without them; the page says so if it doesn't.
 
-Then, in the CMS, open **AI settings**, add a provider key, and check the model and budget. Saving a key
+Then, in the CMS, open **Settings → AI model config**, add a provider key, and check the model and budget. Saving a key
 is enough to start: if the chosen model's provider has no key, the assistant uses a default from a
 provider that has one.
 
@@ -82,13 +82,23 @@ cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localho
 - **Approving** on the Versions page is one Convex transaction. A field the admin edited in the CMS after the
   assistant sent its change keeps the admin's edit, unless they choose the AI value there.
 - **Undo** is the Versions page's: undo a version, put back one change, or restore the site to a point.
-  The AI activity page keeps the chat log and spending only.
+
+## The page
+
+- A new chat opens with four common requests (change words, add a person, post news, contact details); one fills in
+  the message box. A tip explains pointing.
+- A progress line shows where a request is: Editing, Checking, Approval (waiting on Versions), Live.
+- Each change is a numbered card in the chat; choosing one shows it on the page, with the same number.
+- The agent's steps show as one set of short labels per reply. The model and the month's spend sit under the message box.
+- When the admin has approved or rejected the changes on Versions, the chat says so, and the agent is told before
+  the next message.
 
 ## The preview
 
 The right pane is the real website in a frame (`?cms-edit=1&cms-agent=1`), the same approach as the Site
-text page, so it looks exactly like the public site. **After** shows the site as it will be once approved:
-everything waiting on the Versions page plus the chat's draft. **Before** is the live site. `frontend/src/content/AgentBridge.jsx` runs only in
+text page, so it looks exactly like the public site. **After approval** shows the site as it will be once approved:
+everything waiting on the Versions page plus the chat's draft. **Now** is the live site. The detailed before/after
+comparison is the Versions page's; this page doesn't repeat it. `frontend/src/content/AgentBridge.jsx` runs only in
 that mode, and only exchanges messages with `VITE_CMS_URL`. On Desktop the frame is laid out at the width of
 the admin's window and scaled down to fit the pane, since the site's layout changes with width. The CMS sends it the draft; it's held in memory
 and never written to the browser cache the public site reads. A draft applies without a reload.
@@ -123,9 +133,9 @@ model call, so it costs nothing. Past usage keeps the cost worked out at the tim
 
 ## Usage and the log
 
-The settings page splits usage by month, provider, model and job (editing or review), with a total that matches the meter.
-The activity log on AI activity filters by category and by model, with what the selection adds up to. It looks at the latest
-1,000 entries.
+Settings → AI model config splits usage by month, provider, model and job (editing or review), with a total that matches
+the meter. The **AI activity** tab on the Versions page lists every request, tool call, review verdict and model call,
+filtered by category and model, with what the selection adds up to. It looks at the latest 1,000 entries.
 
 ## When the agent asks
 

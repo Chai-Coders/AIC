@@ -55,11 +55,12 @@ export default function AiAssistantPage() {
 
   const preview = useRef(null);
   const [location, setLocation] = useState('/');
-  const [tab, setTab] = useState('preview');
 
   // ---- Pointing -----------------------------------------------------------
 
   const [picking, setPicking] = useState(false);
+  // What's typed in the chat, so a suggestion can fill it in.
+  const [prompt, setPrompt] = useState('');
   const [selected, setSelected] = useState([]);
   const [chatWidth, setChatWidth] = useStoredSize('aic-cms:ai-chat-width', 384);
 
@@ -78,7 +79,6 @@ export default function AiAssistantPage() {
     const next = !picking;
     setTour([]);
     setPicking(next);
-    if (next && tab === 'changes') setTab('preview');
     preview.current?.pick(next);
     if (next) setPhonePane('site');
   };
@@ -117,7 +117,6 @@ export default function AiAssistantPage() {
   const onStep = (index) => {
     setTour([]);
     setStep(index);
-    if (tab === 'changes') setTab('preview');
     highlightStep(index, mode);
   };
 
@@ -193,7 +192,6 @@ export default function AiAssistantPage() {
       setChosenThread(await run(() => newThread({})));
       setSelected([]);
       setMode('after');
-      setTab('preview');
       preview.current?.navigate('/');
     } catch (err) {
       showToast(err.message, 'error');
@@ -252,6 +250,15 @@ export default function AiAssistantPage() {
             draft={openDraft}
             sent={!!sentDraft}
             closedNotice={decided ?? (draft && !shownDraft ? draft.notice : null)}
+            outcome={draft?.status === 'sent' ? draft.versionStatus : null}
+            changes={changeList}
+            step={Math.min(step, Math.max(0, changeList.length - 1))}
+            onShowChange={(i) => {
+              onStep(i);
+              setPhonePane('site');
+            }}
+            onPrompt={setPrompt}
+            prompt={prompt}
             messages={messages}
             selected={selected}
             onRemoveSelected={(item) => setSelected((items) => items.filter((s) => !sameElement(s, item)))}
@@ -268,11 +275,8 @@ export default function AiAssistantPage() {
         <div className={`min-h-0 min-w-0 flex-1 md:block ${phonePane === 'site' ? '' : 'hidden'}`}>
           <PreviewPane
             ref={preview}
-            tab={tab}
-            onTab={setTab}
             content={content}
             draft={openDraft}
-            shownDraftId={shownDraft?._id}
             sent={!!sentDraft}
             changeList={changeList}
             step={Math.min(step, Math.max(0, changeList.length - 1))}

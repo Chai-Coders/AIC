@@ -44,7 +44,8 @@ export const update = mutation({
     if (logoId && logoId !== doc.logoId) await requireImage(ctx, logoId);
     // replace (not patch) so a cleared website is removed.
     const { _id, _creationTime, ...rest } = doc;
-    await ctx.db.replace(id, { ...rest, ...fields(args), logoId: logoId ?? doc.logoId, createdAt: Date.now() });
+    // An edit keeps its place in the list, as approving an AI edit does.
+    await ctx.db.replace(id, { ...rest, ...fields(args), logoId: logoId ?? doc.logoId });
     await recordCmsEdit(ctx, "startups", id, doc, await ctx.db.get(id));
   },
 });

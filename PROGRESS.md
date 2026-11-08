@@ -18,7 +18,13 @@ rules as AI apps over MCP:
   draft applied.
 - **Removed for now:** added page sections, the background video, gallery and startup reordering, and setting a news
   date, since the version history doesn't track them yet.
-- AI history is now **AI activity**: the chat log and spending.
+- **Hand edits follow the same rules as AI edits**: editing keeps an item's date and place (as Django did), and a
+  person can be added without a photo.
+- **AI Assistant page redesign**: a welcome with common requests, a progress line, numbered change cards and one
+  clear "Review on Versions"; the Changes and Side-by-side tabs are gone, since Versions is where changes are compared.
+- **One Settings page** (tabs: AI model config, MCP, Version history) replaces AI settings and AI connection. The
+  assistant's step-by-step log is the **AI activity** tab on the Versions page. Price sources, hand-entered prices
+  and the MCP how-to/examples were removed.
 
 ## Decisions
 

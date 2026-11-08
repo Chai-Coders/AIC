@@ -1,7 +1,6 @@
 import {
   History,
   LayoutDashboard,
-  ScrollText,
   Settings2,
   Sparkles,
   Image,
@@ -9,7 +8,6 @@ import {
   Newspaper,
   Users,
   Video,
-  Bot,
   Type,
 } from 'lucide-react';
 
@@ -156,6 +154,8 @@ export const SECTIONS = {
     layout: 'tiles',
     imageField: 'photo',
     imageLabel: 'Photo',
+    // Same as for AI changes: a person may have no photo (the imported board has none).
+    imageOptional: true,
     imageFit: 'cover',
     fields: [
       { name: 'name', label: 'Full name', type: 'text', required: true, maxLength: 150, placeholder: 'e.g. Dr. Jane Doe' },
@@ -188,8 +188,5 @@ export const ROUTES = [
   ...['gallery', 'startups', 'news', 'team'].map((id) => SECTIONS[id]),
   { path: '/background-video', id: 'background-video', name: 'Homepage video', icon: Video },
   { path: '/versions', id: 'versions', name: 'Versions', icon: History },
-  // The assistant's chat log and spending; its changes are on Versions.
-  { path: '/ai/history', id: 'ai-history', name: 'AI activity', icon: ScrollText },
-  { path: '/ai/settings', id: 'ai-settings', name: 'AI settings', icon: Settings2 },
-  { path: '/ai-connection', id: 'ai-connection', name: 'AI connection', icon: Bot },
+  { path: '/settings', id: 'settings', name: 'Settings', icon: Settings2 },
 ];

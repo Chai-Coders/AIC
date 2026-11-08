@@ -33,7 +33,8 @@ export const update = mutation({
     if (!doc) return;
     // The old picture is kept: the version history can put it back.
     if (imageId && imageId !== doc.imageId) await requireImage(ctx, imageId);
-    await ctx.db.patch(id, { ...fields(args), imageId: imageId ?? doc.imageId, createdAt: Date.now() });
+    // An edit keeps its place in the gallery, as approving an AI edit does.
+    await ctx.db.patch(id, { ...fields(args), imageId: imageId ?? doc.imageId });
     await recordCmsEdit(ctx, "gallery", id, doc, await ctx.db.get(id));
   },
 });

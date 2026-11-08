@@ -4,6 +4,7 @@ import { usePaginatedQuery, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { ChevronRight, History, Loader2 } from 'lucide-react';
 import PendingDraft from '../components/versions/PendingDraft';
+import AiActivity from '../components/versions/AiActivity';
 import { Badge } from '../components/versions/ChangeCard';
 import { plural, timeAgo, versionLook, versionSubtitle, versionTitle } from '../lib/versions';
 
@@ -145,11 +146,12 @@ export default function VersionsPage() {
   const [params, setParams] = useSearchParams();
   const pendingCount = useQuery(anyApi.drafts.pendingCount) ?? 0;
   const asked = params.get('tab');
-  const tab = asked === 'pending' || asked === 'history' ? asked : pendingCount > 0 ? 'pending' : 'history';
+  const tab = ['pending', 'history', 'activity'].includes(asked) ? asked : pendingCount > 0 ? 'pending' : 'history';
 
   const tabs = [
     { value: 'pending', label: 'Waiting for approval', count: pendingCount },
     { value: 'history', label: 'History' },
+    { value: 'activity', label: 'AI activity' },
   ];
 
   return (
@@ -161,7 +163,7 @@ export default function VersionsPage() {
         </p>
       </div>
 
-      <div role="tablist" aria-label="Versions" className="flex gap-1 overflow-x-auto border-b border-border">
+      <div role="tablist" aria-label="Versions" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
         {tabs.map((t) => (
           <button
             key={t.value}
@@ -183,7 +185,7 @@ export default function VersionsPage() {
         ))}
       </div>
 
-      {tab === 'pending' ? <PendingDraft /> : <HistoryList />}
+      {tab === 'pending' ? <PendingDraft /> : tab === 'activity' ? <AiActivity /> : <HistoryList />}
     </div>
   );
 }

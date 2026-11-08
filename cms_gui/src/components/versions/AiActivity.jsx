@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
 import { Loader2 } from 'lucide-react';
@@ -18,27 +17,19 @@ const CATEGORIES = [
 ];
 const categoryLabel = (value) => CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
-export default function AiHistoryPage() {
+// What the CMS's AI Assistant did, step by step: every request, tool call, model
+// call and review verdict, with its cost. Its changes themselves are on the
+// other tabs.
+export default function AiActivity() {
   const [category, setCategory] = useState('');
   const [model, setModel] = useState('');
   const log = useQuery(api.audit.browse, { limit: 100, ...(category ? { category } : {}), ...(model ? { model } : {}) });
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">AI activity</h1>
-        <p className="text-sm text-muted-foreground">
-          A log of what the AI Assistant did. The changes it makes wait on the{' '}
-          <Link to="/versions" className="font-medium text-primary hover:underline">
-            Versions
-          </Link>{' '}
-          page, where you approve them and can undo them later.
-        </p>
-      </div>
-
       <section className="space-y-3 rounded-xl border border-border bg-card p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-foreground">Activity log</h2>
-        <p className="text-sm text-muted-foreground">Every prompt, tool call, review verdict and draft sent to Versions. Most recent first.</p>
+        <h2 className="text-base font-semibold text-foreground">AI Assistant activity</h2>
+        <p className="text-sm text-muted-foreground">Every request, step, review and change sent here by the CMS's AI Assistant, with what each model call cost. Most recent first.</p>
         <div className="flex flex-wrap items-center gap-2">
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="field w-auto py-1.5 text-xs" aria-label="Show category">
             <option value="">All categories</option>

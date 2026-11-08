@@ -1,10 +1,10 @@
-// What the preview pane and the Changes tab read.
+// What the AI Assistant's website preview reads.
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireAdmin } from "../lib/access";
 import { toBackgroundVideo, toGallery, toNews, toStartup, toTeamMember } from "../content";
 import { loadTables, loadTexts } from "./drafts";
-import { applyOps, applyTextOps, describeOp } from "./records";
+import { applyOps, applyTextOps } from "./records";
 
 /**
  * Site content in the shape of content:siteContent. Without arguments it's the
@@ -41,16 +41,5 @@ export const siteContentPreview = query({
       background_video: video ? toBackgroundVideo(video) : null,
       text: Object.entries(applyTextOps(texts, ops)).map(([key, value]) => ({ key, value })),
     };
-  },
-});
-
-/** Everything in a draft, for the Changes tab. */
-export const changes = query({
-  args: { changeSetId: v.id("changeSets") },
-  handler: async (ctx, { changeSetId }) => {
-    await requireAdmin(ctx);
-    const cs = await ctx.db.get(changeSetId);
-    if (!cs) return null;
-    return { content: cs.contentOps.map(describeOp) };
   },
 });
