@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
-import { AlertTriangle, Bot, Crosshair, History, ImagePlus, Loader2, Plus, Send, Square, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, Crosshair, ImagePlus, Loader2, Plus, Send, Sparkles, Square, Trash2, X } from 'lucide-react';
 import { run } from '../../services/convex';
 import { uploadImage } from '../../lib/upload';
 import SpendMeter from './SpendMeter';
@@ -53,15 +53,159 @@ function Message({ message }) {
   }
   const activity = [...new Set(message.tools.map((t) => TOOL_LABELS[t]).filter(Boolean))];
   return (
-    <div className="space-y-1 px-4">
-      {activity.map((line) => (
-        <p key={line} className="text-xs text-muted-foreground">
-          · {line}
-        </p>
-      ))}
+    <div className="space-y-2 px-4">
+      {activity.length > 0 && (
+        <ul aria-label="What the assistant did" className="flex flex-wrap gap-1.5">
+          {activity.map((line) => (
+            <li key={line} className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              <Check className="h-3 w-3 text-success" aria-hidden="true" /> {line}
+            </li>
+          ))}
+        </ul>
+      )}
       {message.text && <p className="text-sm whitespace-pre-wrap text-foreground">{withBold(message.text)}</p>}
       {message.failed && <p className="text-xs text-destructive">This step failed.</p>}
     </div>
+  );
+}
+
+// Ready-made openings for the most common requests. Picking one fills in the message box.
+const STARTERS = [
+  { title: 'Change some words', hint: 'Headings, paragraphs and buttons on any page', prompt: 'On the home page, change the heading to ' },
+  { title: 'Add a person', hint: 'Team, board member or mentor', prompt: 'Add a new mentor (India, industry): name , job title ' },
+  { title: 'Post news', hint: 'Attach a picture for it', prompt: 'Post a news update about ' },
+  { title: 'Update contact details', hint: 'Address, emails, phones, links', prompt: 'Update our phone numbers to ' },
+];
+
+function Welcome({ onPick }) {
+  return (
+    <div className="space-y-5 px-4 py-4">
+      <div className="space-y-2">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-primary">
+          <Sparkles className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">What would you like to change?</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Tell me in your own words. You'll see it on the website on the right, and nothing goes live until you approve it on the Versions page.
+        </p>
+      </div>
+      <ul className="grid grid-cols-2 gap-2">
+        {STARTERS.map((s) => (
+          <li key={s.title}>
+            <button
+              type="button"
+              onClick={() => onPick(s.prompt)}
+              className="flex h-full w-full flex-col gap-1 rounded-xl border border-border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent"
+            >
+              <span className="text-sm font-semibold text-foreground">{s.title}</span>
+              <span className="text-xs leading-snug text-muted-foreground">{s.hint}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="flex gap-2.5 rounded-xl bg-muted p-3 text-xs leading-relaxed text-foreground">
+        <Crosshair className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+        <span>
+          <strong>Tip:</strong> press <strong>Point</strong>, click things on the website, then say what they should become. No need to describe where they are.
+        </span>
+      </p>
+    </div>
+  );
+}
+
+const STEPS = ['Editing', 'Checking', 'Approval', 'Live'];
+
+/** Where a request is: the assistant at work, the review, approval on Versions, live. */
+function Progress({ draft, sent, outcome }) {
+  let at = -1;
+  let stuck = false;
+  if (outcome === 'approved') at = STEPS.length;
+  else if (sent) at = 2;
+  else if (draft?.status === 'reviewing') at = 1;
+  else if (draft?.status === 'drafting' && draft.running) at = 0;
+  else if (draft?.status === 'needs_admin') {
+    at = draft.review?.verdict === 'rejected' ? 1 : 0;
+    stuck = true;
+  }
+  if (at < 0) return null;
+  return (
+    <ol aria-label="Progress" className="flex items-center gap-1 border-b border-border px-4 py-2.5 text-[11px] font-semibold">
+      {STEPS.map((label, i) => {
+        const done = i < at;
+        const now = i === at;
+        const tone = done ? 'text-success' : now ? (stuck ? 'text-warning' : 'text-primary') : 'text-muted-foreground';
+        return (
+          <li key={label} aria-current={now ? 'step' : undefined} className={`flex min-w-0 items-center gap-1 ${tone}`}>
+            {i > 0 && <span aria-hidden="true" className={`h-px w-3 shrink-0 ${done || now ? 'bg-current' : 'bg-border'}`} />}
+            <span
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] ${
+                done ? 'bg-success/15' : now ? (stuck ? 'bg-warning/15' : 'bg-primary text-primary-foreground') : 'border border-border'
+              }`}
+            >
+              {done ? <Check className="h-2.5 w-2.5" aria-hidden="true" /> : now && !stuck && i < 2 ? <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden="true" /> : i + 1}
+            </span>
+            <span className="truncate">{now && stuck ? 'Needs you' : label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/**
+ * The assistant works in steps, each saved as a message. Steps with no words
+ * are folded into the reply they lead to, so the chat shows one set of
+ * activity per reply instead of a line per step.
+ */
+function mergeSteps(messages) {
+  const out = [];
+  let pending = [];
+  for (const m of messages) {
+    if (m.role !== 'assistant') {
+      if (pending.length) out.push({ id: `steps-${out.length}`, role: 'assistant', text: '', tools: pending, failed: false });
+      pending = [];
+      out.push(m);
+    } else if (!m.text && !m.failed) {
+      pending = [...pending, ...m.tools];
+    } else {
+      out.push({ ...m, tools: [...pending, ...m.tools] });
+      pending = [];
+    }
+  }
+  if (pending.length) out.push({ id: `steps-${out.length}`, role: 'assistant', text: '', tools: pending, failed: false });
+  return out;
+}
+
+const pageName = (page) => (!page ? '' : page === '/' ? 'Home page' : page);
+
+/** The draft's changes, numbered as on the website. Choosing one shows it there. */
+function ChangeCards({ changes, step, onShow }) {
+  if (!changes.length) return null;
+  return (
+    <ol aria-label="The changes" className="space-y-2">
+      {changes.map((c, i) => (
+        <li key={`${i} ${c.summary}`}>
+          <button
+            type="button"
+            onClick={() => onShow(i)}
+            aria-current={i === step ? 'true' : undefined}
+            className={`flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors ${
+              i === step ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-muted'
+            }`}
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{i + 1}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-foreground">{c.summary}</span>
+              <span className="text-xs text-muted-foreground">
+                {pageName(c.page)}
+                {c.page ? ' · ' : ''}
+                <span className="font-semibold text-primary">Show on page</span>
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -119,7 +263,7 @@ function ModelPicker({ settings, onError }) {
   };
   if (models.length === 0) return null;
   return (
-    <select value={`${current.provider}/${current.model}`} onChange={change} className="field py-1.5 text-xs" aria-label="AI model">
+    <select value={`${current.provider}/${current.model}`} onChange={change} className="field w-auto max-w-48 truncate py-1 text-xs" aria-label="AI model">
       {!models.some((m) => m.provider === current.provider && m.model === current.model) && (
         <option value={`${current.provider}/${current.model}`}>{current.model}</option>
       )}
@@ -132,10 +276,12 @@ function ModelPicker({ settings, onError }) {
   );
 }
 
-export default function ChatPane({ threadId, draft, sent, closedNotice, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
+export default function ChatPane({ threadId, draft, sent, outcome, closedNotice, changes, step, onShowChange, prompt, onPrompt, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
   const settings = useQuery(api.settings.get);
   const stop = useMutation(api.chat.stop);
-  const [text, setText] = useState('');
+  const text = prompt;
+  const setText = onPrompt;
+  const textarea = useRef(null);
   const [sending, setSending] = useState(false);
   const [pictures, setPictures] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -198,29 +344,29 @@ export default function ChatPane({ threadId, draft, sent, closedNotice, messages
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-card">
-      <div className="shrink-0 space-y-2 border-b border-border p-3">
+      <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <h1 className="flex-1 text-sm font-semibold text-foreground">AI Assistant</h1>
-          <button type="button" onClick={onNewChat} disabled={busy} className="btn-ghost px-2 py-1 text-xs">
+          <h1 className="flex-1 text-base font-bold text-foreground">AI Assistant</h1>
+          <button type="button" onClick={onNewChat} disabled={busy} className="btn-secondary rounded-full px-3 py-1.5 text-xs">
             <Plus className="h-3.5 w-3.5" /> New chat
           </button>
         </div>
-        {settings && <ModelPicker settings={settings} onError={(m) => showToast(m, 'error')} />}
-        <SpendMeter compact />
       </div>
+      <Progress draft={draft} sent={sent} outcome={outcome} />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-4" aria-live="polite">
         {!threadId || messages?.length === 0 ? (
-          <div className="space-y-3 px-4 py-6 text-center">
-            <Bot className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />
-            <p className="text-sm text-foreground">Describe what you'd like to change on the website.</p>
-            <p className="text-xs text-muted-foreground">
-              For example: "Change the home page heading to Who we are", or "Add Jane Doe to the AIC team as Programme Manager". Once the review
-              agent has checked a change, it waits on the Versions page. Nothing goes live until you approve it there.
-            </p>
-          </div>
+          <Welcome
+            onPick={(starter) => {
+              setText(starter);
+              requestAnimationFrame(() => {
+                textarea.current?.focus();
+                textarea.current?.setSelectionRange(starter.length, starter.length);
+              });
+            }}
+          />
         ) : (
-          messages?.map((m) => <Message key={m.id} message={m} />)
+          mergeSteps(messages ?? []).map((m) => <Message key={m.id} message={m} />)
         )}
 
         {statusLine && (
@@ -246,15 +392,17 @@ export default function ChatPane({ threadId, draft, sent, closedNotice, messages
             </div>
           )}
 
+          {changes.length > 0 && (draft || sent) && <ChangeCards changes={changes} step={step} onShow={onShowChange} />}
+
           {sent && (
-            <div role="status" className="space-y-2 rounded-xl border border-border bg-muted p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <History className="h-4 w-4 text-primary" aria-hidden="true" /> Waiting for your approval
-              </p>
-              <p className="text-sm text-foreground">
-                The review agent passed this change, so it's on the Versions page. Nothing is on the website until you approve it there.
-              </p>
-              <Link to="/versions?tab=pending" className="btn-primary px-3 py-1.5 text-xs">
+            <div role="status" className="space-y-3 rounded-xl border border-success/40 bg-success/10 p-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {changes.length > 1 ? `${changes.length} changes are` : 'Your change is'} waiting for your approval
+                </p>
+                <p className="text-xs text-muted-foreground">The review agent checked it. Nothing is on the website until you approve it on Versions.</p>
+              </div>
+              <Link to="/versions?tab=pending" className="btn-primary w-full justify-center rounded-full px-4 py-2 text-xs">
                 Review on Versions
               </Link>
             </div>
@@ -314,20 +462,28 @@ export default function ChatPane({ threadId, draft, sent, closedNotice, messages
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) submit(e);
             }}
+            ref={textarea}
             rows={3}
             disabled={!canType}
-            placeholder={draft?.pendingConfirm ? 'Answer the question above first.' : busy ? 'Please wait…' : 'What should change?'}
+            placeholder={draft?.pendingConfirm ? 'Answer the question above first.' : busy ? 'Please wait…' : 'Say what should change, e.g. “Change the home page heading to Where ideas become companies”'}
             aria-label="Message to the AI Assistant"
-            className="field resize-none"
+            className="field resize-none rounded-xl"
           />
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 gap-1.5">
-              <button type="button" onClick={onTogglePick} aria-pressed={picking} className={`btn-secondary px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}>
+              <button
+                type="button"
+                onClick={onTogglePick}
+                aria-pressed={picking}
+                title="Click things on the website to show what you mean"
+                className={`btn-secondary rounded-full px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}
+              >
                 <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
               </button>
               <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={attach} aria-label="Attach pictures" />
-              <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading || !canType} title="Attach a picture" aria-label="Attach a picture" className="btn-secondary px-2 py-1.5">
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading || !canType} title="Attach a picture" aria-label="Attach a picture" className="btn-secondary rounded-full px-3 py-1.5 text-xs">
                 {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">Picture</span>
               </button>
             </div>
             {draft?.running ? (
@@ -335,10 +491,16 @@ export default function ChatPane({ threadId, draft, sent, closedNotice, messages
                 <Square className="h-3.5 w-3.5" /> Stop
               </button>
             ) : (
-              <button type="submit" disabled={!canType || !text.trim()} className="btn-primary px-3 py-1.5 text-xs">
+              <button type="submit" disabled={!canType || !text.trim()} className="btn-primary rounded-full px-4 py-1.5 text-xs">
                 <Send className="h-3.5 w-3.5" /> Send
               </button>
             )}
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            {settings && <ModelPicker settings={settings} onError={(m) => showToast(m, 'error')} />}
+            <div className="min-w-0 flex-1">
+              <SpendMeter compact />
+            </div>
           </div>
         </form>
       )}

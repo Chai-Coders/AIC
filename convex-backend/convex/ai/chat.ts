@@ -127,6 +127,17 @@ export const send = mutation({
 
     const settings = await loadSettings(ctx);
     let cs = await openDraft(ctx, threadId);
+    // What became of this chat's last changes on the Versions page, so the agent
+    // doesn't assume rejected changes are still there (or approved ones aren't).
+    let outcome: string | null = null;
+    if (!cs && given) {
+      const last = await ctx.db.query("changeSets").withIndex("by_threadId", (q) => q.eq("threadId", threadId)).order("desc").first();
+      const version = last?.status === "sent" && last.versionId ? await ctx.db.get(last.versionId) : null;
+      if (version?.status === "approved") outcome = "The admin approved the changes you sent earlier on the Versions page, so they are live now.";
+      if (version?.status === "rejected") {
+        outcome = "The admin rejected the changes you sent earlier on the Versions page, so they are not on the website and no longer waiting. Don't treat them as done.";
+      }
+    }
     if (cs) {
       if (cs.running) throw new ConvexError("The assistant is still working. Wait for it to finish, or press Stop.");
       if (cs.pendingConfirm) throw new ConvexError("Please answer the question about the delete first.");
@@ -165,6 +176,7 @@ export const send = mutation({
 
     const count = selectedElements.length;
     const notes = [
+      ...(outcome ? [outcome] : []),
       ...(count ? [`The admin pointed at ${count === 1 ? "an element" : `${count} elements`} in the preview. Call get_selected_element.`] : []),
       ...pictures.map((p) => `The admin attached a picture, "${p.name.replace(/["\n]/g, " ").slice(0, 80)}", with imageId ${p.imageId}.`),
     ];

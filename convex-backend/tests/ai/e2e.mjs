@@ -208,6 +208,46 @@ const tests = {
     assert.ok(!(await live()).team.some((m) => m.name === `Proposed ${stamp}`));
   },
 
+  async 'the assistant is told when its changes were rejected or approved on Versions'() {
+    const item = (await live()).news[0];
+    const edit = (value) => ({ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value }], describe('Summary')] });
+    await script([edit('Will be rejected'), DONE, OK]);
+    const { threadId } = await say('Change the summary');
+    await inState(threadId, 'sent');
+    await rejectWaiting();
+    await script([{ text: 'Understood.' }]);
+    await say('Try again', threadId);
+    await until('the reply', async () => (await control('state')).calls.length > 0);
+    assert.match(JSON.stringify((await control('state')).calls[0].messages), /rejected the changes you sent earlier/);
+    await inState(threadId, 'drafting');
+    // Approved, then a new message: told it is live.
+    await script([edit('Will be approved'), DONE, OK]);
+    await say('Once more', threadId);
+    await until('sent again', async () => {
+      const d = await draftOf(threadId);
+      return d.status === 'sent' && d.contentOps[0]?.to === 'Will be approved';
+    });
+    const { versionId } = await approveWaiting();
+    await script([{ text: 'Good.' }]);
+    await say('Thanks', threadId);
+    await until('the reply', async () => (await control('state')).calls.length > 0);
+    assert.match(JSON.stringify((await control('state')).calls[0].messages), /approved the changes you sent earlier/);
+    await undoVersion(versionId);
+  },
+
+  async 'an item waiting to be deleted on Versions is explained, not "not found"'() {
+    const imageId = await upload();
+    const id = await c.mutation(api.gallery.create, { imageId, subtext: `Doomed ${Date.now()}` });
+    mcpProposes('proposeDelete', { type: 'gallery', id });
+    await script([{ tools: [['update_record', { table: 'gallery', id, field: 'subtext', value: 'x' }]] }, { text: 'It is being deleted.' }]);
+    const { threadId, changeSetId } = await say('Recaption that photo');
+    await inState(threadId, 'drafting');
+    assert.match(toolResults((await control('state')).calls[1]), /waiting to be deleted on the Versions page/);
+    await c.mutation(api.ai.chat.discard, { changeSetId });
+    await rejectWaiting();
+    await c.mutation(api.gallery.remove, { id });
+  },
+
   async 'the agent only changes data: it has no code or GitHub tools'() {
     await script([{ text: 'A developer has to do that.' }]);
     const { threadId, changeSetId } = await say('Make the button red');

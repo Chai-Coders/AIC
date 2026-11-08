@@ -83,11 +83,22 @@ cd cms_gui && VITE_CONVEX_URL=http://127.0.0.1:3210 VITE_SITE_URL=http://localho
   assistant sent its change keeps the admin's edit, unless they choose the AI value there.
 - **Undo** is the Versions page's: undo a version, put back one change, or restore the site to a point.
 
+## The page
+
+- A new chat opens with four common requests (change words, add a person, post news, contact details); one fills in
+  the message box. A tip explains pointing.
+- A progress line shows where a request is: Editing, Checking, Approval (waiting on Versions), Live.
+- Each change is a numbered card in the chat; choosing one shows it on the page, with the same number.
+- The agent's steps show as one set of short labels per reply. The model and the month's spend sit under the message box.
+- When the admin has approved or rejected the changes on Versions, the chat says so, and the agent is told before
+  the next message.
+
 ## The preview
 
 The right pane is the real website in a frame (`?cms-edit=1&cms-agent=1`), the same approach as the Site
-text page, so it looks exactly like the public site. **After** shows the site as it will be once approved:
-everything waiting on the Versions page plus the chat's draft. **Before** is the live site. `frontend/src/content/AgentBridge.jsx` runs only in
+text page, so it looks exactly like the public site. **After approval** shows the site as it will be once approved:
+everything waiting on the Versions page plus the chat's draft. **Now** is the live site. The detailed before/after
+comparison is the Versions page's; this page doesn't repeat it. `frontend/src/content/AgentBridge.jsx` runs only in
 that mode, and only exchanges messages with `VITE_CMS_URL`. On Desktop the frame is laid out at the width of
 the admin's window and scaled down to fit the pane, since the site's layout changes with width. The CMS sends it the draft; it's held in memory
 and never written to the browser cache the public site reads. A draft applies without a reload.

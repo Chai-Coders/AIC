@@ -34,6 +34,10 @@ await step('sidebar has AI Assistant first, page loads the site',async()=>{
   await site().locator('body').waitFor({timeout:90000});
   await site().locator('h1,h2').first().waitFor({timeout:90000});
   await shot('1-empty');
+  // A suggestion fills in the message box, ready to finish.
+  await page.getByRole('button',{name:/Update contact details/}).click();
+  assert.match(await page.getByLabel('Message to the AI Assistant').inputValue(),/^Update our phone numbers to /);
+  await page.getByLabel('Message to the AI Assistant').fill('');
 });
 const contentPrint=(s)=>JSON.stringify([s.news.map(x=>x.title),s.gallery.map(x=>x.subtext),s.startups.map(x=>x.name),s.team.map(x=>x.name),s.text].map(a=>JSON.stringify(a)).sort());
 // Anything left on the live site by a failed check is reported at the end.
@@ -116,13 +120,15 @@ await step('content edit shows in the preview only, Before/After flips, approved
   assert.equal((await live()).news[0].title,item.title);
   const leaked=await page.frames().find(f=>f.url().includes('5174')).evaluate((h)=>Object.values(localStorage).some(v=>String(v).includes(h)),HEADLINE);
   assert.equal(leaked,false,'the draft must not reach the browser cache the public site reads');
-  await page.getByRole('button',{name:'before',exact:true}).click();
+  await page.getByRole('button',{name:'Now',exact:true}).click();
   await site().getByText(item.title).first().waitFor({timeout:30000});
   await site().getByText(HEADLINE).first().waitFor({state:'detached',timeout:30000});
   await page.waitForTimeout(2200); await shot('3-before');
-  await page.getByRole('button',{name:'after',exact:true}).click();
+  await page.getByRole('button',{name:'After approval',exact:true}).click();
   await site().getByText(HEADLINE).first().waitFor({timeout:30000});
-  await page.getByRole('status').getByText('Waiting for your approval').waitFor();
+  await page.getByRole('status').getByText(/waiting for your approval/).waitFor();
+  await page.getByRole('list',{name:'The changes'}).getByText('Renamed the news post').waitFor();
+  await page.getByRole('list',{name:'Progress'}).getByText('Waiting for you').waitFor();
   await toVersions();
   await page.getByText('proposed by AI Assistant').waitFor();
   await page.getByText(HEADLINE).first().waitFor();
@@ -144,9 +150,9 @@ await step('website text edit: draft shows on the page, Before/After, approved a
   await site().getByRole('heading',{name:NEW}).waitFor({timeout:30000});
   await page.waitForTimeout(1500); await shot('12-text-draft');
   assert.ok(!(await live()).text.some(t=>t.key===KEY),'live text changed before Publish');
-  await page.getByRole('button',{name:'before',exact:true}).click();
+  await page.getByRole('button',{name:'Now',exact:true}).click();
   await site().getByRole('heading',{name:OLD}).waitFor({timeout:30000});
-  await page.getByRole('button',{name:'after',exact:true}).click();
+  await page.getByRole('button',{name:'After approval',exact:true}).click();
   await site().getByRole('heading',{name:NEW}).waitFor({timeout:30000});
   await approveOnVersions();
   assert.equal((await live()).text.find(t=>t.key===KEY)?.value,NEW);
@@ -345,7 +351,7 @@ await step('point at several things: numbered, removable, all reach the agent',a
   assert.equal(await page.getByRole('list',{name:/pointing at/}).count(),0,'the list clears after sending');
   assert.equal(await site().locator('[data-aic-mark]').count(),0,'the marks clear after sending');
 });
-await step('browser frame, phone width, side by side, draggable panes',async()=>{
+await step('browser frame, phone width, draggable chat',async()=>{
   const frame=page.locator('.aic-site-preview iframe');
   const wide=(await frame.boundingBox()).width;
   await page.getByRole('button',{name:'phone',exact:true}).click();
@@ -358,25 +364,14 @@ await step('browser frame, phone width, side by side, draggable panes',async()=>
   await page.waitForTimeout(400);
   await page.locator('section[aria-label="Website preview"]').getByText('localhost:5174').waitFor();
   const fr=page.frames().find(f=>f.url().includes('5174'));
-  await fr.evaluate(()=>{window.__notReloaded=true;});
-  await page.getByRole('tab',{name:'Side by side'}).click();
-  await page.waitForTimeout(400);
-  const a=await frame.boundingBox();
-  const bar=page.getByRole('separator',{name:'Resize the changes'});
-  const b=await bar.boundingBox();
-  await page.mouse.move(b.x+4,b.y+200);await page.mouse.down();await page.mouse.move(b.x-96,b.y+200,{steps:6});await page.mouse.up();
-  await page.waitForTimeout(300);
-  const c=await frame.boundingBox();
-  assert.ok(Math.abs(c.width-a.width-100)<12,`dragging resizes the preview: ${a.width} -> ${c.width}`);
+  // Dragging the divider resizes the chat.
   const chatBar=page.getByRole('separator',{name:'Resize the chat'});
   const d=await chatBar.boundingBox();
   await page.mouse.move(d.x+4,d.y+200);await page.mouse.down();await page.mouse.move(d.x-40,d.y+200,{steps:6});await page.mouse.up();
   await page.waitForTimeout(200);
   assert.ok((await chatBar.boundingBox()).x<d.x-30,'dragging resizes the chat');
-  await shot('14-split');
-  await page.getByRole('tab',{name:'Changes'}).click();
-  await page.getByRole('tab',{name:'Preview'}).click();
-  assert.equal(await fr.evaluate(()=>window.__notReloaded),true,'switching views reloaded the site');
+  // The comparison lives on Versions: no second list of changes here.
+  assert.equal(await page.getByRole('tab',{name:'Changes'}).count(),0);
 });
 await step("Abhijith's Site text page: click to edit, live preview, publish",async()=>{
   await page.locator('nav a',{hasText:'Site text'}).click(); await page.waitForURL('**/site-text');
