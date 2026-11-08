@@ -909,8 +909,12 @@ const tests = {
     await script([DONE]);
     const before = (await control('state')).calls.length;
     await rejects(() => say(`here is my key ${secret}`), /looks like an API key/);
+    // Google's newer key format too.
+    const newer = `AQ.${'Ab8RN6K'.repeat(5)}`;
+    await rejects(() => say(`use ${newer} please`), /looks like an API key/);
     assert.equal((await control('state')).calls.length, before);
-    assert.ok(!JSON.stringify(await c.query(api.ai.audit.list, { limit: 20 })).includes(secret));
+    const log = JSON.stringify(await c.query(api.ai.audit.list, { limit: 20 }));
+    assert.ok(!log.includes(secret) && !log.includes(newer));
   },
 
   async 'a model priced at zero is refused'() {

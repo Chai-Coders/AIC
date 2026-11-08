@@ -6,83 +6,124 @@ import { Loader2 } from 'lucide-react';
 const api = anyApi.ai;
 
 const when = (ms) => new Date(ms).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-const CATEGORIES = [
-  { value: 'requests', label: 'Requests' },
-  { value: 'edits', label: 'Agent actions' },
-  { value: 'models', label: 'Model calls' },
-  { value: 'reviews', label: 'Reviews' },
+const VIEWS = [
+  { value: 'important', label: 'What happened' },
+  { value: 'requests', label: 'Your requests' },
+  { value: 'edits', label: 'Changes made' },
+  { value: 'reviews', label: 'Checks' },
   { value: 'sending', label: 'Sent to Versions' },
   { value: 'settings', label: 'Settings' },
-  { value: 'other', label: 'Other' },
+  { value: '', label: 'Every step' },
 ];
-const categoryLabel = (value) => CATEGORIES.find((c) => c.value === value)?.label ?? value;
+const NOUN = { gallery: 'photo', startups: 'startup', news: 'news post', teamMembers: 'person' };
+const quote = (value) => {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return `“${text.length > 80 ? `${text.slice(0, 77)}…` : text}”`;
+};
 
-// What the CMS's AI Assistant did, step by step: every request, tool call, model
-// call and review verdict, with its cost. Its changes themselves are on the
-// other tabs.
+/** One log row in plain words. */
+function describe({ action, detail: given }) {
+  // Some rows carry no details at all.
+  const detail = given ?? {};
+  const input = detail.input ?? {};
+  const failed = detail.error ? ` (didn't work: ${detail.error})` : '';
+  const noun = NOUN[input.table] ?? 'item';
+  switch (action) {
+    case 'prompt':
+      return `You asked: ${quote(detail.prompt)}`;
+    case 'tool.update_site_text':
+      return `Changed a website text${input.value === null ? ' back to the original' : ` to ${quote(input.value)}`}${failed}`;
+    case 'tool.update_record':
+      return `Changed a ${noun}'s ${input.field} to ${quote(input.value)}${failed}`;
+    case 'tool.add_person':
+      return `Added ${quote(input.name)} as a person${failed}`;
+    case 'tool.add_startup':
+      return `Added the startup ${quote(input.name)}${failed}`;
+    case 'tool.add_news':
+      return `Added the news post ${quote(input.title)}${failed}`;
+    case 'tool.add_gallery_photo':
+      return `Added a gallery photo${failed}`;
+    case 'tool.swap_media':
+      return `Changed a ${noun}'s picture${failed}`;
+    case 'tool.delete_record':
+      return `Asked to delete a ${noun}${failed}`;
+    case 'tool.drop_edits':
+      return `Took back its own changes${failed}`;
+    case 'delete.confirmed':
+      return `You said yes to deleting ${quote(detail.label)}`;
+    case 'delete.declined':
+      return `You said no to deleting ${quote(detail.label)}`;
+    case 'review.approved':
+      return 'The check passed';
+    case 'review.rejected':
+      return `The check objected${detail.reasons?.length ? `: ${detail.reasons[0]}` : ''}`;
+    case 'sent':
+      return `Sent ${detail.changes ?? ''} change${detail.changes === 1 ? '' : 's'} to Versions for your approval`;
+    case 'sent.overrideReview':
+      return 'You sent it to Versions anyway';
+    case 'discard':
+      return 'You discarded the draft';
+    case 'agent.stoppedByAdmin':
+      return 'You stopped the assistant';
+    case 'agent.stopped':
+    case 'agent.providerUnavailable':
+    case 'editor.stepLimit':
+      return 'The assistant stopped (see the chat for why)';
+    case 'review.noVerdict':
+      return "The check didn't give an answer, so it needs your decision";
+    case 'model.editor':
+      return 'AI step (making the change)';
+    case 'model.reviewer':
+      return 'AI step (checking)';
+    case 'settings.setKey':
+      return `An API key was saved${detail.last4 ? ` (ending ${detail.last4})` : ''}`;
+    case 'settings.removeKey':
+      return 'An API key was removed';
+    case 'settings.save':
+      return 'AI settings were changed';
+    case 'prices.check':
+      return 'Prices were checked';
+    default:
+      if (action.startsWith('tool.')) return `Looked at the website${failed}`;
+      return action;
+  }
+}
+
+// What the CMS's AI Assistant did, in plain words, with what it cost. Its changes
+// themselves are on the other tabs.
 export default function AiActivity() {
-  const [category, setCategory] = useState('');
-  const [model, setModel] = useState('');
-  const log = useQuery(api.audit.browse, { limit: 100, ...(category ? { category } : {}), ...(model ? { model } : {}) });
+  const [view, setView] = useState('important');
+  const log = useQuery(api.audit.browse, { limit: 100, ...(view ? { category: view } : {}) });
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5 sm:p-6">
-        <h2 className="text-base font-semibold text-foreground">AI Assistant activity</h2>
-        <p className="text-sm text-muted-foreground">Every request, step, review and change sent here by the CMS's AI Assistant, with what each model call cost. Most recent first.</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="field w-auto py-1.5 text-xs" aria-label="Show category">
-            <option value="">All categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <select value={model} onChange={(e) => setModel(e.target.value)} className="field w-auto py-1.5 text-xs" aria-label="Show model">
-            <option value="">All models</option>
-            {log?.models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          {log && (
-            <p className="text-xs text-muted-foreground" aria-live="polite">
-              {log.total} entries · {log.modelCalls} model calls · ${log.costUsd.toFixed(4)}
-            </p>
-          )}
+    <section className="space-y-3 rounded-xl border border-border bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <h2 className="text-base font-semibold text-foreground">AI Assistant activity</h2>
+          <p className="text-sm text-muted-foreground">What the AI Assistant did, most recent first.</p>
         </div>
-        {log === undefined && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="text-muted-foreground">
-              <tr>
-                <th className="py-1.5 pr-4 font-medium">When</th>
-                <th className="py-1.5 pr-4 font-medium">Category</th>
-                <th className="py-1.5 pr-4 font-medium">Model</th>
-                <th className="py-1.5 pr-4 font-medium">What</th>
-                <th className="py-1.5 pr-4 font-medium">Details</th>
-                <th className="py-1.5 text-right font-medium">Cost</th>
-              </tr>
-            </thead>
-            <tbody>
-              {log?.rows.map((row) => (
-                <tr key={row._id} className="border-t border-border align-top">
-                  <td className="py-1.5 pr-4 whitespace-nowrap text-muted-foreground">{when(row.at)}</td>
-                  <td className="py-1.5 pr-4 whitespace-nowrap text-muted-foreground">{categoryLabel(row.category)}</td>
-                  <td className="py-1.5 pr-4 font-mono whitespace-nowrap text-muted-foreground">{row.model ?? ''}</td>
-                  <td className="py-1.5 pr-4 font-mono whitespace-nowrap text-foreground">{row.action}</td>
-                  <td className="max-w-md truncate py-1.5 pr-4 font-mono text-muted-foreground" title={JSON.stringify(row.detail)}>
-                    {row.detail ? JSON.stringify(row.detail) : ''}
-                  </td>
-                  <td className="py-1.5 text-right whitespace-nowrap tabular-nums text-muted-foreground">{row.costUsd ? `$${row.costUsd.toFixed(4)}` : ''}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+        <select value={view} onChange={(e) => setView(e.target.value)} className="field w-auto py-1.5 text-sm" aria-label="Show">
+          {VIEWS.map((v) => (
+            <option key={v.value} value={v.value}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      {log === undefined && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />}
+      {log?.rows.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Nothing yet.</p>}
+      {log?.rows.length > 0 && (
+        <ul className="divide-y divide-border">
+          {log.rows.map((row) => (
+            <li key={row._id} className="flex items-baseline gap-4 py-2.5 text-sm" title={row.model ? `Model: ${row.model}` : undefined}>
+              <span className="w-28 shrink-0 text-xs whitespace-nowrap text-muted-foreground">{when(row.at)}</span>
+              <span className="min-w-0 flex-1 break-words text-foreground">{describe(row)}</span>
+              {row.costUsd ? <span className="shrink-0 text-xs tabular-nums text-muted-foreground">${row.costUsd.toFixed(3)}</span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {log && log.costUsd > 0 && <p className="text-xs text-muted-foreground">These cost about ${log.costUsd.toFixed(2)} in all.</p>}
+    </section>
   );
 }

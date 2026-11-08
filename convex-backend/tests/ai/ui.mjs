@@ -300,15 +300,13 @@ await step('the spend meter moves by itself, and the AI activity tab filters',as
   // The log is a tab on Versions now.
   await page.locator('nav a',{hasText:'Versions'}).click();
   await page.getByRole('tab',{name:'AI activity'}).click();
-  const body=page.locator('section',{hasText:'AI Assistant activity'}).locator('tbody tr');
-  await page.getByRole('combobox',{name:'Show category'}).selectOption('sending');
-  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr td:nth-child(4)')].some(t=>t.textContent==='sent'),null,{timeout:5000});
-  await page.getByRole('combobox',{name:'Show category'}).selectOption('models');
-  await page.waitForFunction(()=>[...document.querySelectorAll('section tbody tr')].length>0&&[...document.querySelectorAll('section tbody tr td:nth-child(2)')].every(t=>t.textContent==='Model calls'),null,{timeout:5000});
-  const model=(await body.first().locator('td').nth(2).innerText()).trim();
-  await page.getByRole('combobox',{name:'Show model'}).selectOption(model);
-  await page.waitForTimeout(400);
-  for(const m of await body.locator('td:nth-child(3)').allInnerTexts())assert.equal(m.trim(),model);
+  const list=page.locator('section',{hasText:'AI Assistant activity'});
+  // In plain words, the important things first.
+  await list.getByText(/^You asked: “Rename the first news post”$/).first().waitFor({timeout:5000});
+  await list.getByText(/^Sent 1 change to Versions for your approval$/).first().waitFor({timeout:5000});
+  assert.equal(await list.getByText('AI step (making the change)').count(),0,'single AI steps are not in the default view');
+  await page.getByRole('combobox',{name:'Show'}).selectOption('');
+  await list.getByText('AI step (making the change)').first().waitFor({timeout:5000});
   await shot('16-log-filter');
   await page.goto(CMS+'/versions?tab=pending');
   await page.getByRole('button',{name:'Reject all'}).click();await page.getByRole('alertdialog').getByRole('button',{name:'Reject all'}).click();await page.getByText('The draft was rejected.').first().waitFor({timeout:15000});
@@ -411,18 +409,18 @@ await step('settings page and phone width',async()=>{
   assert.ok(!(await page.content()).includes('sk-ant-fake'));
   await page.getByRole('button',{name:'Check now'}).click();
   await page.getByText(/prices? changed/).first().waitFor({timeout:20000});
-  const picker=page.getByRole('combobox',{name:'Editing model model'});
+  const picker=page.getByRole('combobox',{name:'AI model'});
   assert.match(await picker.locator('option',{hasText:'Claude Opus 5.5'}).innerText(),/Claude Opus 5\.5 \(\$4\.00 in, \$20\.00 out\)/);
   assert.equal(await picker.locator('option',{hasText:'Claude Test Only'}).count(),0,"a model the key can't use isn't offered");
   await page.getByRole('combobox',{name:'Usage month'}).waitFor();
   await shot('10-settings');
-  await page.getByRole('tab',{name:'MCP'}).click();
+  await page.getByRole('tab',{name:/MCP/}).click();
   await page.getByRole('heading',{name:'Connection address'}).waitFor();
   await page.getByRole('tab',{name:'Version history'}).click();
   await page.getByText('Start a new version after').waitFor();
   // The old pages lead to the new places.
   await page.goto(CMS+'/ai/history');await page.waitForURL('**/versions?tab=activity');
-  await page.locator('section',{hasText:'AI Assistant activity'}).locator('tbody tr').first().waitFor({timeout:10000});
+  await page.locator('section',{hasText:'AI Assistant activity'}).locator('li').first().waitFor({timeout:10000});
   await page.goto(CMS+'/ai-connection');await page.waitForURL('**/settings?tab=mcp');
   await page.locator('nav a',{hasText:'AI Assistant'}).click();
   await page.setViewportSize({width:390,height:800}); await page.waitForTimeout(800);

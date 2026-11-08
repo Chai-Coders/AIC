@@ -165,9 +165,10 @@ export const updateSiteText = internalMutation({
     checkTextValue(key, value);
     const from = (await loadTexts(ctx))[key] ?? null;
     const rest = cs.contentOps.filter((op) => !(op.op === "text" && op.key === key));
+    const already = from === value && rest.length === cs.contentOps.length;
     const contentOps: ContentOp[] = from === value ? rest : [...rest, { op: "text", key, from, to: value }];
     await patchDraft(ctx, cs, { contentOps });
-    return { ok: true };
+    return already ? { ok: true, note: "Nothing to change: the website already shows this, or it is already waiting on the Versions page. Tell the admin so; don't say you changed it." } : { ok: true };
   },
 });
 
@@ -239,6 +240,8 @@ async function setField(ctx: MutationCtx, cs: Doc<"changeSets">, table: ContentT
   const rest = cs.contentOps.filter((op) => op !== existing);
   const contentOps: ContentOp[] = sameValue(from, value) ? rest : [...rest, { op: "update", table, id, field, from, to: value ?? null }];
   await patchDraft(ctx, cs, { contentOps });
+  // True when it already showed this: nothing new to put in the draft.
+  return !existing && sameValue(from, value);
 }
 
 export const updateRecord = internalMutation({
@@ -246,8 +249,8 @@ export const updateRecord = internalMutation({
   handler: async (ctx, { changeSetId, runSeq, table, id, field, value }) => {
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const checked = checkTextField(table, field, value);
-    await setField(ctx, cs, table, id, field, checked);
-    return { ok: true };
+    const already = await setField(ctx, cs, table, id, field, checked);
+    return already ? { ok: true, note: "Nothing to change: the website already shows this, or it is already waiting on the Versions page. Tell the admin so; don't say you changed it." } : { ok: true };
   },
 });
 
@@ -315,7 +318,8 @@ export const queueDeleteRecord = internalMutation({
     }
     const doc = await baseDoc(ctx, table, id);
     if (!doc) throw new ConvexError(await missingRecord(ctx, table, id));
-    const label = String(doc.title || doc.name || doc.subtext || id);
+    // What the admin recognises it by; a photo may have no caption.
+    const label = String(doc.title || doc.name || doc.subtext || (table === "gallery" ? "A photo with no caption" : "An item with no name"));
     await ctx.db.patch(cs._id, {
       status: "needs_admin",
       running: false,

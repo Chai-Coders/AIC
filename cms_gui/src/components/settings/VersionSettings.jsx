@@ -44,8 +44,8 @@ export default function VersionSettings({ showToast }) {
 
   return (
     <Section
-      title="Grouping your own edits"
-      description="Edits you save in the CMS are published at once. In History they are grouped into one version per sitting, so you can undo a whole sitting together. A sitting ends when you sign out, or after this long without saving anything."
+      title="Grouping your edits"
+      description="Edits you make by hand go live straight away. On the Versions page, edits made close together count as one version, so you can undo them in one go."
     >
       <form onSubmit={handleSave} className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">

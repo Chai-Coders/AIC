@@ -68,21 +68,14 @@ const APPS = [
     ],
   },
   {
-    id: 'claude-code',
-    label: 'Claude Code',
-    command: (url) => `claude mcp add --transport http aic-website ${url}`,
-    steps: [
-      'Run the command below in a terminal.',
-      'Start Claude Code, type /mcp, choose aic-website and pick Authenticate.',
-      'This CMS opens in your browser: sign in if asked, then click Allow.',
-    ],
-  },
-  {
     id: 'other',
     label: 'Other apps',
     command: (url) => JSON.stringify({ mcpServers: { 'aic-website': { url } } }, null, 2),
+    // For developer tools; most admins use Claude or ChatGPT.
+    commandLabel: 'Claude Code: run this in a terminal, then type /mcp and choose Authenticate.',
+    extraCommand: (url) => `claude mcp add --transport http aic-website ${url}`,
     steps: [
-      'Add a remote MCP server (Streamable HTTP) with the connection address. In Cursor, put the setting below in mcp.json.',
+      'In the app, add a remote MCP server with the connection address above. (Cursor: put the setting below in mcp.json.)',
       'When the app asks you to sign in, this CMS opens: sign in, then click Allow.',
     ],
   },
@@ -173,6 +166,14 @@ export default function McpSettings({ showToast }) {
           <Code onCopy={() => copy(selected.command(url), selected.id)} copied={copied === selected.id}>
             {selected.command(url)}
           </Code>
+        )}
+        {selected.extraCommand && url && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">{selected.commandLabel}</p>
+            <Code onCopy={() => copy(selected.extraCommand(url), 'extra')} copied={copied === 'extra'}>
+              {selected.extraCommand(url)}
+            </Code>
+          </div>
         )}
       </Section>
 

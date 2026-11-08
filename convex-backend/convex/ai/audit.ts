@@ -37,6 +37,9 @@ const BROWSE_LOOKBACK = 1000;
 
 export function categoryOf(action: string) {
   if (action === "prompt") return "requests";
+  // Looking things up and keeping the change list: the agent's working steps.
+  // (approve and reject are the review's own tool calls; its verdict is logged as review.*.)
+  if (/^tool\.(get_|search_|describe_change|remove_change|approve|reject)/.test(action)) return "steps";
   if (action.startsWith("tool.")) return "edits";
   if (action.startsWith("model.")) return "models";
   if (action.startsWith("review.") || action === "sent.overrideReview" || action === "publish.overrideReview") return "reviews";
@@ -54,7 +57,10 @@ export const browse = query({
     const rows = await ctx.db.query("auditLog").withIndex("by_at").order("desc").take(BROWSE_LOOKBACK);
     const withInfo = rows.map((row) => ({ ...row, category: categoryOf(row.action), model: row.model ?? (row.detail?.model as string | undefined) }));
     const models = [...new Set(withInfo.flatMap((row) => (row.model ? [row.model] : [])))].sort();
-    const shown = withInfo.filter((row) => (!category || row.category === category) && (!model || row.model === model));
+    // "important": what the admin would want to see, without the agent's working steps and single model calls.
+    const inCategory = (row: { category: string }) =>
+      !category || (category === "important" ? row.category !== "steps" && row.category !== "models" : row.category === category);
+    const shown = withInfo.filter((row) => inCategory(row) && (!model || row.model === model));
     return {
       rows: shown.slice(0, Math.min(limit ?? 100, 500)),
       models,

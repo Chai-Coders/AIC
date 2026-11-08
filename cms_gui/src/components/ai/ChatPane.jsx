@@ -124,7 +124,11 @@ function Progress({ draft, sent, outcome }) {
  * agent's working steps and the notes the system leaves it (review objections and the
  * like) stay out of the chat; the change cards show what was changed.
  */
-const visibleMessages = (messages) => messages.filter((m) => m.role === 'user' || (m.role === 'assistant' && (m.text || m.failed)));
+function visibleMessages(messages) {
+  const shown = messages.filter((m) => m.role === 'user' || (m.role === 'assistant' && (m.text || m.failed)));
+  // After a review sends the agent back, it replies again: only its latest reply counts.
+  return shown.filter((m, i) => m.role === 'user' || shown[i + 1]?.role !== 'assistant');
+}
 
 const pageName = (page) => (!page ? '' : page === '/' ? 'Home page' : page);
 
@@ -139,7 +143,7 @@ function ChangeCards({ changes, step, onShow, sent, running, onDiscard, deciding
           <p className="min-w-0 flex-1 text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">Draft, not sent to Versions yet.</span> {running ? 'It goes there once checked.' : 'Ask for changes, or discard it.'}
           </p>
-          {!running && (
+          {!running && onDiscard && (
             <button type="button" onClick={onDiscard} disabled={deciding} className="btn-ghost shrink-0 rounded-full px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10">
               <Trash2 className="h-3.5 w-3.5" /> Discard
             </button>
@@ -174,10 +178,17 @@ function ChangeCards({ changes, step, onShow, sent, running, onDiscard, deciding
   );
 }
 
-function ConfirmCard({ draft, onError }) {
+const DELETE_NOUN = { gallery: 'photo', startups: 'startup', news: 'news post', teamMembers: 'person' };
+const CONTENT_LIST = { gallery: ['gallery', 'image'], startups: ['startups', 'logo_or_image'], news: ['news', 'thumbnail'], teamMembers: ['team', 'photo'] };
+
+function ConfirmCard({ draft, content, onError }) {
   const answer = useMutation(api.chat.answerConfirm);
   const [busy, setBusy] = useState(false);
   const pending = draft.pendingConfirm;
+  const noun = DELETE_NOUN[pending.table] ?? 'item';
+  // Its picture, so a photo with no caption can still be recognised.
+  const [list, field] = CONTENT_LIST[pending.table] ?? [];
+  const picture = list ? content?.[list]?.find((item) => item.id === pending.id)?.[field] : null;
   const respond = async (approve) => {
     setBusy(true);
     try {
@@ -190,19 +201,21 @@ function ConfirmCard({ draft, onError }) {
   };
   return (
     <div role="alertdialog" aria-label="Confirm delete" className="space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
-      <div className="flex items-start gap-2.5">
-        <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+      <div className="flex items-start gap-3">
+        {picture ? (
+          <img src={picture} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-border object-cover" />
+        ) : (
+          <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
+        )}
         <div className="min-w-0 space-y-1">
-          <p className="text-sm font-semibold text-foreground">
-            Delete this record?
-          </p>
+          <p className="text-sm font-semibold text-foreground">Delete this {noun}?</p>
           <p className="text-sm break-words text-foreground">{pending.label}</p>
           <p className="text-xs text-muted-foreground">{pending.reason}</p>
         </div>
       </div>
       <div className="flex gap-2">
         <button type="button" disabled={busy} onClick={() => respond(true)} className="btn-danger flex-1">
-          Add delete to draft
+          Yes, delete it
         </button>
         <button type="button" disabled={busy} onClick={() => respond(false)} className="btn-secondary flex-1">
           Keep it
@@ -325,8 +338,10 @@ function ModelPicker({ settings, onError }) {
   );
 }
 
-export default function ChatPane({ threadId, draft, sent, outcome, deciding, onSendAnyway, onDiscard, closedNotice, changes, step, onShowChange, prompt, onPrompt, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
+export default function ChatPane({ threadId, draft, content, sent, outcome, deciding, onSendAnyway, onDiscard, closedNotice, changes, step, onShowChange, prompt, onPrompt, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
   const settings = useQuery(api.settings.get);
+  // Changes from another chat or an AI app, waiting on Versions.
+  const waitingElsewhere = useQuery(anyApi.drafts.pendingCount) ?? 0;
   const stop = useMutation(api.chat.stop);
   const text = prompt;
   const setText = onPrompt;
@@ -425,7 +440,7 @@ export default function ChatPane({ threadId, draft, sent, outcome, deciding, onS
         )}
 
         <div className="space-y-3 px-4">
-          {draft?.pendingConfirm && <ConfirmCard draft={draft} onError={(m) => showToast(m, 'error')} />}
+          {draft?.pendingConfirm && <ConfirmCard draft={draft} content={content} onError={(m) => showToast(m, 'error')} />}
 
           {draft?.status === 'needs_admin' && draft.review?.verdict === 'rejected' && !draft.pendingConfirm && (
             <div role="alert" className="space-y-3 rounded-xl border border-warning/50 bg-warning/10 p-4">
@@ -455,7 +470,15 @@ export default function ChatPane({ threadId, draft, sent, outcome, deciding, onS
           )}
 
           {changes.length > 0 && (draft || sent) && (
-            <ChangeCards changes={changes} step={step} onShow={onShowChange} sent={sent} running={!!draft?.running || draft?.status === 'reviewing'} onDiscard={onDiscard} deciding={deciding} />
+            <ChangeCards
+              changes={changes}
+              step={step}
+              onShow={onShowChange}
+              sent={sent}
+              running={!!draft?.running || draft?.status === 'reviewing'}
+              onDiscard={draft?.review?.verdict === 'rejected' || draft?.pendingConfirm ? null : onDiscard}
+              deciding={deciding}
+            />
           )}
 
           {sent && (
@@ -472,6 +495,17 @@ export default function ChatPane({ threadId, draft, sent, outcome, deciding, onS
             </div>
           )}
 
+          {!draft?.contentOps.length && !draft?.running && !sent && waitingElsewhere > 0 && (
+            <p role="status" className="flex items-center gap-2 rounded-xl border border-border bg-muted p-3 text-xs text-foreground">
+              <span className="flex-1">
+                {waitingElsewhere === 1 ? 'A change is' : `${waitingElsewhere} changes are`} waiting for your approval on Versions.
+              </span>
+              <Link to="/versions?tab=pending" className="shrink-0 font-semibold text-primary hover:underline">
+                Review
+              </Link>
+            </p>
+          )}
+
           {(draft?.notice || closedNotice) && (
             <p role="status" className="rounded-xl border border-border bg-muted p-3 text-sm text-foreground">
               {draft?.notice || closedNotice}
@@ -483,11 +517,11 @@ export default function ChatPane({ threadId, draft, sent, outcome, deciding, onS
 
       {noKey ? (
         <p className="shrink-0 border-t border-border p-4 text-sm text-foreground">
-          Add an API key on the{' '}
+          To start, connect an AI provider in{' '}
           <Link to="/settings?tab=ai" className="font-semibold underline">
             Settings
-          </Link>{' '}
-          page (AI model config) to start.
+          </Link>
+          . It takes a minute, once.
         </p>
       ) : (
         <form onSubmit={submit} className="shrink-0 space-y-2 border-t border-border p-3">

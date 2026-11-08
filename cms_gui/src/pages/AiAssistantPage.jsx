@@ -275,6 +275,7 @@ export default function AiAssistantPage() {
           <ChatPane
             threadId={threadId}
             draft={openDraft}
+            content={content}
             sent={!!sentDraft}
             deciding={sending}
             onSendAnyway={onSendAnyway}
