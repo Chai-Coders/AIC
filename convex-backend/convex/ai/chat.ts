@@ -147,8 +147,10 @@ export const send = mutation({
         review: undefined,
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
-        // What the review checks against: everything the admin has asked for.
-        title: `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS),
+        // What the review checks against: everything asked for since this draft's
+        // first change. Messages before that (greetings, questions) changed nothing,
+        // so a draft with no changes yet starts over from this message.
+        title: cs.contentOps.length ? `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS) : clean,
         // Only what this message points at.
         selectedElements,
         pictures: [...(cs.pictures ?? []), ...pictures],

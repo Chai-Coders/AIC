@@ -211,7 +211,10 @@ export const selectedElements = internalQuery({
     return {
       elements: elements.map((el) => {
         const key = typeof el.key === "string" && textField(el.key) ? el.key : typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
-        return { ...el, key, ...(key ? { showsNow: values[key] ?? textField(key)?.value } : {}) };
+        if (key) return { ...el, key, showsNow: values[key] ?? textField(key)?.value };
+        // Not a website text: a record's field, or part of the site's design (numbers,
+        // icons, layout), which nobody can change here.
+        return { ...el, key: null, note: "No website text shows exactly this. If it isn't a record's field either (search once with get_site_content), it's part of the site's design: tell the admin it can't be changed here, without searching again." };
       }),
     };
   },
