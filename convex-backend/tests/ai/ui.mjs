@@ -128,7 +128,7 @@ await step('content edit shows in the preview only, Before/After flips, approved
   await site().getByText(HEADLINE).first().waitFor({timeout:30000});
   await page.getByRole('status').getByText(/waiting for your approval/).waitFor();
   await page.getByRole('list',{name:'The changes'}).getByText('Renamed the news post').waitFor();
-  await page.getByRole('list',{name:'Progress'}).getByText('Waiting for you').waitFor();
+  await page.getByRole('list',{name:'Progress'}).getByText('Approval').waitFor();
   await toVersions();
   await page.getByText('proposed by AI Assistant').waitFor();
   await page.getByText(HEADLINE).first().waitFor();
