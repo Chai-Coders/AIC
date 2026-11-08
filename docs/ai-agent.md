@@ -45,7 +45,7 @@ Set this on the Convex deployment with `npx convex env set NAME value`:
 The website needs `VITE_CMS_URL` set to the CMS's address, and the CMS needs `VITE_SITE_URL` set to the
 website's. The preview won't load without them; the page says so if it doesn't.
 
-Then, in the CMS, open **Settings → AI model config**, add a provider key, and check the model and budget. Saving a key
+Then, in the CMS, open **Settings → AI Assistant**, add a provider key, and check the model and budget. Saving a key
 is enough to start: if the chosen model's provider has no key, the assistant uses a default from a
 provider that has one.
 
@@ -99,8 +99,8 @@ The right pane is the real website in a frame (`?cms-edit=1&cms-agent=1`), the s
 text page, so it looks exactly like the public site. **After approval** shows the site as it will be once approved:
 everything waiting on the Versions page plus the chat's draft. **Now** is the live site. The detailed before/after
 comparison is the Versions page's; this page doesn't repeat it. `frontend/src/content/AgentBridge.jsx` runs only in
-that mode, and only exchanges messages with `VITE_CMS_URL`. On Desktop the frame is laid out at the width of
-the admin's window and scaled down to fit the pane, since the site's layout changes with width. The CMS sends it the draft; it's held in memory
+that mode, and only exchanges messages with `VITE_CMS_URL`. As on the Site text page, and in the same frame
+design, the site is shown at the frame's own width and scrolls inside it (drag the divider to widen it). The CMS sends it the draft; it's held in memory
 and never written to the browser cache the public site reads. A draft applies without a reload.
 
 The preview wraps each website text in an `<aic-text>` element so it can be found and pointed at. It isn't a `<span>`
@@ -133,9 +133,10 @@ model call, so it costs nothing. Past usage keeps the cost worked out at the tim
 
 ## Usage and the log
 
-Settings → AI model config splits usage by month, provider, model and job (editing or review), with a total that matches
-the meter. The **AI activity** tab on the Versions page lists every request, tool call, review verdict and model call,
-filtered by category and model, with what the selection adds up to. It looks at the latest 1,000 entries.
+Settings → AI Assistant shows this month's spending against the monthly limit, with a breakdown by model and job
+behind "Show details". The **AI activity** tab on the Versions page lists, in plain words, what the assistant did:
+requests, changes, checks, what was sent to Versions, settings. "Every step" adds its look-ups and each model call.
+It looks at the latest 1,000 entries.
 
 ## When the agent asks
 

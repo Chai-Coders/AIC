@@ -185,6 +185,19 @@ export function editorTools(env: EditorEnv) {
       }),
       (args) => ctx.runMutation(internal.ai.drafts.describeChange, { changeSetId, runSeq, ...args }),
     ),
+    drop_edits: define(
+      env,
+      "drop_edits",
+      "Take your own edits back out of the draft, as if never made, when the admin says not to make them (or to start over). Pass all: true to empty the draft, or a website text's key, or a record's table and id (and field). Then remove_change any item that no longer applies.",
+      z.object({
+        all: z.boolean().optional(),
+        key: z.string().optional(),
+        table: table.optional(),
+        id: z.string().optional(),
+        field: z.string().optional(),
+      }),
+      (args) => ctx.runMutation(internal.ai.drafts.dropEdits, { changeSetId, runSeq, ...args }),
+    ),
     remove_change: define(
       env,
       "remove_change",

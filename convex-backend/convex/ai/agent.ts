@@ -235,6 +235,10 @@ export const reviewStep = internalAction({
         `What the editing agent told the admin:\n${editorReply ?? "(nothing)"}`,
         `Change list shown to the admin:\n${cs.changeList.map((c) => `- ${c.summary}${c.page ? ` (${c.page})` : ""}`).join("\n") || "(empty)"}`,
         `Edits in the draft:\n${cs.contentOps.map(describeOp).join("\n") || "(none)"}`,
+        // A delete only enters the draft once the admin has said yes to it on a confirm card.
+        ...(cs.contentOps.some((op) => op.op === "delete")
+          ? ["The admin confirmed every delete above on a confirm card that named the item, so deleting it is what they want."]
+          : []),
       ].join("\n\n");
 
       // Providers can't all be forced to call a tool, so a review ending without

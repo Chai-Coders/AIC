@@ -1,12 +1,13 @@
-import { Crosshair } from 'lucide-react';
+import { Crosshair, Eye } from 'lucide-react';
 import { SITE_URL } from '../../routes';
 
 const host = SITE_URL.replace(/^https?:\/\//, '').replace(/\/+$/, '') || 'website';
 
-// The preview in a browser-like window, matching the Site text page.
-export default function BrowserFrame({ path, device, scale = 1, caption = 'Your website', onDeviceChange, picking, onDonePicking, children }) {
+// The preview in a browser-like window: the same frame as the Site text page's
+// (components/sitetext/PreviewFrame.jsx), so the two pages look alike.
+export default function BrowserFrame({ path, device, caption = 'Your website', onDeviceChange, picking, onDonePicking, children }) {
   return (
-    <section aria-label="Website preview" className="flex h-full min-h-0 min-w-0 flex-col gap-3 bg-background p-3">
+    <section aria-label="Website preview" className="flex h-full min-h-0 min-w-0 flex-col gap-3 bg-background p-3 sm:p-4 lg:p-5">
       <div className="flex shrink-0 flex-wrap items-center gap-3">
         {picking ? (
           <button type="button" onClick={onDonePicking} className="flex min-w-0 items-center gap-2 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground">
@@ -14,8 +15,9 @@ export default function BrowserFrame({ path, device, scale = 1, caption = 'Your 
             Click things to point at them. Press here when done.
           </button>
         ) : (
-          <p className="min-w-0 truncate text-sm text-muted-foreground">
-            {caption}{scale < 1 ? `. Shown at ${Math.round(scale * 100)}% to fit.` : '.'}
+          <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+            <Eye className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+            <span className="truncate">{caption}</span>
           </p>
         )}
         <div role="group" aria-label="Preview width" className="ml-auto inline-flex gap-0.5 rounded-lg bg-muted p-[3px]">
@@ -35,7 +37,7 @@ export default function BrowserFrame({ path, device, scale = 1, caption = 'Your 
         </div>
       </div>
 
-      <div className={`mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[max-width] duration-200 ${device === 'phone' ? 'max-w-[400px]' : 'max-w-full'}`}>
+      <div className={`relative mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[max-width] duration-200 ${device === 'phone' ? 'max-w-[400px]' : 'max-w-full'}`}>
         <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted px-3.5 py-2.5">
           <div className="flex gap-1.5" aria-hidden="true">
             <i className="h-2.5 w-2.5 rounded-full bg-input" />

@@ -248,6 +248,37 @@ const tests = {
     await c.mutation(api.gallery.remove, { id });
   },
 
+  async 'the review judges the request, not small talk before it, and knows deletes were confirmed'() {
+    const target = (await live()).gallery.at(-1);
+    await script([{ text: 'Hello! What would you like to change?' }]);
+    const { threadId, changeSetId } = await say('hi there');
+    await inState(threadId, 'drafting');
+    await script([{ tools: [['delete_record', { table: 'gallery', id: target.id, reason: 'Asked to' }]] }, { text: 'Waiting.' }]);
+    await say('Delete the oldest photo', threadId);
+    await until('confirm card', async () => (await draftOf(threadId)).pendingConfirm);
+    await script([{ tools: [describe('Deleted the oldest photo', { page: '/gallery' })] }, DONE, OK]);
+    await c.mutation(api.ai.chat.answerConfirm, { changeSetId, approve: true });
+    await inState(threadId, 'sent');
+    const review = JSON.stringify((await control('state')).calls.at(-1).messages);
+    assert.match(review, /What the admin asked for:\\nDelete the oldest photo/, 'the request is the one that led to changes');
+    assert.ok(!review.includes('hi there'), 'small talk before the first change is not part of it');
+    assert.match(review, /confirmed every delete/, 'the review knows the admin confirmed the delete');
+    await rejectWaiting();
+  },
+
+  async 'the assistant can take its own edits back out when told not to make them'() {
+    const item = (await live()).news[0];
+    await script([{ tools: [['update_record', { table: 'news', id: item.id, field: 'subtitle', value: 'Unwanted' }], describe('Summary')] }, { text: 'Changed it.' }, { tools: [['reject', { reasons: ['Not asked for'] }]] }, { text: 'Fixing.' }, { tools: [['reject', { reasons: ['Still'] }]] }, { text: 'Fixing.' }, { tools: [['reject', { reasons: ['Still'] }]] }]);
+    const { threadId, changeSetId } = await say('Change the summary');
+    await inState(threadId, 'needs_admin');
+    await script([{ tools: [['drop_edits', { all: true }]] }, { text: 'Done, nothing is changed now.' }]);
+    await say('Forget those changes', threadId);
+    const d = await inState(threadId, 'drafting');
+    assert.deepEqual([d.contentOps.length, d.changeList.length], [0, 0], 'the draft is empty again');
+    assert.equal(await waiting(), null, 'and nothing went to Versions');
+    await rejects(() => c.mutation(api.ai.chat.discard, { changeSetId }).then(() => c.mutation(api.ai.chat.discard, { changeSetId })), /can't be discarded/);
+  },
+
   async 'the agent only changes data: it has no code or GitHub tools'() {
     await script([{ text: 'A developer has to do that.' }]);
     const { threadId, changeSetId } = await say('Make the button red');
@@ -878,8 +909,12 @@ const tests = {
     await script([DONE]);
     const before = (await control('state')).calls.length;
     await rejects(() => say(`here is my key ${secret}`), /looks like an API key/);
+    // Google's newer key format too.
+    const newer = `AQ.${'Ab8RN6K'.repeat(5)}`;
+    await rejects(() => say(`use ${newer} please`), /looks like an API key/);
     assert.equal((await control('state')).calls.length, before);
-    assert.ok(!JSON.stringify(await c.query(api.ai.audit.list, { limit: 20 })).includes(secret));
+    const log = JSON.stringify(await c.query(api.ai.audit.list, { limit: 20 }));
+    assert.ok(!log.includes(secret) && !log.includes(newer));
   },
 
   async 'a model priced at zero is refused'() {
@@ -893,15 +928,16 @@ const tests = {
     await script([{ tools: [['get_selected_element', {}]] }, { text: 'Got it.' }]);
     const { threadId, changeSetId } = await c.mutation(api.ai.chat.send, {
       prompt: 'Make this bigger',
-      selectedElements: [{ path: '/nope', tag: 'a', key: null, text: 'Go to home page', classes: ['btn'], selector: 'a.btn' }, { path: '/', tag: 'h1', key: 'home.hero.title', text: 'No such words here', classes: [], selector: 'h1' }],
+      selectedElements: [{ path: '/nope', tag: 'a', key: null, text: 'Go to home page', classes: ['btn'], selector: 'a.btn' }, { path: '/', tag: 'h1', key: 'home.hero.title', text: 'No such words here', classes: [], selector: 'h1' }, { path: '/', tag: 'span', key: null, text: '03', classes: ['about__num'], selector: 'span.about__num' }],
     });
     await inState(threadId, 'drafting');
     const { calls } = await control('state');
-    assert.ok(JSON.stringify(calls[0].messages).includes('2 elements'), 'the agent is told how many');
+    assert.ok(JSON.stringify(calls[0].messages).includes('3 elements'), 'the agent is told how many');
     const results = toolResults(calls[1]);
     assert.ok(results.includes('notFound.hero.home'), 'it works out the website text key from the words');
     assert.ok(results.includes('home.hero.title'), 'it uses the key the page gave');
     assert.ok(results.includes('No such words here'), 'it gets every element');
+    assert.match(results, /part of the site's design/, 'something that is no website text is explained, not searched for again and again');
     await c.mutation(api.ai.chat.discard, { changeSetId });
   },
 };

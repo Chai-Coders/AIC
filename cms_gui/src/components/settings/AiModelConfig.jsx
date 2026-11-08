@@ -8,6 +8,13 @@ import SpendMeter from '../ai/SpendMeter';
 
 const api = anyApi.ai;
 
+// Where an admin gets a key for each provider.
+const KEY_PAGES = {
+  google: { href: 'https://aistudio.google.com/apikey', text: 'Get a free key' },
+  anthropic: { href: 'https://console.anthropic.com/settings/keys', text: 'Get a key' },
+  openai: { href: 'https://platform.openai.com/api-keys', text: 'Get a key' },
+};
+
 const PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic (Claude)' },
   { value: 'openai', label: 'OpenAI' },
@@ -15,7 +22,6 @@ const PROVIDERS = [
 ];
 
 const usd = (n) => `$${(n ?? 0).toFixed(2)}`;
-const formatDate = (ms) => (ms ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'never');
 
 function Section({ title, description, children }) {
   return (
@@ -63,11 +69,22 @@ function ProviderKey({ provider, onSaved }) {
     <form onSubmit={save} className="flex flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0 sm:flex-row sm:items-center">
       <div className="min-w-44">
         <p className="text-sm font-medium text-foreground">{provider.label}</p>
-        <p className="text-xs text-muted-foreground">
-          {provider.configured ? `Key ending ${provider.last4} · saved ${formatDate(provider.updatedAt)}` : 'No key saved'}
-        </p>
-        {provider.name === 'google' && (
-          <p className="mt-1 max-w-56 text-xs text-muted-foreground">Has a free plan with low limits. Google may use free-plan content to improve its products.</p>
+        {provider.configured ? (
+          <p className="flex items-center gap-1 text-xs text-success">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" /> Connected (key ending {provider.last4})
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Not connected
+            {KEY_PAGES[provider.name] && (
+              <>
+                {' · '}
+                <a href={KEY_PAGES[provider.name].href} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
+                  {KEY_PAGES[provider.name].text}
+                </a>
+              </>
+            )}
+          </p>
         )}
       </div>
       <input
@@ -75,7 +92,7 @@ function ProviderKey({ provider, onSaved }) {
         autoComplete="off"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder={provider.configured ? 'Paste a new key to replace it' : 'Paste the API key'}
+        placeholder={provider.configured ? 'Paste a new key to replace it' : 'Paste the key here'}
         aria-label={`${provider.label} API key`}
         className="field flex-1"
       />
@@ -96,32 +113,39 @@ function ProviderKey({ provider, onSaved }) {
 
 const money = (n) => `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
 
-// Models come with their names and prices from the daily price check, so the admin picks from a list.
-function ModelPicker({ label, value, onChange, priceTable }) {
-  const models = priceTable.filter((p) => p.provider === value.provider && p.available !== false).sort((a, b) => (a.name ?? a.model).localeCompare(b.name ?? b.model));
-  const changeProvider = (e) => {
-    const provider = e.target.value;
-    onChange({ provider, model: priceTable.find((p) => p.provider === provider && p.available !== false)?.model ?? '' });
-  };
+// One list of every model a saved key can use, grouped by provider, with its price.
+function ModelPicker({ label, value, onChange, priceTable, providers }) {
+  const usable = providers.filter((p) => p.configured).map((p) => p.name);
+  const models = priceTable
+    .filter((p) => usable.includes(p.provider) && p.available !== false)
+    .sort((a, b) => (a.name ?? a.model).localeCompare(b.name ?? b.model));
+  const current = `${value.provider}/${value.model}`;
+  if (!models.length) return <p className="text-sm text-muted-foreground">Connect an AI provider above first.</p>;
   return (
-    <div className="grid gap-2 sm:grid-cols-[10rem_1fr_1fr] sm:items-center">
+    <label className="grid gap-1.5 sm:grid-cols-[9rem_1fr] sm:items-center">
       <span className="text-sm font-medium text-foreground">{label}</span>
-      <select value={value.provider} onChange={changeProvider} className="field" aria-label={`${label} provider`}>
-        {PROVIDERS.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
+      <select
+        value={current}
+        onChange={(e) => {
+          const [provider, ...rest] = e.target.value.split('/');
+          onChange({ provider, model: rest.join('/') });
+        }}
+        className="field"
+      >
+        {!models.some((m) => `${m.provider}/${m.model}` === current) && <option value={current}>{value.model || 'Choose a model'}</option>}
+        {PROVIDERS.filter((p) => usable.includes(p.value)).map((p) => (
+          <optgroup key={p.value} label={p.label}>
+            {models
+              .filter((m) => m.provider === p.value)
+              .map((m) => (
+                <option key={m.model} value={`${m.provider}/${m.model}`}>
+                  {m.name ?? m.model} ({money(m.inputPerMTok)} in, {money(m.outputPerMTok)} out per million tokens)
+                </option>
+              ))}
+          </optgroup>
         ))}
       </select>
-      <select value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} className="field" aria-label={`${label} model`}>
-        {!models.some((m) => m.model === value.model) && <option value={value.model}>{value.model || 'Choose a model'}</option>}
-        {models.map((m) => (
-          <option key={m.model} value={m.model}>
-            {m.name ?? m.model} ({money(m.inputPerMTok)} in, {money(m.outputPerMTok)} out)
-          </option>
-        ))}
-      </select>
-    </div>
+    </label>
   );
 }
 
@@ -239,7 +263,7 @@ export default function AiModelConfig() {
         </div>
       )}
 
-      <Section title="API keys" description="For the AI Assistant. Stored encrypted on the server and never shown again; only the last 4 characters are displayed.">
+      <Section title="AI providers" description="The AI Assistant needs a key from at least one. Keys are stored encrypted and never shown again.">
         <div className="space-y-4">
           {settings.providers.map((p) => (
             <ProviderKey key={p.name} provider={p} onSaved={showToast} />
@@ -247,88 +271,86 @@ export default function AiModelConfig() {
         </div>
       </Section>
 
-      <Section title="Models" description="The editing model makes the changes; the review model checks them before they go to the Versions page.">
-        <div className="space-y-3">
-          <ModelPicker label="Editing model" value={editorModel} onChange={setEditorModel} priceTable={settings.priceTable} />
-          <label className="flex items-center gap-2 text-sm text-foreground">
-            <input type="checkbox" checked={sameReviewer} onChange={(e) => setSameReviewer(e.target.checked)} />
-            Use the same model for review
+      <Section title="Model and spending limit" description="Which AI does the work, and the most it may cost in a month. The assistant pauses when the limit is reached; you'll see a warning at 80%.">
+        <div className="space-y-4">
+          <ModelPicker label="AI model" value={editorModel} onChange={setEditorModel} priceTable={settings.priceTable} providers={settings.providers} />
+          {unpriced.length > 0 && <p className="text-sm text-warning">This model has no price yet, so it can't be used. Choose another one.</p>}
+          <label className="grid gap-1.5 sm:grid-cols-[9rem_1fr] sm:items-center">
+            <span className="text-sm font-medium text-foreground">Monthly limit</span>
+            <span className="flex max-w-48 items-center gap-2">
+              <input type="number" min="0" step="1" value={budget} onChange={(e) => setBudget(e.target.value)} className="field" aria-label="Monthly budget in US dollars" />
+              <span className="text-sm text-muted-foreground">USD</span>
+            </span>
           </label>
-          {!sameReviewer && <ModelPicker label="Review model" value={reviewerModel} onChange={setReviewerModel} priceTable={settings.priceTable} />}
-          {unpriced.length > 0 && (
-            <p className="text-sm text-warning">
-              {unpriced.map((m) => m.model || 'No model').join(' and ')} has no price, so the assistant can't count its cost. Choose another model.
-            </p>
-          )}
-          <PriceCheck check={settings.priceCheck} onCheck={onCheckPrices} checking={checking} />
+          <details className="rounded-lg border border-border px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground">Advanced</summary>
+            <div className="space-y-3 pt-3">
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input type="checkbox" checked={!sameReviewer} onChange={(e) => setSameReviewer(!e.target.checked)} />
+                Use a different model to check changes
+              </label>
+              {!sameReviewer && <ModelPicker label="Checking model" value={reviewerModel} onChange={setReviewerModel} priceTable={settings.priceTable} providers={settings.providers} />}
+              <PriceCheck check={settings.priceCheck} onCheck={onCheckPrices} checking={checking} />
+            </div>
+          </details>
+          <div className="flex justify-end">
+            <button type="button" onClick={onSave} disabled={saving} className="btn-primary">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              Save
+            </button>
+          </div>
         </div>
       </Section>
 
-      <Section title="Monthly budget" description="You'll see a warning at 80%. At 100% the assistant stops and keeps your draft until the budget is raised or a new month starts.">
-        <label className="flex max-w-xs items-center gap-2">
-          <span className="text-sm text-muted-foreground">USD</span>
-          <input type="number" min="0" step="1" value={budget} onChange={(e) => setBudget(e.target.value)} className="field" aria-label="Monthly budget in US dollars" />
-        </label>
-      </Section>
-
-      <div className="flex justify-end">
-        <button type="button" onClick={onSave} disabled={saving} className="btn-primary">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-          Save
-        </button>
-      </div>
-
-      <Section title="Usage" description="Token counts come from the provider on every call. Cost is those tokens times the price at the time, so it's an estimate; your provider's bill is the final figure.">
+      <Section title="Spending" description="An estimate from what the AI provider reports; their bill is the final figure.">
         <SpendMeter />
-        <label className="flex max-w-xs items-center gap-2">
-          <span className="text-sm text-muted-foreground">Month</span>
-          <select value={month} onChange={(e) => setMonth(e.target.value)} className="field py-1.5" aria-label="Usage month">
-            {lastMonths().map((m) => (
-              <option key={m} value={m}>
-                {monthName(m)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {usage?.rows?.length === 0 && <p className="text-sm text-muted-foreground">No AI use in {monthName(month)}.</p>}
-        {usage?.rows?.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs text-muted-foreground">
-                <tr>
-                  <th className="py-1.5 pr-4 font-medium">Provider</th>
-                  <th className="py-1.5 pr-4 font-medium">Model</th>
-                  <th className="py-1.5 pr-4 font-medium">Used for</th>
-                  <th className="py-1.5 pr-4 text-right font-medium">Calls</th>
-                  <th className="py-1.5 pr-4 text-right font-medium">Tokens in / out</th>
-                  <th className="py-1.5 text-right font-medium">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usage.rows.map((r) => (
-                  <tr key={`${r.provider}/${r.model}/${r.role}`} className="border-t border-border">
-                    <td className="py-1.5 pr-4">{PROVIDERS.find((p) => p.value === r.provider)?.label ?? r.provider}</td>
-                    <td className="py-1.5 pr-4" title={r.model}>{r.name}</td>
-                    <td className="py-1.5 pr-4">{r.role === 'editor' ? 'Editing' : 'Review'}</td>
-                    <td className="py-1.5 pr-4 text-right tabular-nums">{r.calls}</td>
-                    <td className="py-1.5 pr-4 text-right tabular-nums">
-                      {r.inputTokens.toLocaleString()} / {r.outputTokens.toLocaleString()}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">{usd(r.costUsd)}</td>
-                  </tr>
+        <details>
+          <summary className="cursor-pointer text-sm font-medium text-muted-foreground">Show details</summary>
+          <div className="space-y-3 pt-3">
+            <label className="flex max-w-xs items-center gap-2">
+              <span className="text-sm text-muted-foreground">Month</span>
+              <select value={month} onChange={(e) => setMonth(e.target.value)} className="field py-1.5" aria-label="Usage month">
+                {lastMonths().map((m) => (
+                  <option key={m} value={m}>
+                    {monthName(m)}
+                  </option>
                 ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border font-medium">
-                  <td colSpan={5} className="py-1.5 pr-4">Total for {monthName(month)}</td>
-                  <td className="py-1.5 text-right tabular-nums">{usd(usage.totalUsd)}</td>
-                </tr>
-              </tfoot>
-            </table>
+              </select>
+            </label>
+            {usage?.rows?.length === 0 && <p className="text-sm text-muted-foreground">No AI use in {monthName(month)}.</p>}
+            {usage?.rows?.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="py-1.5 pr-4 font-medium">Model</th>
+                      <th className="py-1.5 pr-4 font-medium">Used for</th>
+                      <th className="py-1.5 text-right font-medium">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usage.rows.map((r) => (
+                      <tr key={`${r.provider}/${r.model}/${r.role}`} className="border-t border-border">
+                        <td className="py-1.5 pr-4" title={`${r.calls} calls · ${r.inputTokens.toLocaleString()} / ${r.outputTokens.toLocaleString()} tokens`}>
+                          {r.name}
+                        </td>
+                        <td className="py-1.5 pr-4">{r.role === 'editor' ? 'Making changes' : 'Checking'}</td>
+                        <td className="py-1.5 text-right tabular-nums">{usd(r.costUsd)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-border font-medium">
+                      <td colSpan={2} className="py-1.5 pr-4">Total for {monthName(month)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{usd(usage.totalUsd)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </div>
-        )}
+        </details>
       </Section>
-
     </div>
   );
 }

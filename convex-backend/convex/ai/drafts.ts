@@ -165,9 +165,10 @@ export const updateSiteText = internalMutation({
     checkTextValue(key, value);
     const from = (await loadTexts(ctx))[key] ?? null;
     const rest = cs.contentOps.filter((op) => !(op.op === "text" && op.key === key));
+    const already = from === value && rest.length === cs.contentOps.length;
     const contentOps: ContentOp[] = from === value ? rest : [...rest, { op: "text", key, from, to: value }];
     await patchDraft(ctx, cs, { contentOps });
-    return { ok: true };
+    return already ? { ok: true, note: "Nothing to change: the website already shows this, or it is already waiting on the Versions page. Tell the admin so; don't say you changed it." } : { ok: true };
   },
 });
 
@@ -211,7 +212,10 @@ export const selectedElements = internalQuery({
     return {
       elements: elements.map((el) => {
         const key = typeof el.key === "string" && textField(el.key) ? el.key : typeof el.text === "string" ? textKeyForValue(el.text, values) : null;
-        return { ...el, key, ...(key ? { showsNow: values[key] ?? textField(key)?.value } : {}) };
+        if (key) return { ...el, key, showsNow: values[key] ?? textField(key)?.value };
+        // Not a website text: a record's field, or part of the site's design (numbers,
+        // icons, layout), which nobody can change here.
+        return { ...el, key: null, note: "No website text shows exactly this. If it isn't a record's field either (search once with get_site_content), it's part of the site's design: tell the admin it can't be changed here, without searching again." };
       }),
     };
   },
@@ -236,6 +240,8 @@ async function setField(ctx: MutationCtx, cs: Doc<"changeSets">, table: ContentT
   const rest = cs.contentOps.filter((op) => op !== existing);
   const contentOps: ContentOp[] = sameValue(from, value) ? rest : [...rest, { op: "update", table, id, field, from, to: value ?? null }];
   await patchDraft(ctx, cs, { contentOps });
+  // True when it already showed this: nothing new to put in the draft.
+  return !existing && sameValue(from, value);
 }
 
 export const updateRecord = internalMutation({
@@ -243,8 +249,8 @@ export const updateRecord = internalMutation({
   handler: async (ctx, { changeSetId, runSeq, table, id, field, value }) => {
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
     const checked = checkTextField(table, field, value);
-    await setField(ctx, cs, table, id, field, checked);
-    return { ok: true };
+    const already = await setField(ctx, cs, table, id, field, checked);
+    return already ? { ok: true, note: "Nothing to change: the website already shows this, or it is already waiting on the Versions page. Tell the admin so; don't say you changed it." } : { ok: true };
   },
 });
 
@@ -312,7 +318,8 @@ export const queueDeleteRecord = internalMutation({
     }
     const doc = await baseDoc(ctx, table, id);
     if (!doc) throw new ConvexError(await missingRecord(ctx, table, id));
-    const label = String(doc.title || doc.name || doc.subtext || id);
+    // What the admin recognises it by; a photo may have no caption.
+    const label = String(doc.title || doc.name || doc.subtext || (table === "gallery" ? "A photo with no caption" : "An item with no name"));
     await ctx.db.patch(cs._id, {
       status: "needs_admin",
       running: false,
@@ -346,6 +353,38 @@ export const describeChange = internalMutation({
     const cs = await requireDrafting(ctx, changeSetId, runSeq);
     await patchDraft(ctx, cs, { changeList: [...cs.changeList, { ...item, page: routeOfChange(item.page, item.textKey) }] });
     return { ok: true, changeNumber: cs.changeList.length + 1 };
+  },
+});
+
+/**
+ * Takes the agent's own edits out of the draft, as if never made: when the admin
+ * says not to make them. A website text by `key`; a record by `table` and `id`,
+ * one field or (without `field`) everything done to it. `all` empties the draft.
+ */
+export const dropEdits = internalMutation({
+  args: {
+    changeSetId: v.id("changeSets"),
+    runSeq: v.number(),
+    all: v.optional(v.boolean()),
+    key: v.optional(v.string()),
+    table: v.optional(contentTable),
+    id: v.optional(v.string()),
+    field: v.optional(v.string()),
+  },
+  handler: async (ctx, { changeSetId, runSeq, all, key, table, id, field }) => {
+    const cs = await requireDrafting(ctx, changeSetId, runSeq);
+    if (!all && !key && !(table && id)) throw new ConvexError("Say which edit to drop: all, a website text's key, or a record's table and id.");
+    const drop = (op: ContentOp) => {
+      if (all) return true;
+      if (op.op === "text") return op.key === key;
+      if (op.table !== table || op.id !== id) return false;
+      return !field || op.op !== "update" || op.field === field;
+    };
+    const contentOps = cs.contentOps.filter((op) => !drop(op));
+    const dropped = cs.contentOps.length - contentOps.length;
+    if (!dropped) throw new ConvexError("No edit in the draft matches that. The draft has: " + (cs.contentOps.map((op) => (op.op === "text" ? `text ${op.key}` : `${op.op} ${op.table} ${op.id}`)).join("; ") || "nothing"));
+    await patchDraft(ctx, cs, { contentOps, ...(all || !contentOps.length ? { changeList: [] } : {}) });
+    return { ok: true, dropped, left: contentOps.length };
   },
 });
 

@@ -15,6 +15,28 @@ const MAX_POINTED = 10; // Same limit as convex-backend/convex/ai/chat.ts.
 const TOUR_STEP_MS = 3500;
 const sameElement = (a, b) => a.path === b.path && a.selector === b.selector;
 
+const NOUNS = { startups: 'startup', news: 'news post', teamMembers: 'person', gallery: 'photo' };
+const PAGES = { startups: '/startup', news: '/news', gallery: '/gallery' };
+const short = (value) => {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return text.length > 60 ? `${text.slice(0, 57)}…` : text;
+};
+
+/** Plain words for edits the agent didn't describe. */
+function opsAsChanges(ops) {
+  return ops.map((op) => {
+    if (op.op === 'text') return { summary: op.to ? `Change a website text to “${short(op.to)}”` : 'Put a website text back to the original', textKey: op.key };
+    const noun = NOUNS[op.table] ?? 'item';
+    if (op.op === 'delete') return { summary: `Delete the ${noun} “${short(op.label)}”`, page: PAGES[op.table] };
+    if (op.op === 'create') {
+      const name = op.doc?.name || op.doc?.title || '';
+      return { summary: `Add a new ${noun}${name ? ` “${short(name)}”` : ''}`, page: PAGES[op.table], text: name || undefined };
+    }
+    const to = typeof op.to === 'string' ? op.to : undefined;
+    return { summary: `Change a ${noun}'s ${op.field}${to ? ` to “${short(to)}”` : ''}`, page: PAGES[op.table], text: to, beforeText: typeof op.from === 'string' ? op.from : undefined };
+  });
+}
+
 export default function AiAssistantPage() {
   const { showToast } = useOutletContext();
 
@@ -85,7 +107,13 @@ export default function AiAssistantPage() {
 
   // ---- Walkthrough --------------------------------------------------------
 
-  const changeList = useMemo(() => shownDraft?.changeList ?? [], [shownDraft]);
+  // The agent describes each change; if it left one out, show it from the edit itself
+  // rather than show no card for it.
+  const changeList = useMemo(() => {
+    const described = shownDraft?.changeList ?? [];
+    const ops = shownDraft?.contentOps ?? [];
+    return described.length || !ops.length ? described : opsAsChanges(ops);
+  }, [shownDraft]);
   const [step, setStep] = useState(0);
   // Follow the newest change as they arrive; start over on a new draft.
   const [lastCount, setLastCount] = useState(0);
@@ -199,16 +227,15 @@ export default function AiAssistantPage() {
   };
 
   const [sending, setSending] = useState(false);
-  const overrideNeeded = openDraft?.status === 'needs_admin' && openDraft.review?.verdict === 'rejected' && !openDraft.pendingConfirm;
 
   const onSendAnyway = async () => {
-    if (!window.confirm(`The review agent objected:\n\n${openDraft.review.reasons.join('\n')}\n\nSend it to the Versions page anyway? Nothing goes live until you approve it there.`)) return;
+    // Nothing goes live from here: it only waits on Versions, so no confirm step.
     setSending(true);
     try {
       await run(() => sendAnyway({ changeSetId: openDraft._id }));
       setMode('after');
       preview.current?.clearHighlight();
-      showToast('Sent to the Versions page. Approve it there to put it on the website.', 'success');
+      showToast('Sent to Versions for your approval.', 'success');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -248,7 +275,11 @@ export default function AiAssistantPage() {
           <ChatPane
             threadId={threadId}
             draft={openDraft}
+            content={content}
             sent={!!sentDraft}
+            deciding={sending}
+            onSendAnyway={onSendAnyway}
+            onDiscard={onDiscard}
             closedNotice={decided ?? (draft && !shownDraft ? draft.notice : null)}
             outcome={draft?.status === 'sent' ? draft.versionStatus : null}
             changes={changeList}
@@ -284,9 +315,7 @@ export default function AiAssistantPage() {
             mode={mode}
             onMode={onMode}
             location={location}
-            canSendAnyway={overrideNeeded}
             sending={sending}
-            onSendAnyway={onSendAnyway}
             onDiscard={onDiscard}
             onLocation={setLocation}
             picking={picking}

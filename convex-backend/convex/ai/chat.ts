@@ -18,7 +18,8 @@ const MAX_POINTED = 10;
 const MAX_POINTED_CHARS = 20_000;
 const MAX_PICTURES = 3;
 // Chat messages go to the provider and the activity log, so keys must not get in.
-const LOOKS_LIKE_A_KEY = /\b(AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/;
+// Google's keys start AIza (older) or AQ. (newer); OpenAI's and Anthropic's sk-.
+const LOOKS_LIKE_A_KEY = /\b(AIza[0-9A-Za-z_-]{20,}|AQ\.[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,})\b/;
 
 async function openDraft(ctx: QueryCtx, threadId: string) {
   const rows = await ctx.db.query("changeSets").withIndex("by_threadId", (q) => q.eq("threadId", threadId)).order("desc").take(5);
@@ -147,8 +148,10 @@ export const send = mutation({
         review: undefined,
         editorModel: settings.editorModel,
         reviewerModel: settings.reviewerModel,
-        // What the review checks against: everything the admin has asked for.
-        title: `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS),
+        // What the review checks against: everything asked for since this draft's
+        // first change. Messages before that (greetings, questions) changed nothing,
+        // so a draft with no changes yet starts over from this message.
+        title: cs.contentOps.length ? `${cs.title}\n${clean}`.slice(-MAX_PROMPT_CHARS) : clean,
         // Only what this message points at.
         selectedElements,
         pictures: [...(cs.pictures ?? []), ...pictures],
