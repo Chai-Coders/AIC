@@ -162,7 +162,7 @@ page lists them, shows each field before and after, and can undo a version, put
 back a single field, or restore the website to how it was after a version. Undo
 and restore are saved as new versions, so they can be undone too. CMS edits are
 grouped into one version per sitting (30 minutes without an edit by default,
-set on the AI connection page; signing out also ends it).
+set in Settings → Version history; signing out also ends it).
 
 Pictures that were replaced or deleted are kept while the history mentions
 them, so undo can bring them back. The homepage video is not versioned.
@@ -172,8 +172,14 @@ them, so undo can bring them back. The homepage video is not versioned.
 AI apps (Claude, ChatGPT, Claude Code, Cursor, ...) connect to
 `<CONVEX_SITE_URL>/mcp`. They can search and read the site and propose changes,
 which collect in one draft that only the admin can approve, on the Versions page.
-There is no tool to publish. The CMS's AI connection page has the address and
+There is no tool to publish. The CMS's Settings → MCP tab has the address and
 step-by-step setup for each app.
+
+The CMS's own **AI Assistant** follows the same rules: once its review agent has
+checked a change, it joins that same draft, and nothing goes live until the admin
+approves it on the Versions page. Edits made by hand in the CMS go live at once
+and are recorded in the same history. All three use the same field rules
+(`convex/lib/registry.ts`, `convex/lib/siteText.ts`). See `docs/ai-agent.md`.
 
 For apps on the internet (Claude.ai, ChatGPT) the site port (3211) must be
 reachable over **public HTTPS**, and `SITE_URL` must be the CMS address: the
