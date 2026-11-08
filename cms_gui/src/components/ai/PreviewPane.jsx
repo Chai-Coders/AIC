@@ -2,7 +2,7 @@ import { forwardRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
-import { ChevronLeft, ChevronRight, History, Loader2, Send, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Trash2 } from 'lucide-react';
 import SitePreview from '../../preview/SitePreview';
 import BrowserFrame from './BrowserFrame';
 
@@ -48,7 +48,7 @@ function Walkthrough({ items, index, onStep, mode, onMode }) {
 }
 
 const PreviewPane = forwardRef(function PreviewPane(
-  { content, draft, sent, changeList, step, onStep, mode, onMode, location, canSendAnyway, sending, onSendAnyway, onDiscard, picking, onDonePicking, ...previewEvents },
+  { content, draft, sent, changeList, step, onStep, mode, onMode, location, sending, onDiscard, picking, onDonePicking, ...previewEvents },
   ref,
 ) {
   const [device, setDevice] = useState('desktop');
@@ -73,12 +73,6 @@ const PreviewPane = forwardRef(function PreviewPane(
             <button type="button" onClick={onDiscard} disabled={sending || draft.running} className="btn-secondary px-3 py-1.5 text-xs">
               <Trash2 className="h-3.5 w-3.5" /> Discard
             </button>
-            {canSendAnyway && (
-              <button type="button" onClick={onSendAnyway} disabled={sending} className="btn-primary px-3 py-1.5 text-xs">
-                {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                Send anyway
-              </button>
-            )}
           </>
         )}
         {sent && (

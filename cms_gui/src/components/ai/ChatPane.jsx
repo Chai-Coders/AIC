@@ -14,35 +14,12 @@ const MAX_PICTURES = 3; // Same limit as convex-backend/convex/ai/chat.ts.
 // Models mark up lists like "**Name**", which should read as bold, not as asterisks.
 const withBold = (text) => text.split(/\*\*([^*\n]+)\*\*/).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
 
-// What the agent is doing, in the admin's words.
-const TOOL_LABELS = {
-  get_site_content: 'Read the site content',
-  get_site_text: 'Read the website text',
-  update_site_text: 'Edited the website text in the draft',
-  search_media: 'Looked through the media library',
-  get_selected_element: 'Looked at the element you pointed to',
-  update_record: 'Edited a record in the draft',
-  add_person: 'Added a person to the draft',
-  add_startup: 'Added a startup to the draft',
-  add_news: 'Added a news post to the draft',
-  add_gallery_photo: 'Added a photo to the draft',
-  remove_change: 'Corrected the list of changes',
-  delete_record: 'Asked to delete a record',
-  swap_media: 'Swapped a picture in the draft',
-  describe_change: 'Noted the change',
-};
-
 const STATUS_TEXT = {
-  drafting: 'Working on your request…',
-  reviewing: 'The review agent is checking the change…',
+  drafting: 'Working on it…',
+  reviewing: 'Checking the change…',
 };
 
 function Message({ message }) {
-  if (message.role === 'note') {
-    return (
-      <p className="mx-4 rounded-lg bg-muted px-3 py-2 text-xs whitespace-pre-wrap text-muted-foreground">{message.text}</p>
-    );
-  }
   if (message.role === 'user') {
     const text = message.text.split('\n\n(The admin ')[0];
     return (
@@ -51,18 +28,8 @@ function Message({ message }) {
       </div>
     );
   }
-  const activity = [...new Set(message.tools.map((t) => TOOL_LABELS[t]).filter(Boolean))];
   return (
     <div className="space-y-2 px-4">
-      {activity.length > 0 && (
-        <ul aria-label="What the assistant did" className="flex flex-wrap gap-1.5">
-          {activity.map((line) => (
-            <li key={line} className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              <Check className="h-3 w-3 text-success" aria-hidden="true" /> {line}
-            </li>
-          ))}
-        </ul>
-      )}
       {message.text && <p className="text-sm whitespace-pre-wrap text-foreground">{withBold(message.text)}</p>}
       {message.failed && <p className="text-xs text-destructive">This step failed.</p>}
     </div>
@@ -153,28 +120,11 @@ function Progress({ draft, sent, outcome }) {
 }
 
 /**
- * The assistant works in steps, each saved as a message. Steps with no words
- * are folded into the reply they lead to, so the chat shows one set of
- * activity per reply instead of a line per step.
+ * Only what the admin needs to read: their messages and the assistant's replies. The
+ * agent's working steps and the notes the system leaves it (review objections and the
+ * like) stay out of the chat; the change cards show what was changed.
  */
-function mergeSteps(messages) {
-  const out = [];
-  let pending = [];
-  for (const m of messages) {
-    if (m.role !== 'assistant') {
-      if (pending.length) out.push({ id: `steps-${out.length}`, role: 'assistant', text: '', tools: pending, failed: false });
-      pending = [];
-      out.push(m);
-    } else if (!m.text && !m.failed) {
-      pending = [...pending, ...m.tools];
-    } else {
-      out.push({ ...m, tools: [...pending, ...m.tools] });
-      pending = [];
-    }
-  }
-  if (pending.length) out.push({ id: `steps-${out.length}`, role: 'assistant', text: '', tools: pending, failed: false });
-  return out;
-}
+const visibleMessages = (messages) => messages.filter((m) => m.role === 'user' || (m.role === 'assistant' && (m.text || m.failed)));
 
 const pageName = (page) => (!page ? '' : page === '/' ? 'Home page' : page);
 
@@ -360,7 +310,7 @@ function ModelPicker({ settings, onError }) {
   );
 }
 
-export default function ChatPane({ threadId, draft, sent, outcome, closedNotice, changes, step, onShowChange, prompt, onPrompt, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
+export default function ChatPane({ threadId, draft, sent, outcome, deciding, onSendAnyway, onDiscard, closedNotice, changes, step, onShowChange, prompt, onPrompt, messages, selected, onRemoveSelected, picking, onTogglePick, onSend, onNewChat, showToast }) {
   const settings = useQuery(api.settings.get);
   const stop = useMutation(api.chat.stop);
   const text = prompt;
@@ -450,7 +400,7 @@ export default function ChatPane({ threadId, draft, sent, outcome, closedNotice,
             }}
           />
         ) : (
-          mergeSteps(messages ?? []).map((m) => <Message key={m.id} message={m} />)
+          visibleMessages(messages ?? []).map((m) => <Message key={m.id} message={m} />)
         )}
 
         {statusLine && (
@@ -462,17 +412,30 @@ export default function ChatPane({ threadId, draft, sent, outcome, closedNotice,
         <div className="space-y-3 px-4">
           {draft?.pendingConfirm && <ConfirmCard draft={draft} onError={(m) => showToast(m, 'error')} />}
 
-          {draft?.status === 'needs_admin' && draft.review?.verdict === 'rejected' && (
-            <div role="alert" className="space-y-2 rounded-xl border border-warning/50 bg-warning/10 p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> The review agent objects
-              </p>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
-                {draft.review.reasons.map((reason, i) => (
-                  <li key={i}>{reason}</li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted-foreground">It's your decision: tell the assistant what to do, send it to the Versions page anyway, or discard the draft.</p>
+          {draft?.status === 'needs_admin' && draft.review?.verdict === 'rejected' && !draft.pendingConfirm && (
+            <div role="alert" className="space-y-3 rounded-xl border border-warning/50 bg-warning/10 p-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" /> This needs your decision
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">The check wasn't sure this is what you asked for. Send it anyway, discard it, or tell the assistant what to change.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={onSendAnyway} disabled={deciding} className="btn-primary rounded-full px-3 py-1.5 text-xs">
+                  {deciding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Send anyway
+                </button>
+                <button type="button" onClick={onDiscard} disabled={deciding} className="btn-secondary rounded-full px-3 py-1.5 text-xs">
+                  <Trash2 className="h-3.5 w-3.5" /> Discard
+                </button>
+              </div>
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer font-medium">Why?</summary>
+                <ul className="mt-1.5 list-disc space-y-1 pl-4">
+                  {draft.review.reasons.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
+              </details>
             </div>
           )}
 
@@ -484,7 +447,7 @@ export default function ChatPane({ threadId, draft, sent, outcome, closedNotice,
                 <p className="text-sm font-semibold text-foreground">
                   {changes.length > 1 ? `${changes.length} changes are` : 'Your change is'} waiting for your approval
                 </p>
-                <p className="text-xs text-muted-foreground">The review agent checked it. Nothing is on the website until you approve it on Versions.</p>
+                <p className="text-xs text-muted-foreground">Nothing is live until you approve it.</p>
               </div>
               <Link to="/versions?tab=pending" className="btn-primary w-full justify-center rounded-full px-4 py-2 text-xs">
                 Review on Versions

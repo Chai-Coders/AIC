@@ -227,16 +227,15 @@ export default function AiAssistantPage() {
   };
 
   const [sending, setSending] = useState(false);
-  const overrideNeeded = openDraft?.status === 'needs_admin' && openDraft.review?.verdict === 'rejected' && !openDraft.pendingConfirm;
 
   const onSendAnyway = async () => {
-    if (!window.confirm(`The review agent objected:\n\n${openDraft.review.reasons.join('\n')}\n\nSend it to the Versions page anyway? Nothing goes live until you approve it there.`)) return;
+    // Nothing goes live from here: it only waits on Versions, so no confirm step.
     setSending(true);
     try {
       await run(() => sendAnyway({ changeSetId: openDraft._id }));
       setMode('after');
       preview.current?.clearHighlight();
-      showToast('Sent to the Versions page. Approve it there to put it on the website.', 'success');
+      showToast('Sent to Versions for your approval.', 'success');
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -277,6 +276,9 @@ export default function AiAssistantPage() {
             threadId={threadId}
             draft={openDraft}
             sent={!!sentDraft}
+            deciding={sending}
+            onSendAnyway={onSendAnyway}
+            onDiscard={onDiscard}
             closedNotice={decided ?? (draft && !shownDraft ? draft.notice : null)}
             outcome={draft?.status === 'sent' ? draft.versionStatus : null}
             changes={changeList}
@@ -312,9 +314,7 @@ export default function AiAssistantPage() {
             mode={mode}
             onMode={onMode}
             location={location}
-            canSendAnyway={overrideNeeded}
             sending={sending}
-            onSendAnyway={onSendAnyway}
             onDiscard={onDiscard}
             onLocation={setLocation}
             picking={picking}
