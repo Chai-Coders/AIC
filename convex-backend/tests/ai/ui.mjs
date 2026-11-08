@@ -43,22 +43,30 @@ const contentPrint=(s)=>JSON.stringify([s.news.map(x=>x.title),s.gallery.map(x=>
 // Anything left on the live site by a failed check is reported at the end.
 const liveBefore=contentPrint(await live());
 // These checks read the fake Claude's requests. Put the admin's model back at the end.
-const modelPicker=page.getByRole('combobox',{name:'AI model'});
-await modelPicker.waitFor({timeout:15000});
-const adminsModel=await modelPicker.inputValue();
-await modelPicker.selectOption('anthropic/claude-opus-5-5');
+// The model menu under the message box: a button, and a list that opens above it.
+const modelButton=page.getByRole('button',{name:/^AI model:/});
+const pickModel=async(value)=>{
+  await modelButton.click();
+  await page.getByRole('listbox',{name:'AI model'}).locator(`[data-value="${value}"]`).click();
+  await page.waitForFunction((v)=>document.querySelector('button[aria-haspopup="listbox"]')?.dataset.value===v,value,{timeout:10000});
+};
+await modelButton.waitFor({timeout:15000});
+const adminsModel=await modelButton.getAttribute('data-value');
+await pickModel('anthropic/claude-opus-5-5');
+assert.equal(await page.getByRole('listbox',{name:'AI model'}).count(),0,'the menu closes after choosing');
 await page.waitForTimeout(500);
 await step('the preview IS the real site: same images, buttons, links and text as the public website',async()=>{
   const facts=()=>{const seen=(e)=>{const r=e.getBoundingClientRect();const c=getComputedStyle(e);return r.width>0&&r.height>0&&c.visibility!=='hidden'&&c.display!=='none'};const q=(s)=>[...document.querySelectorAll(s)].filter(seen);return {sources:[...document.querySelectorAll('img')].map(i=>i.getAttribute('src')).join(' '),imgs:q('img').length,broken:q('img').filter(i=>i.complete&&i.naturalWidth===0).length,buttons:q('button,.btn').length,links:q('a[href]').length,headings:q('h1,h2,h3').map(h=>h.innerText.trim().replace(/\s+/g,' ')),height:document.documentElement.scrollHeight,headerLinks:q('header a').length,headerButtons:q('header button').length,h1Size:getComputedStyle(document.querySelector('h1')||document.body).fontSize,columns:q('.grid,.split').map(g=>getComputedStyle(g).gridTemplateColumns.split(' ').length).join(','),font:getComputedStyle(document.querySelector('h1')||document.body).fontFamily}};
-  // Compare with the public site in a window the same size as this one, as the admin
-  // sees it. A window the same size as the pane would just hide a difference in layout.
-  const win=page.viewportSize();
-  const real=await (await browser.newContext({viewport:win})).newPage();
-  await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
+  // Like the Site text page, the preview is the site at the frame's own width, not
+  // shrunk: compare with the public site in a window that size.
   const fr=page.frames().find(f=>f.url().includes('5174'));
   assert.ok(fr,'the frame loads the website itself');
+  const win=await fr.evaluate(()=>({width:innerWidth,height:innerHeight}));
+  const box=await page.locator('.aic-site-preview iframe').boundingBox();
+  assert.ok(Math.abs(box.width-win.width)<=1&&Math.abs(box.height-win.height)<=1,'the site fills the frame, not shrunk');
+  const real=await (await browser.newContext({viewport:win})).newPage();
+  await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
   assert.ok(!page.frames().some(f=>f.url().includes('codesandbox')),'no sandbox');
-  assert.deepEqual(await fr.evaluate(()=>[innerWidth,innerHeight]),[win.width,win.height],'the preview is laid out as a window of the same size');
   for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
     await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
     await real.goto('http://localhost:5174'+path,{waitUntil:'load'});
@@ -85,10 +93,10 @@ await step('every element on every page sits exactly where it does on the public
     const r=e.getBoundingClientRect();if(!r.width||!r.height)continue;const c=getComputedStyle(e);
     const k=`${e.tagName}.${cls.replace(/\b(is-|reveal)\S*/g,'').trim()}|${(e.innerText||'').slice(0,30)}`;const i=seen[k]=(seen[k]||0)+1;
     out[`${k}#${i}`]={x:r.left,y:r.top+scrollY,w:r.width,h:r.height,font:c.fontSize,color:c.color,border:c.borderTopWidth};}return out;};
-  const win=page.viewportSize();
+  const fr=page.frames().find(f=>f.url().includes('5174'));
+  const win=await fr.evaluate(()=>({width:innerWidth,height:innerHeight}));
   const real=await (await browser.newContext({viewport:win})).newPage();
   await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
-  const fr=page.frames().find(f=>f.url().includes('5174'));
   const through=async()=>{for(let y=0;y<=document.documentElement.scrollHeight;y+=400){scrollTo(0,y);await new Promise(r=>setTimeout(r,70));}scrollTo(0,0);await new Promise(r=>setTimeout(r,900));};
   for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
     await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
@@ -278,14 +286,17 @@ await step('the spend meter moves by itself, and the AI activity tab filters',as
   await page.getByRole('button',{name:'New chat'}).click();
   await page.waitForTimeout(800);
   const item=(await live()).news[0];
-  const meter=page.getByRole('meter',{name:'Estimated AI spend this month'}).locator('xpath=..');
+  const meter=page.getByRole('meter',{name:'Estimated AI spend this month'});
   await meter.waitFor();
-  const before=await meter.innerText();
+  const before=await meter.getAttribute('aria-valuetext');
+  // Hovering the ring shows the details.
+  await meter.hover();
+  await page.getByRole('tooltip').getByText(/^AI spend: \$[\d.]+ of \$[\d.]+ this month$/).waitFor({timeout:3000});
   const HEADLINE=`Meter headline ${Date.now()}`;
   await control('script',{script:[{tools:[['update_record',{table:'news',id:item.id,field:'title',value:HEADLINE}],['describe_change',{summary:'Rename',page:'/news',text:HEADLINE}]]},DONE,OK]});
   await say('Rename the first news post');
   await sent().waitFor({timeout:40000});
-  await page.waitForFunction((b)=>document.querySelector('[role=meter]').parentElement.innerText!==b,before,{timeout:10000});
+  await page.waitForFunction((b)=>document.querySelector('[role=meter]').getAttribute('aria-valuetext')!==b,before,{timeout:10000});
   // The log is a tab on Versions now.
   await page.locator('nav a',{hasText:'Versions'}).click();
   await page.getByRole('tab',{name:'AI activity'}).click();
@@ -422,8 +433,8 @@ await step('the checks left the live site as they found it',async()=>{
   assert.equal(contentPrint(await live()),liveBefore);
 });
 await page.setViewportSize({width:1500,height:950});
-await modelPicker.waitFor({timeout:15000});
-await modelPicker.selectOption(adminsModel);
+await modelButton.waitFor({timeout:15000});
+await pickModel(adminsModel);
 await page.waitForTimeout(800);
-assert.equal(await modelPicker.inputValue(),adminsModel,"the admin's model is back");
+assert.equal(await modelButton.getAttribute('data-value'),adminsModel,"the admin's model is back");
 await browser.close();

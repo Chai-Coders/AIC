@@ -52,7 +52,6 @@ const PreviewPane = forwardRef(function PreviewPane(
   ref,
 ) {
   const [device, setDevice] = useState('desktop');
-  const [scale, setScale] = useState(1);
   const showActions = draft && draft.contentOps.length > 0;
   // Changes from the AI Assistant and AI apps that wait on the Versions page.
   const waiting = useQuery(anyApi.drafts.pendingCount) ?? 0;
@@ -93,8 +92,8 @@ const PreviewPane = forwardRef(function PreviewPane(
 
       <div className="relative flex min-h-0 flex-1 bg-background">
         <div className="h-full min-w-0 flex-1">
-          <BrowserFrame path={location} device={device} scale={scale} caption={caption} onDeviceChange={setDevice} picking={picking} onDonePicking={onDonePicking}>
-            <SitePreview ref={ref} content={content} device={device} onScale={setScale} {...previewEvents} />
+          <BrowserFrame path={location} device={device} caption={caption} onDeviceChange={setDevice} picking={picking} onDonePicking={onDonePicking}>
+            <SitePreview ref={ref} content={content} {...previewEvents} />
           </BrowserFrame>
         </div>
       </div>

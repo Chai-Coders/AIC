@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery } from 'convex/react';
 import { anyApi } from 'convex/server';
-import { AlertTriangle, Check, Crosshair, ImagePlus, Loader2, Plus, Send, Sparkles, Square, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, Crosshair, ImagePlus, Loader2, Plus, Send, Sparkles, Square, Trash2, X } from 'lucide-react';
 import { run } from '../../services/convex';
 import { uploadImage } from '../../lib/upload';
 import SpendMeter from './SpendMeter';
@@ -247,13 +247,38 @@ function ConfirmCard({ draft, onError }) {
   );
 }
 
+const PROVIDER_NAMES = { anthropic: 'Anthropic', google: 'Google', openai: 'OpenAI' };
+const price = (n) => `$${Number(n).toFixed(Number(n) < 1 ? 2 : 0)}`;
+
+/**
+ * The model the assistant uses, as a small menu like other chat apps: the current
+ * model on a button; the list, grouped by provider with each one's price, opens above it.
+ */
 function ModelPicker({ settings, onError }) {
   const save = useMutation(api.settings.save);
+  const [open, setOpen] = useState(false);
+  const box = useRef(null);
   const current = settings.editorModel;
-  const models = settings.priceTable.filter((p) => p.available !== false && settings.providers.some((x) => x.name === p.provider && x.configured));
-  const change = async (e) => {
-    const [provider, ...rest] = e.target.value.split('/');
-    const next = { provider, model: rest.join('/') };
+  const currentValue = `${current.provider}/${current.model}`;
+  const models = settings.priceTable
+    .filter((p) => p.available !== false && settings.providers.some((x) => x.name === p.provider && x.configured))
+    .sort((a, b) => a.provider.localeCompare(b.provider) || (a.name ?? a.model).localeCompare(b.name ?? b.model));
+  const currentName = models.find((m) => `${m.provider}/${m.model}` === currentValue)?.name ?? current.model;
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => {
+      if (!box.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    box.current?.querySelector('[aria-selected="true"]')?.focus();
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+
+  const choose = async (m) => {
+    setOpen(false);
+    const next = { provider: m.provider, model: m.model };
+    if (`${next.provider}/${next.model}` === currentValue) return;
     const reviewerFollows = settings.reviewerModel.provider === current.provider && settings.reviewerModel.model === current.model;
     try {
       await run(() => save({ editorModel: next, ...(reviewerFollows ? { reviewerModel: next } : {}) }));
@@ -261,18 +286,77 @@ function ModelPicker({ settings, onError }) {
       onError(err.message);
     }
   };
+
+  // Up and down move between models, Escape closes.
+  const onKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setOpen(false);
+      box.current?.querySelector('button[aria-haspopup]')?.focus();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const options = [...box.current.querySelectorAll('[role="option"]')];
+    const at = options.indexOf(document.activeElement);
+    options[(at + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length]?.focus();
+  };
+
   if (models.length === 0) return null;
+  const groups = [...new Set(models.map((m) => m.provider))];
   return (
-    <select value={`${current.provider}/${current.model}`} onChange={change} className="field w-auto max-w-48 truncate py-1 text-xs" aria-label="AI model">
-      {!models.some((m) => m.provider === current.provider && m.model === current.model) && (
-        <option value={`${current.provider}/${current.model}`}>{current.model}</option>
+    <div ref={box} className="relative" onKeyDown={onKeyDown}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`AI model: ${currentName}`}
+        data-value={currentValue}
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-8 max-w-40 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <span className="truncate">{currentName}</span>
+        <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="absolute right-0 bottom-full z-20 mb-2 w-64 overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl">
+          <div role="listbox" aria-label="AI model" className="max-h-72 overflow-y-auto p-1.5">
+            {groups.map((provider) => (
+              <div key={provider} role="group" aria-label={PROVIDER_NAMES[provider] ?? provider}>
+                <p className="px-2.5 pt-2 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">{PROVIDER_NAMES[provider] ?? provider}</p>
+                {models
+                  .filter((m) => m.provider === provider)
+                  .map((m) => {
+                    const value = `${m.provider}/${m.model}`;
+                    const selected = value === currentValue;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        data-value={value}
+                        onClick={() => choose(m)}
+                        className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-muted focus-visible:bg-muted ${selected ? 'text-foreground' : ''}`}
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{m.name ?? m.model}</span>
+                          <span className="block text-[11px] text-muted-foreground">
+                            {price(m.inputPerMTok)} in · {price(m.outputPerMTok)} out per million tokens
+                          </span>
+                        </span>
+                        {selected && <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+              </div>
+            ))}
+          </div>
+          <Link to="/settings?tab=ai" onClick={() => setOpen(false)} className="block border-t border-border px-4 py-2.5 text-xs font-medium text-primary hover:bg-muted">
+            Manage models and keys
+          </Link>
+        </div>
       )}
-      {models.map((m) => (
-        <option key={`${m.provider}/${m.model}`} value={`${m.provider}/${m.model}`}>
-          {m.name ?? m.model}
-        </option>
-      ))}
-    </select>
+    </div>
   );
 }
 
@@ -456,50 +540,64 @@ export default function ChatPane({ threadId, draft, sent, outcome, closedNotice,
             </ul>
           )}
           {picking && <p className="text-xs text-muted-foreground">Click each thing in the preview; click again to remove it. Ctrl-click follows a link to another page.</p>}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) submit(e);
-            }}
-            ref={textarea}
-            rows={3}
-            disabled={!canType}
-            placeholder={draft?.pendingConfirm ? 'Answer the question above first.' : busy ? 'Please wait…' : 'Say what should change, e.g. “Change the home page heading to Where ideas become companies”'}
-            aria-label="Message to the AI Assistant"
-            className="field resize-none rounded-xl"
-          />
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 gap-1.5">
+          {/* One box, as in modern chat apps: the message, then its tools along the bottom. */}
+          <div className={`rounded-2xl border bg-background transition-shadow focus-within:border-primary/60 focus-within:ring-3 focus-within:ring-primary/15 ${canType ? 'border-input' : 'border-border opacity-80'}`}>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) submit(e);
+              }}
+              ref={textarea}
+              rows={3}
+              disabled={!canType}
+              placeholder={draft?.pendingConfirm ? 'Answer the question above first.' : busy ? 'Please wait…' : 'Say what should change, e.g. “Change the home page heading to Where ideas become companies”'}
+              aria-label="Message to the AI Assistant"
+              className="block w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+            />
+            <div className="flex items-center gap-1 px-2 pb-2">
               <button
                 type="button"
                 onClick={onTogglePick}
                 aria-pressed={picking}
-                title="Click things on the website to show what you mean"
-                className={`btn-secondary rounded-full px-3 py-1.5 text-xs ${picking ? 'ring-3 ring-primary/40' : ''}`}
+                aria-label={picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
+                title="Point: click things on the website to show what you mean"
+                className={`flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition-colors ${
+                  picking ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
               >
-                <Crosshair className="h-3.5 w-3.5" /> {picking ? 'Done pointing' : selected.length ? 'Point at more' : 'Point at something'}
+                <Crosshair className="h-4 w-4" aria-hidden="true" />
+                <span>{picking ? 'Done' : 'Point'}</span>
               </button>
               <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={attach} aria-label="Attach pictures" />
-              <button type="button" onClick={() => fileInput.current?.click()} disabled={uploading || !canType} title="Attach a picture" aria-label="Attach a picture" className="btn-secondary rounded-full px-3 py-1.5 text-xs">
-                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">Picture</span>
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={uploading || !canType}
+                title="Attach a picture"
+                aria-label="Attach a picture"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
               </button>
-            </div>
-            {draft?.running ? (
-              <button type="button" onClick={onStop} className="btn-secondary px-3 py-1.5 text-xs">
-                <Square className="h-3.5 w-3.5" /> Stop
-              </button>
-            ) : (
-              <button type="submit" disabled={!canType || !text.trim()} className="btn-primary rounded-full px-4 py-1.5 text-xs">
-                <Send className="h-3.5 w-3.5" /> Send
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            {settings && <ModelPicker settings={settings} onError={(m) => showToast(m, 'error')} />}
-            <div className="min-w-0 flex-1">
+              <span className="flex-1" />
+              {settings && <ModelPicker settings={settings} onError={(m) => showToast(m, 'error')} />}
               <SpendMeter compact />
+              {draft?.running ? (
+                <button type="button" onClick={onStop} aria-label="Stop" title="Stop" className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90">
+                  <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!canType || !text.trim()}
+                  aria-label="Send"
+                  title="Send (Enter)"
+                  className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
             </div>
           </div>
         </form>
