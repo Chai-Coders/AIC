@@ -17,7 +17,7 @@ npx convex env set AI_SETTINGS_KEY "$(openssl rand -base64 32)"
 npx convex env set ANTHROPIC_BASE_URL http://127.0.0.1:4599/v1
 npx convex env set GOOGLE_BASE_URL http://127.0.0.1:4599/v1beta
 node scripts/setup-auth-keys.mjs http://localhost:5175
-npx convex run admin:createAdmin '{"email":"test@aic.local","password":"<at least 10 characters>"}'
+npx convex run admin:createAdmin '{"email":"test@aic.local","password":"<at least 8 characters>"}'
 
 # Backend checks (needs sample content in the deployment)
 TEST_EMAIL=test@aic.local TEST_PASSWORD=... node tests/ai/e2e.mjs [name filter]

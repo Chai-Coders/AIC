@@ -8,7 +8,7 @@ import { normalizeEmail } from "./auth";
 //   npx convex run admin:setPassword '{"email":"…","password":"…"}'
 // To remove an admin, delete their row in the `users` table from the dashboard.
 
-const MIN_PASSWORD_LENGTH = 10;
+const MIN_PASSWORD_LENGTH = 8;
 
 function checkPassword(password: string) {
   if (password.length < MIN_PASSWORD_LENGTH) {
