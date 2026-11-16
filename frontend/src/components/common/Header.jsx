@@ -8,7 +8,7 @@ const NAV = [
   { id: 'home', to: '/' },
   { id: 'about', items: ['/summary', '/boardmember', '/aicteam', '/mentor'] },
   { id: 'programs', items: ['/sia', '/sisfs', '/startup'] },
-  { id: 'portfolio', to: '/startup#portfolio' },
+  { id: 'portfolio', to: '/portfolio' },
   { id: 'media', items: ['/news', '/gallery'] },
   { id: 'careers', to: '/careers' },
 ];

@@ -1,8 +1,8 @@
 import React from 'react';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import PageLayout from '../components/common/PageLayout';
 import SectionHeader from '../components/common/SectionHeader';
 import ProgramContent from '../components/sections/ProgramContent';
-import StartupGrid from '../components/sections/StartupGrid';
 import { Text } from '../content/Text';
 import { useText } from '../content/useText';
 
@@ -20,9 +20,12 @@ const CARDS = [{ icon: 'fa-check-circle' }, { icon: 'fa-refresh' }, { icon: 'fa-
 
 const StartupPage = () => {
   const t = useText();
+  const { hash } = useLocation();
+  // The portfolio used to be a section of this page; send old links to its own page.
+  if (hash === '#portfolio') return <Navigate to="/portfolio" replace />;
   return (
   <PageLayout
-    title="Acceleration & portfolio"
+    title="Acceleration"
     hero={{
       prefix: 'startup.hero',
       breadcrumbs: [{ label: 'Programs' }, { label: 'Acceleration' }],
@@ -31,24 +34,14 @@ const StartupPage = () => {
           <a className="btn btn--accent" href={t('links.apply')} target="_blank" rel="noopener noreferrer">
             <Text k="startup.hero.apply" /> <i className="fa fa-external-link" aria-hidden="true" />
           </a>
-          <a className="btn btn--outline" href="#portfolio">
+          <Link className="btn btn--outline" to="/portfolio">
             <Text k="startup.hero.browse" />
-          </a>
+          </Link>
         </>
       ),
     }}
   >
     <ProgramContent prefix="startup" cards={CARDS} />
-
-    <section id="portfolio" className="section section--white" aria-labelledby="portfolio-title">
-      <div className="container">
-        <SectionHeader
-          id="portfolio-title"
-          prefix="startup.portfolio"
-        />
-        <StartupGrid />
-      </div>
-    </section>
 
     <section className="section" aria-labelledby="partners-title">
       <div className="container">

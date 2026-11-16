@@ -67,7 +67,7 @@ await step('the preview IS the real site: same images, buttons, links and text a
   const real=await (await browser.newContext({viewport:win})).newPage();
   await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
   assert.ok(!page.frames().some(f=>f.url().includes('codesandbox')),'no sandbox');
-  for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
+  for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/portfolio','/gallery','/careers']){
     await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
     await real.goto('http://localhost:5174'+path,{waitUntil:'load'});
     await page.waitForTimeout(1800);
@@ -98,7 +98,7 @@ await step('every element on every page sits exactly where it does on the public
   const real=await (await browser.newContext({viewport:win})).newPage();
   await real.addInitScript(()=>{try{sessionStorage.setItem('aic:splash-seen','1')}catch{}});
   const through=async()=>{for(let y=0;y<=document.documentElement.scrollHeight;y+=400){scrollTo(0,y);await new Promise(r=>setTimeout(r,70));}scrollTo(0,0);await new Promise(r=>setTimeout(r,900));};
-  for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/gallery','/careers']){
+  for(const path of ['/','/summary','/news','/aicteam','/boardmember','/mentor','/sia','/sisfs','/startup','/portfolio','/gallery','/careers']){
     await fr.evaluate((p)=>{history.pushState({},'',p);dispatchEvent(new PopStateEvent('popstate'))},path);
     await real.goto('http://localhost:5174'+path,{waitUntil:'load'});
     await page.waitForTimeout(1800);

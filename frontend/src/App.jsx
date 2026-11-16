@@ -13,6 +13,7 @@ const BoardMemberPage = lazy(() => import('./pages/BoardMemberPage'));
 const AicTeamPage = lazy(() => import('./pages/AicTeamPage'));
 const MentorPage = lazy(() => import('./pages/MentorPage'));
 const StartupPage = lazy(() => import('./pages/StartupPage'));
+const PortfolioPage = lazy(() => import('./pages/PortfolioPage'));
 const SummaryPage = lazy(() => import('./pages/SummaryPage'));
 const NewsPage = lazy(() => import('./pages/NewsPage'));
 const NewsDetailPage = lazy(() => import('./pages/NewsDetailPage'));
@@ -84,6 +85,7 @@ function App() {
           <Route path="/aicteam" element={<AicTeamPage />} />
           <Route path="/mentor" element={<MentorPage />} />
           <Route path="/startup" element={<StartupPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/summary" element={<SummaryPage />} />
           <Route path="/news" element={<NewsPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />

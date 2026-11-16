@@ -16,7 +16,7 @@ const TOUR_STEP_MS = 3500;
 const sameElement = (a, b) => a.path === b.path && a.selector === b.selector;
 
 const NOUNS = { startups: 'startup', news: 'news post', teamMembers: 'person', gallery: 'photo' };
-const PAGES = { startups: '/startup', news: '/news', gallery: '/gallery' };
+const PAGES = { startups: '/portfolio', news: '/news', gallery: '/gallery' };
 const short = (value) => {
   const text = String(value ?? '').replace(/\s+/g, ' ').trim();
   return text.length > 60 ? `${text.slice(0, 57)}…` : text;

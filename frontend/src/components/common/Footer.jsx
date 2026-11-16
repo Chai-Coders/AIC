@@ -7,7 +7,7 @@ import { Editable, Text } from '../../content/Text';
 // Column headings and link labels are the texts footer.<id>.title and footer.<id>.<i>.
 const LINK_GROUPS = [
   { id: 'centre', links: ['/summary', '/boardmember', '/aicteam', '/mentor', '/careers'] },
-  { id: 'programmes', links: ['/sia', '/sisfs', '/startup', '/startup#portfolio', '/news'] },
+  { id: 'programmes', links: ['/sia', '/sisfs', '/startup', '/portfolio', '/news'] },
 ];
 
 const BackToTop = () => {

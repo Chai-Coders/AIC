@@ -466,14 +466,20 @@ const STARTUP = [
       'Access to AIM, DPIIT, SISFS and venture funding schemes',
     ]],
   ]),
-  group('Portfolio', 'startup.portfolio', {
-    eyebrow: line('Eyebrow', 'Portfolio'),
-    title: rich('Heading', 'Our promising startups'),
-    lead: text('Intro paragraph', 'Ventures incubated and accelerated at AIC-IIITKottayam.'),
-  }),
   group('Partners', 'startup.partners', {
     eyebrow: line('Eyebrow', 'Ecosystem'),
     title: rich('Heading', 'Our partners'),
+  }),
+];
+
+// The startup list's keys keep their old `startup.portfolio` prefix (it used to
+// be a section of the Acceleration page) so edits published before the move stay.
+const PORTFOLIO = [
+  hero('portfolio', 'Portfolio', 'Startups building with AIC', 'High-growth tech ventures and innovative entrepreneurs incubated at the centre.'),
+  group('Startup list', 'startup.portfolio', {
+    eyebrow: line('Eyebrow', 'All startups'),
+    title: rich('Heading', 'Our promising startups'),
+    lead: text('Intro paragraph', 'Ventures incubated and accelerated at AIC-IIITKottayam.'),
   }),
 ];
 
@@ -695,7 +701,8 @@ export const PAGES = [
   { id: 'mentor', name: 'Mentors', path: '/mentor', groups: MENTORS },
   { id: 'sia', name: 'Pre-incubation (SIA)', path: '/sia', groups: SIA },
   { id: 'sisfs', name: 'Seed Fund (SISFS)', path: '/sisfs', groups: SISFS },
-  { id: 'startup', name: 'Acceleration & portfolio', path: '/startup', groups: STARTUP },
+  { id: 'startup', name: 'Acceleration', path: '/startup', groups: STARTUP },
+  { id: 'portfolio', name: 'Portfolio', path: '/portfolio', groups: PORTFOLIO },
   { id: 'news', name: 'News', path: '/news', groups: NEWS },
   { id: 'gallery', name: 'Gallery', path: '/gallery', groups: GALLERY },
   { id: 'careers', name: 'Careers', path: '/careers', groups: CAREERS },

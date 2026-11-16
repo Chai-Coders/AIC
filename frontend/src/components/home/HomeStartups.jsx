@@ -36,7 +36,7 @@ const HomeStartups = () => {
           id="startups-title"
           prefix="home.startups"
           aside={
-            <Link to="/startup#portfolio" className="btn btn--outline">
+            <Link to="/portfolio" className="btn btn--outline">
               <Text k="home.startups.button" /> <i className="fa fa-arrow-right" aria-hidden="true" />
             </Link>
           }
